@@ -222,7 +222,7 @@
                     <div class="collapse" id="sidebarCharts">
                         <ul class="nav-second-level">
                             <li>
-                                <a href="#" class="tp-link">List Accounts</a>
+                                <a href="{{ route('payment.accounts') }}" class="tp-link">List Accounts</a>
                             </li>
                             <li>
                                 <a href="#" class="tp-link">Balance Sheet</a>
