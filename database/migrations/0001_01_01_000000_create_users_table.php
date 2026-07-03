@@ -11,14 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        // SQLite (used in the test suite) has no CONCAT(); it uses the || operator instead.
+        $nameExpression = Schema::getConnection()->getDriverName() === 'sqlite'
+            ? "first_name || ' ' || middle_name || ' ' || last_name"
+            : "CONCAT(first_name, ' ', middle_name, ' ', last_name)";
+
+        Schema::create('users', function (Blueprint $table) use ($nameExpression) {
             // base fields
             $table->id();
             $table->string('prefix')->nullable();
             $table->string('first_name');
             $table->string('middle_name')->nullable();
             $table->string('last_name')->nullable();
-            $table->string('name')->virtualAs("CONCAT(first_name, ' ', middle_name, ' ', last_name)");
+            $table->string('name')->virtualAs($nameExpression);
             $table->string('username')->unique();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();

@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountType extends Model
 {
-   protected $guarded = [];
-   
-   public function paymentAccounts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    use HasFactory;
+
+    protected $guarded = [];
+
+    public function paymentAccounts(): HasMany
     {
-        return $this->hasMany(\App\Models\PaymentAccount::class, 'account_type_id');
+        return $this->hasMany(PaymentAccount::class, 'account_type_id');
     }
 }

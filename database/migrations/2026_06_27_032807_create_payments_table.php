@@ -13,10 +13,14 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('purchase_id')->nullable()->constrained('purchases')->cascadeOnDelete();
-            $table->foreignId('payment_method_id')->nullable()->constrained('payment_methods')->nullOnDelete();
-            $table->foreignId('payment_account_id')->nullable()->constrained('payment_accounts')->nullOnDelete();
- 
+            // NOTE: purchases, payment_methods & payment_accounts are constrained in later
+            // phases. The payment_accounts table is created by a *later* migration than this
+            // one, so the FK can't be declared here yet. Columns are kept so payment records
+            // can reference them once the constraints are added.
+            $table->foreignId('purchase_id')->nullable();
+            $table->foreignId('payment_method_id')->nullable();
+            $table->foreignId('payment_account_id')->nullable();
+
             $table->decimal('amount', 12, 2)->default(0);
             $table->dateTime('paid_on');
             $table->string('type')->default('purchase_payment'); // purchase_payment / sale_payment / expense etc.

@@ -27,6 +27,9 @@
         <link href="{{ asset('backend/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
+        <!-- Remix Icons (used via ri-* classes across the admin UI) -->
+        <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" type="text/css">
+
         <!-- Toaster -->
         <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css" >
 
@@ -145,9 +148,24 @@
 
             case 'error':
             toastr.error(" {{ Session::get('message') }} ");
-            break; 
+            break;
         }
-        @endif 
+        @endif
+
+        {{-- Laravel convention flash keys used by the backend controllers --}}
+        @if(Session::has('success'))
+            toastr.success(@json(Session::get('success')));
+        @endif
+        @if(Session::has('error'))
+            toastr.error(@json(Session::get('error')));
+        @endif
+
+        {{-- Surface validation errors so failed submits aren't silent --}}
+        @if($errors->any())
+            @foreach($errors->all() as $error)
+                toastr.error(@json($error));
+            @endforeach
+        @endif
         </script>
 
     </body>

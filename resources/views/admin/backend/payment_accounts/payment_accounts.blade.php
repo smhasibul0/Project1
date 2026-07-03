@@ -118,10 +118,18 @@
                                         <td>{{ $account->addedBy->name ?? '-' }}</td>
                                         <td>
                                             <div class="d-flex flex-column gap-1">
-                                                <a href="{{ route('payment.account.edit', $account->id) }}"
-                                                   class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 edit-account-btn"
+                                                        data-bs-toggle="modal" data-bs-target="#editAccountModal"
+                                                        data-id="{{ $account->id }}"
+                                                        data-name="{{ $account->name }}"
+                                                        data-account-type-id="{{ $account->account_type_id }}"
+                                                        data-account-number="{{ $account->account_number }}"
+                                                        data-account-details="{{ $account->account_details }}"
+                                                        data-note="{{ $account->note }}"
+                                                        data-is-active="{{ $account->is_active ? 1 : 0 }}">
                                                     <i class="ri-edit-line"></i> Edit
-                                                </a>
+                                                </button>
                                                 <a href="{{ route('payment.account.book', $account->id) }}"
                                                    class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1">
                                                     <i class="ri-book-line"></i> Account Book
@@ -173,14 +181,14 @@
             {{-- ===================== ACCOUNT TYPES TAB ===================== --}}
             <div class="tab-pane fade" id="account-types" role="tabpanel">
             <div class="card">
-                
+
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Account Types</h5>
 
-                    <button class="btn btn-primary btn-sm px-3"
+                    <button class="btn btn-primary rounded-pill px-4"
                         data-bs-toggle="modal"
                         data-bs-target="#addAccountTypeModal">
-                        <i class="ri-add-line"></i> Add
+                        <i class="ri-add-line me-1"></i> Add
                     </button>
                 </div>
 
@@ -188,11 +196,11 @@
                     <div class="table-responsive">
 
                         <table class="table table-bordered table-hover mb-0">
-                            
+
                             <thead class="table-light">
                                 <tr>
                                     <th>Name</th>
-                                    <th width="180">Action</th>
+                                    <th width="200">Action</th>
                                 </tr>
                             </thead>
 
@@ -204,16 +212,24 @@
                                     <td>{{ $type->name }}</td>
 
                                     <td>
-                                        <a href="{{ route('account.type.edit', $type->id) }}" 
-                                        class="btn btn-sm btn-success">
-                                        Edit
-                                        </a>
+                                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 edit-account-type-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#editAccountTypeModal"
+                                                    data-id="{{ $type->id }}"
+                                                    data-name="{{ $type->name }}"
+                                                    data-description="{{ $type->description }}">
+                                                <i class="ri-edit-line"></i> Edit
+                                            </button>
 
-                                        <a href="{{ route('account.type.delete', $type->id) }}" 
-                                        class="btn btn-sm btn-danger" 
-                                        id="delete">
-                                        Delete
-                                        </a>
+                                            <form action="{{ route('account.type.delete', $type->id) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 delete-account-type-btn">
+                                                    <i class="ri-delete-bin-line"></i> Delete
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -305,6 +321,67 @@
     </div>
 </div>
 
+{{-- ===================== EDIT ACCOUNT MODAL ===================== --}}
+<div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editAccountForm" action="{{ url('payment/account') }}" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="id" id="editAccountId">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editAccountModalLabel">Edit Payment Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body row g-3">
+
+                    <div class="form-group col-md-6">
+                        <label class="form-label">Account Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" id="editAccountName" placeholder="e.g. Cash in Hand">
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label class="form-label">Account Type <span class="text-danger">*</span></label>
+                        <select class="form-control" name="account_type_id" id="editAccountType">
+                            <option value="">-- Select Account Type --</option>
+                            @foreach($accountTypes as $type)
+                                <option value="{{ $type->id }}">{{ $type->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Account Number</label>
+                        <input type="text" class="form-control" name="account_number" id="editAccountNumber" placeholder="e.g. 01875133644">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Account Details</label>
+                        <input type="text" class="form-control" name="account_details" id="editAccountDetails" placeholder="Optional details">
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label">Note</label>
+                        <textarea class="form-control" name="note" id="editAccountNote" rows="2" placeholder="Optional note"></textarea>
+                    </div>
+
+                    <div class="col-md-6 d-flex align-items-center">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="editAccountActiveToggle" value="1">
+                            <label class="form-check-label fw-semibold" for="editAccountActiveToggle">Active</label>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- ===================== FUND TRANSFER MODAL ===================== --}}
 <div class="modal fade" id="fundTransferModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -382,25 +459,16 @@
         <div class="modal-content">
             <form id="depositForm" action="{{ route('payment.account.deposit') }}" method="POST">
                 @csrf
-                <input type="hidden" name="account_id" id="depositAccountId">
                 <div class="modal-header border-bottom">
                     <h5 class="modal-title fw-semibold">Deposit</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body row g-3">
 
-                    {{-- Selected Account (readonly info line) --}}
-                    <div class="col-12">
-                        <p class="mb-0">
-                            <strong>Selected Account:</strong>
-                            <span id="depositAccountName" class="ms-1 text-muted">—</span>
-                        </p>
-                    </div>
-
-                    {{-- Deposit To (pre-selected, editable) --}}
+                    {{-- Deposit To: pre-selected to the clicked account, but changeable --}}
                     <div class="form-group col-12">
-                        <label class="form-label fw-semibold">Deposit to:</label>
-                        <select class="form-control" name="account_id_to" id="depositToSelect">
+                        <label class="form-label fw-semibold">Deposit to: <span class="text-danger">*</span></label>
+                        <select class="form-control" name="account_id" id="depositToSelect">
                             <option value="">-- Select Account --</option>
                             @foreach($accounts as $account)
                                 <option value="{{ $account->id }}">{{ $account->name }}</option>
@@ -453,7 +521,7 @@
 <div class="modal fade" id="addAccountTypeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ route('account.type.store') }}" method="POST">
+            <form id="addAccountTypeForm" action="{{ route('account.type.store') }}" method="POST">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Add Account Type</h5>
@@ -478,8 +546,88 @@
     </div>
 </div>
 
+{{-- ===================== EDIT ACCOUNT TYPE MODAL ===================== --}}
+<div class="modal fade" id="editAccountTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editAccountTypeForm" action="{{ url('account-type') }}" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="id" id="editAccountTypeId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Account Type</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="form-group col-12">
+                        <label class="form-label">Type Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" id="editAccountTypeName" placeholder="e.g. Cash in Hand, Bank, bKash Merchant">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" id="editAccountTypeDescription" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 $(document).ready(function () {
+
+    // Fallback shim: if the jQuery Validation plugin fails to load, replace .validate()
+    // with a harmless no-op so a missing script can never abort the modal handlers below
+    // (server-side validation still protects every request).
+    if (typeof $.fn.validate !== 'function') {
+        $.fn.validate = function () {
+            return { resetForm: function () {} };
+        };
+    }
+
+    // ----- Edit Account modal: pre-fill fields when opened via row button -----
+    $(document).on('click', '.edit-account-btn', function () {
+        const btn = $(this);
+        const id = btn.data('id');
+
+        $('#editAccountId').val(id);
+        $('#editAccountName').val(btn.data('name'));
+        $('#editAccountType').val(btn.data('account-type-id'));
+        $('#editAccountNumber').val(btn.data('account-number'));
+        $('#editAccountDetails').val(btn.data('account-details'));
+        $('#editAccountNote').val(btn.data('note'));
+        $('#editAccountActiveToggle').prop('checked', btn.data('is-active') == 1);
+
+        // Point the form at /payment/account/{id}
+        $('#editAccountForm').attr('action', '{{ url('payment/account') }}/' + id);
+
+        // Clear any stale validation state from a previous open
+        $('#editAccountForm').validate().resetForm();
+        $('#editAccountForm .is-invalid').removeClass('is-invalid');
+    });
+
+    // ----- Edit Account form validation -----
+    $('#editAccountForm').validate({
+        rules: {
+            name:            { required: true },
+            account_type_id: { required: true },
+        },
+        messages: {
+            name:            { required: 'Please enter account name' },
+            account_type_id: { required: 'Please select account type' },
+        },
+        errorElement: 'span',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            element.closest('.form-group, .col-md-6, .col-md-12').first().append(error);
+        },
+        highlight:   function (el) { $(el).addClass('is-invalid'); },
+        unhighlight: function (el) { $(el).removeClass('is-invalid'); },
+    });
 
     // ----- Fund Transfer modal: pre-select "from" account when opened via row button -----
     $('#fundTransferModal').on('show.bs.modal', function (e) {
@@ -517,19 +665,19 @@ $(document).ready(function () {
     $('#depositModal').on('show.bs.modal', function (e) {
         const btn       = $(e.relatedTarget);
         const accountId = btn.data('account-id');
-        const accountName = btn.data('account-name');
-        $('#depositAccountId').val(accountId);
-        $('#depositAccountName').text(accountName);
+        // Pre-select the account whose Deposit button was clicked; the user can change it.
         $('#depositToSelect').val(accountId);
     });
 
     // ----- Deposit form validation -----
     $('#depositForm').validate({
         rules: {
+            account_id:   { required: true },
             amount:       { required: true, min: 0.01 },
             deposit_date: { required: true },
         },
         messages: {
+            account_id:   { required: 'Please select an account' },
             amount:       { required: 'Please enter an amount', min: 'Amount must be greater than 0' },
             deposit_date: { required: 'Please select a date' },
         },
@@ -589,6 +737,80 @@ $(document).ready(function () {
         },
         highlight:   function (el) { $(el).addClass('is-invalid'); },
         unhighlight: function (el) { $(el).removeClass('is-invalid'); },
+    });
+
+    // ----- Edit Account Type modal: pre-fill fields when opened via row button -----
+    $(document).on('click', '.edit-account-type-btn', function () {
+        const btn = $(this);
+        const id = btn.data('id');
+
+        $('#editAccountTypeId').val(id);
+        $('#editAccountTypeName').val(btn.data('name'));
+        $('#editAccountTypeDescription').val(btn.data('description'));
+
+        // Point the form at /account-type/{id}
+        $('#editAccountTypeForm').attr('action', '{{ url('account-type') }}/' + id);
+
+        // Clear any stale validation state from a previous open
+        $('#editAccountTypeForm').validate().resetForm();
+        $('#editAccountTypeForm .is-invalid').removeClass('is-invalid');
+    });
+
+    // ----- Add Account Type form validation -----
+    $('#addAccountTypeForm').validate({
+        rules: {
+            name: { required: true },
+        },
+        messages: {
+            name: { required: 'Please enter type name' },
+        },
+        errorElement: 'span',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            element.closest('.form-group, .col-12').first().append(error);
+        },
+        highlight:   function (el) { $(el).addClass('is-invalid'); },
+        unhighlight: function (el) { $(el).removeClass('is-invalid'); },
+    });
+
+    // ----- Edit Account Type form validation -----
+    $('#editAccountTypeForm').validate({
+        rules: {
+            name: { required: true },
+        },
+        messages: {
+            name: { required: 'Please enter type name' },
+        },
+        errorElement: 'span',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            element.closest('.form-group, .col-12').first().append(error);
+        },
+        highlight:   function (el) { $(el).addClass('is-invalid'); },
+        unhighlight: function (el) { $(el).removeClass('is-invalid'); },
+    });
+
+    // ----- Delete Account Type: SweetAlert2 confirmation -----
+    $(document).on('click', '.delete-account-type-btn', function (e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        Swal.fire({
+            title: 'Are you sure ?',
+            text: 'This will permanently delete this account type.',
+            icon: 'warning',
+            iconColor: '#f59e0b',
+            showCancelButton: true,
+            confirmButtonText: 'OK',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#e5e7eb',
+            customClass: {
+                cancelButton: 'text-dark',
+            },
+            reverseButtons: false,
+        }).then(result => {
+            if (result.isConfirmed) form.submit();
+        });
     });
 
 });
