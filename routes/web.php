@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Backend\AccountTypeController;
+use App\Http\Controllers\Backend\ContactController;
+use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\PaymentAccountController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -54,4 +56,21 @@ Route::middleware('auth')->group(function () {
         Route::put('/account-types/{id}', [AccountTypeController::class, 'update'])->name('account.type.update');
         Route::delete('/account-types/{id}', [AccountTypeController::class, 'destroy'])->name('account.type.delete');
     });
+});
+
+// Contacts: suppliers, customers & customer groups
+Route::middleware('auth')->group(function () {
+    // Suppliers & Customers share one controller (Contact) filtered by type.
+    Route::get('/suppliers', [ContactController::class, 'suppliers'])->name('suppliers.index');
+    Route::get('/customers', [ContactController::class, 'customers'])->name('customers.index');
+    Route::post('/contacts', [ContactController::class, 'store'])->name('contact.store');
+    Route::put('/contacts/{id}', [ContactController::class, 'update'])->name('contact.update');
+    Route::patch('/contacts/{id}/toggle-active', [ContactController::class, 'toggleActive'])->name('contact.toggle');
+    Route::delete('/contacts/{id}', [ContactController::class, 'destroy'])->name('contact.delete');
+
+    // Customer Groups
+    Route::get('/customer-groups', [CustomerGroupController::class, 'index'])->name('customer.groups');
+    Route::post('/customer-groups', [CustomerGroupController::class, 'store'])->name('customer.group.store');
+    Route::put('/customer-groups/{id}', [CustomerGroupController::class, 'update'])->name('customer.group.update');
+    Route::delete('/customer-groups/{id}', [CustomerGroupController::class, 'destroy'])->name('customer.group.delete');
 });

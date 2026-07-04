@@ -87,13 +87,13 @@
                     <div class="collapse" id="contacts">
                         <ul class="nav-second-level">
                             <li>
-                                <a href="#" class="tp-link">Suppliers</a>
+                                <a href="{{ route('suppliers.index') }}" class="tp-link">Suppliers</a>
                             </li>
                             <li>
-                                <a href="#" class="tp-link">Customers</a>
+                                <a href="{{ route('customers.index') }}" class="tp-link">Customers</a>
                             </li>
                             <li>
-                                <a href="#" class="tp-link">Customer Groups</a>
+                                <a href="{{ route('customer.groups') }}" class="tp-link">Customer Groups</a>
                             </li>
                         </ul>
                     </div>
