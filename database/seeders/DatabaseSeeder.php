@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AccountTypeSeeder::class,
             CustomerGroupSeeder::class,
+            InventorySeeder::class,
         ]);
 
         User::factory()->create([

@@ -110,25 +110,22 @@
                     <div class="collapse" id="sidebarProducts">
                         <ul class="nav-second-level">
                             <li>
-                                <a href="#" class="tp-link">List Products</a>
+                                <a href="{{ route('products.index') }}" class="tp-link">List Products</a>
                             </li>
                             <li>
-                                <a href="#" class="tp-link">Add Products</a>
+                                <a href="{{ route('products.create') }}" class="tp-link">Add Products</a>
                             </li>
                             <li>
-                                <a href="ui-alerts.html" class="tp-link">Update Price</a>
+                                <a href="{{ route('categories.index') }}" class="tp-link">Categories</a>
                             </li>
                             <li>
-                                <a href="ui-alerts.html" class="tp-link">Units</a>
+                                <a href="{{ route('brands.index') }}" class="tp-link">Brands</a>
                             </li>
                             <li>
-                                <a href="#" class="tp-link">Categories</a>
+                                <a href="{{ route('units.index') }}" class="tp-link">Units</a>
                             </li>
                             <li>
-                                <a href="#" class="tp-link">Brands</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Warehouses</a>
+                                <a href="{{ route('warehouses.index') }}" class="tp-link">Warehouses</a>
                             </li>
                         </ul>
                     </div>

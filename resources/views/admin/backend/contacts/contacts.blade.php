@@ -3,45 +3,6 @@
 
 @php $isCustomer = $type === 'customer'; @endphp
 
-{{-- Self-contained table toolbar (entries / search / export / print / pagination),
-     modelled on the Payment Accounts account-book page. No jQuery/DataTables dependency. --}}
-<style>
-    .ct-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.6rem; padding:.85rem 1rem; border-bottom:1px solid #e2e8f0; }
-    .ct-controls-left { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; font-size:.82rem; color:#64748b; }
-    .ct-controls-left select { border:1px solid #cbd5e1; border-radius:6px; padding:.3rem .5rem; font-size:.82rem; color:#334155; outline:none; cursor:pointer; }
-    .ct-btn { border:1px solid #d6c9f7; background:#fff; color:#7c5cf0; border-radius:6px; padding:.38rem .8rem; font-size:.82rem; font-weight:500; display:inline-flex; align-items:center; gap:.35rem; cursor:pointer; transition:background-color .15s ease,color .15s ease,border-color .15s ease; white-space:nowrap; }
-    .ct-btn:hover, .ct-btn:focus { background:#7c5cf0; border-color:#7c5cf0; color:#fff; }
-    .ct-search-wrap { position:relative; }
-    .ct-search-wrap i { position:absolute; left:.7rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.85rem; pointer-events:none; }
-    .ct-search { border:1px solid #d6c9f7; border-radius:6px; padding:.42rem .8rem .42rem 2.1rem; font-size:.82rem; color:#334155; width:230px; outline:none; transition:border-color .2s; }
-    .ct-search:focus { border-color:#7c5cf0; }
-    .ct-search::placeholder { color:#94a3b8; }
-    .ct-scroll-area { overflow-x:auto; scrollbar-width:thin; scrollbar-color:#cbd5e1 transparent; }
-    .ct-scroll-area::-webkit-scrollbar { height:6px; }
-    .ct-scroll-area::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
-    .ct-scroll-area::-webkit-scrollbar-thumb:hover { background:#7c5cf0; }
-    #contactsTable { width:100%; border-collapse:collapse; font-size:.82rem; margin-bottom:0; }
-    #contactsTable thead th { background:#f8fafc; color:#475569; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:.6rem .9rem; white-space:nowrap; border-bottom:2px solid #e2e8f0; border-right:1px solid #e2e8f0; user-select:none; }
-    #contactsTable thead th:last-child { border-right:none; }
-    #contactsTable thead th.sortable { cursor:pointer; }
-    #contactsTable thead th.sortable:hover { background:#f1f5f9; color:#1e293b; }
-    #contactsTable thead th.sort-asc::after { content:' ↑'; color:#7c5cf0; }
-    #contactsTable thead th.sort-desc::after { content:' ↓'; color:#7c5cf0; }
-    #contactsTable tbody tr { border-bottom:1px solid #e2e8f0; }
-    #contactsTable tbody tr:nth-child(even) { background:#fbfaff; }
-    #contactsTable tbody tr:hover { background:#f4f0fe; }
-    #contactsTable tbody td { padding:.55rem .9rem; color:#334155; border-right:1px solid #e2e8f0; vertical-align:middle; white-space:nowrap; }
-    #contactsTable tbody td:last-child { border-right:none; }
-    .ct-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.6rem; padding:.8rem 1rem; border-top:1px solid #e2e8f0; }
-    .ct-info { font-size:.78rem; color:#64748b; }
-    .ct-pagination { display:flex; gap:.25rem; flex-wrap:wrap; }
-    .ct-pagination button { border:1px solid #cbd5e1; background:#fff; color:#475569; font-size:.78rem; padding:.3rem .65rem; border-radius:6px; cursor:pointer; min-width:32px; transition:all .15s; }
-    .ct-pagination button:hover:not(:disabled) { border-color:#7c5cf0; color:#7c5cf0; }
-    .ct-pagination button.active { background:#7c5cf0; border-color:#7c5cf0; color:#fff; font-weight:600; }
-    .ct-pagination button:disabled { opacity:.35; cursor:default; }
-    .ct-no-results { text-align:center; padding:2.5rem 1rem; color:#94a3b8; font-size:.85rem; }
-</style>
-
 <div class="content">
     <div class="container-xxl">
 
@@ -69,38 +30,11 @@
 
             <div class="card-body p-0">
 
-                {{-- Toolbar --}}
-                <div class="ct-controls">
-                    <div class="ct-controls-left">
-                        Show
-                        <select id="ctPageSize">
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                            <option value="all">All</option>
-                        </select>
-                        entries
-                        <button class="ct-btn ms-1" id="ctExportCsv"><i class="ri-file-text-line"></i> Export CSV</button>
-                        <button class="ct-btn" id="ctExportExcel"><i class="ri-file-excel-2-line"></i> Export Excel</button>
-                        <button class="ct-btn" id="ctPrint"><i class="ri-printer-line"></i> Print</button>
-                        <div class="dropdown d-inline-block">
-                            <button class="ct-btn dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="ri-eye-line"></i> Column visibility</button>
-                            <ul class="dropdown-menu p-1" id="ctColvisMenu" style="max-height:320px; overflow:auto;"></ul>
-                        </div>
-                        <button class="ct-btn" id="ctExportPdf"><i class="ri-file-pdf-2-line"></i> Export PDF</button>
-                    </div>
-                    <div class="ct-search-wrap">
-                        <i class="ri-search-line"></i>
-                        <input class="ct-search" id="ctSearch" type="text" placeholder="Search ...">
-                    </div>
-                </div>
-
-                <div class="ct-scroll-area">
-                    <table id="contactsTable" style="min-width: {{ $isCustomer ? '1500px' : '2100px' }};">
+                <x-data-table id="contactsTable" :export-name="strtolower($pageTitle)">
+                    <table id="contactsTable" class="ct-table" style="min-width: {{ $isCustomer ? '1500px' : '2100px' }};">
                         <thead>
                             <tr>
-                                <th>Action</th>
+                                <th class="dt-noexport">Action</th>
                                 @if($isCustomer)
                                     <th>Customer ID</th>
                                     <th>Added On</th>
@@ -121,7 +55,7 @@
                                     <th>Mobile</th>
                                     <th>Email</th>
                                     <th>Bank Details</th>
-                                    <th>Country</th>
+                                    <th data-filter="Country">Country</th>
                                     <th>Warehouse Address</th>
                                     <th>Shipping Mark</th>
                                     <th>More Info</th>
@@ -132,7 +66,7 @@
                                     <th class="text-end">Advance Balance</th>
                                     <th class="text-end">Total Purchase Due</th>
                                 @endif
-                                <th>Status</th>
+                                <th data-filter="Status">Status</th>
                             </tr>
                         </thead>
                         <tbody id="contactsBody">
@@ -246,13 +180,7 @@
                             @endforeach
                         </tbody>
                     </table>
-                </div>
-
-                {{-- Footer --}}
-                <div class="ct-footer">
-                    <div class="ct-info" id="ctInfo">Loading…</div>
-                    <div class="ct-pagination" id="ctPagination"></div>
-                </div>
+                </x-data-table>
             </div>
         </div>
     </div>
@@ -533,195 +461,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ===================== Table toolbar: entries / search / sort / paging / export =====================
-    (function () {
-        const table = document.getElementById('contactsTable');
-        const tbody = document.getElementById('contactsBody');
-        if (!table || !tbody) { return; }
-
-        const allRows = Array.from(tbody.querySelectorAll('tr'));
-        const totalRows = allRows.length;
-        const headers = Array.from(table.querySelectorAll('thead th'));
-        const colCount = headers.length;
-        let filtered = allRows.slice();
-        let currentPage = 1;
-        let pageSize = 100;
-        let sortCol = -1, sortDir = 1;
-
-        const infoEl = document.getElementById('ctInfo');
-        const pagEl = document.getElementById('ctPagination');
-
-        const cellText = (row, col) => {
-            const cell = row.querySelectorAll('td')[col];
-            return cell ? cell.innerText.trim() : '';
-        };
-
-        function render() {
-            allRows.forEach(r => r.style.display = 'none');
-            const start = (currentPage - 1) * pageSize;
-            const end = Math.min(start + pageSize, filtered.length);
-
-            let noRes = document.getElementById('ct-no-results-row');
-            if (filtered.length === 0) {
-                if (!noRes) {
-                    noRes = document.createElement('tr');
-                    noRes.id = 'ct-no-results-row';
-                    noRes.innerHTML = '<td colspan="' + colCount + '" class="ct-no-results">No matching records found</td>';
-                    tbody.appendChild(noRes);
-                }
-                noRes.style.display = '';
-            } else {
-                if (noRes) { noRes.style.display = 'none'; }
-                filtered.slice(start, end).forEach(r => r.style.display = '');
-            }
-
-            infoEl.textContent = filtered.length === 0
-                ? 'No entries found'
-                : 'Showing ' + (start + 1) + ' to ' + end + ' of ' + filtered.length + ' entries'
-                  + (filtered.length < totalRows ? ' (filtered from ' + totalRows + ' total)' : '');
-
-            renderPagination();
-        }
-
-        function renderPagination() {
-            const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-            pagEl.innerHTML = '';
-            const btn = (label, page, disabled, active) => {
-                const b = document.createElement('button');
-                b.innerHTML = label;
-                b.disabled = !!disabled;
-                if (active) { b.classList.add('active'); }
-                b.onclick = () => { currentPage = page; render(); };
-                return b;
-            };
-            pagEl.appendChild(btn('‹', currentPage - 1, currentPage === 1, false));
-            const delta = 2; let prev = null;
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
-                    if (prev !== null && i - prev > 1) {
-                        const dots = document.createElement('button');
-                        dots.textContent = '…'; dots.disabled = true; pagEl.appendChild(dots);
-                    }
-                    pagEl.appendChild(btn(i, i, false, i === currentPage));
-                    prev = i;
-                }
-            }
-            pagEl.appendChild(btn('›', currentPage + 1, currentPage === totalPages, false));
-        }
-
-        const searchInput = document.getElementById('ctSearch');
-        if (searchInput) {
-            searchInput.addEventListener('input', function () {
-                const q = this.value.toLowerCase();
-                filtered = allRows.filter(row =>
-                    Array.from(row.querySelectorAll('td')).some(td => td.innerText.toLowerCase().includes(q))
-                );
-                currentPage = 1;
-                render();
-            });
-        }
-
-        const pageSizeSelect = document.getElementById('ctPageSize');
-        if (pageSizeSelect) {
-            pageSizeSelect.addEventListener('change', function () {
-                pageSize = this.value === 'all' ? Number.MAX_SAFE_INTEGER : parseInt(this.value, 10);
-                currentPage = 1;
-                render();
-            });
-        }
-
-        // Column sorting (all columns except the Action column, index 0)
-        headers.forEach(function (th, idx) {
-            if (idx === 0) { return; }
-            th.classList.add('sortable');
-            th.addEventListener('click', function () {
-                sortDir = (sortCol === idx) ? -sortDir : 1;
-                sortCol = idx;
-                headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
-                th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
-                filtered.sort(function (a, b) {
-                    const av = cellText(a, idx).replace(/[৳,]/g, '');
-                    const bv = cellText(b, idx).replace(/[৳,]/g, '');
-                    const an = parseFloat(av), bn = parseFloat(bv);
-                    if (!isNaN(an) && !isNaN(bn)) { return (an - bn) * sortDir; }
-                    return av.localeCompare(bv) * sortDir;
-                });
-                filtered.forEach(r => tbody.appendChild(r));
-                currentPage = 1;
-                render();
-            });
-        });
-
-        // ----- Exports (skip the Action column and any column hidden via Column visibility) -----
-        const exportCols = () => headers
-            .map((th, i) => i)
-            .filter(i => i !== 0 && !headers[i].classList.contains('ct-hidden'));
-
-        function matrix() {
-            const cols = exportCols();
-            const head = cols.map(i => headers[i].innerText.trim());
-            const body = filtered.map(function (row) {
-                const cells = row.querySelectorAll('td');
-                return cols.map(i => cells[i] ? cells[i].innerText.trim().replace(/\s+/g, ' ') : '');
-            });
-            return { head, body };
-        }
-
-        const filename = @json(strtolower($pageTitle));
-
-        const csvBtn = document.getElementById('ctExportCsv');
-        if (csvBtn) csvBtn.addEventListener('click', function () {
-            const m = matrix();
-            const csv = [m.head].concat(m.body)
-                .map(r => r.map(c => '"' + c.replace(/"/g, '""') + '"').join(','))
-                .join('\n');
-            const a = document.createElement('a');
-            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-            a.download = filename + '.csv';
-            a.click();
-        });
-
-        const excelBtn = document.getElementById('ctExportExcel');
-        if (excelBtn) excelBtn.addEventListener('click', function () {
-            const m = matrix();
-            let html = '<table border="1"><thead><tr>' + m.head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>';
-            html += m.body.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('');
-            html += '</tbody></table>';
-            const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename + '.xls';
-            a.click();
-        });
-
-        const printBtn = document.getElementById('ctPrint');
-        if (printBtn) printBtn.addEventListener('click', () => window.print());
-        const pdfBtn = document.getElementById('ctExportPdf');
-        if (pdfBtn) pdfBtn.addEventListener('click', () => window.print());
-
-        // ----- Column visibility menu -----
-        const colvisMenu = document.getElementById('ctColvisMenu');
-        if (colvisMenu) {
-            colvisMenu.addEventListener('click', e => e.stopPropagation()); // keep menu open while toggling
-            headers.forEach(function (th, idx) {
-                if (idx === 0) { return; }
-                const li = document.createElement('li');
-                li.innerHTML = '<label class="dropdown-item mb-0" style="cursor:pointer;"><input type="checkbox" checked class="form-check-input me-2"> ' + th.innerText.trim() + '</label>';
-                li.querySelector('input').addEventListener('change', function () {
-                    const show = this.checked;
-                    th.classList.toggle('ct-hidden', !show);
-                    th.style.display = show ? '' : 'none';
-                    allRows.forEach(function (row) {
-                        const cell = row.querySelectorAll('td')[idx];
-                        if (cell) { cell.style.display = show ? '' : 'none'; }
-                    });
-                });
-                colvisMenu.appendChild(li);
-            });
-        }
-
-        render();
-    })();
 
 });
 </script>
