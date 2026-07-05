@@ -28,6 +28,7 @@ dataset('pages', [
     'container.index', 'container.create',
     'cost.categories',
     'payment.accounts',
+    'reports.profit-loss', 'reports.receivables', 'reports.balance-sheet', 'reports.cash-flow',
     'users.index', 'roles.index',
     'settings.company',
 ]);

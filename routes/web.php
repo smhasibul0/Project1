@@ -15,6 +15,7 @@ use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
 use App\Http\Controllers\Backend\ProductController;
 use App\Http\Controllers\Backend\QuotationController;
+use App\Http\Controllers\Backend\ReportController;
 use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\TransportationModeController;
 use App\Http\Controllers\Backend\UnitController;
@@ -223,6 +224,14 @@ Route::middleware(['auth', 'admin', 'can:containers.manage'])->group(function ()
     // Generated printable lists
     Route::get('/containers/{id}/packing-list', [ContainerController::class, 'packingList'])->name('container.packing.list');
     Route::get('/containers/{id}/loading-list', [ContainerController::class, 'loadingList'])->name('container.loading.list');
+});
+
+// Reports (profit & loss, receivables, balance sheet, cash flow)
+Route::middleware(['auth', 'admin', 'can:reports.view'])->group(function () {
+    Route::get('/reports/profit-loss', [ReportController::class, 'profitLoss'])->name('reports.profit-loss');
+    Route::get('/reports/receivables', [ReportController::class, 'receivables'])->name('reports.receivables');
+    Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
+    Route::get('/reports/cash-flow', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
 });
 
 // Company / invoice settings (admin)

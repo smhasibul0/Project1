@@ -218,6 +218,14 @@
                             <li>
                                 <a href="{{ route('payment.accounts') }}" class="tp-link">List Accounts</a>
                             </li>
+                            @can('reports.view')
+                            <li>
+                                <a href="{{ route('reports.balance-sheet') }}" class="tp-link">Balance Sheet</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('reports.cash-flow') }}" class="tp-link">Cash Flow</a>
+                            </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
@@ -248,6 +256,23 @@
                     </div>
                 </li>
                 @endcanany
+
+                <!-- Reports -->
+                @can('reports.view')
+                <li>
+                    <a href="#sidebarReports" data-bs-toggle="collapse">
+                        <i data-feather="bar-chart-2"></i>
+                        <span> Reports </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarReports">
+                        <ul class="nav-second-level">
+                            <li><a href="{{ route('reports.profit-loss') }}" class="tp-link">Profit &amp; Loss</a></li>
+                            <li><a href="{{ route('reports.receivables') }}" class="tp-link">Receivables</a></li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
 
                 <!-- Settings -->
                 @can('settings.manage')
