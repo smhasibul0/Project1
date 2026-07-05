@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Backend\AccountTypeController;
 use App\Http\Controllers\Backend\BrandController;
 use App\Http\Controllers\Backend\CategoryController;
+use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\OrderController;
@@ -153,6 +154,7 @@ Route::middleware(['auth', 'admin', 'can:orders.manage'])->group(function () {
     Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('order.store');
     Route::post('/orders/from-quotation/{id}', [OrderController::class, 'fromQuotation'])->name('order.from.quotation');
+    Route::post('/orders/{id}/payment', [OrderController::class, 'storePayment'])->name('order.payment');
     Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
     Route::put('/orders/{id}', [OrderController::class, 'update'])->name('order.update');
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('order.delete');
@@ -162,7 +164,14 @@ Route::middleware(['auth', 'admin', 'can:orders.manage'])->group(function () {
 Route::middleware(['auth', 'admin', 'can:orders.view'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
+    Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('order.invoice');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('order.status');
+});
+
+// Company / invoice settings (admin)
+Route::middleware(['auth', 'admin', 'can:settings.manage'])->group(function () {
+    Route::get('/settings/company', [CompanySettingController::class, 'edit'])->name('settings.company');
+    Route::post('/settings/company', [CompanySettingController::class, 'update'])->name('settings.company.update');
 });
 
 // Access Control: users & roles (admin-managed)

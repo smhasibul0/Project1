@@ -317,6 +317,16 @@
                 </li>
                 @endcanany
 
+                <!-- Settings -->
+                @can('settings.manage')
+                <li>
+                    <a href="{{ route('settings.company') }}">
+                        <i data-feather="settings"></i>
+                        <span> Company Settings </span>
+                    </a>
+                </li>
+                @endcan
+
 
                 <!-- Reports -->
                 <li>

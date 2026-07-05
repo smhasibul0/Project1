@@ -121,6 +121,11 @@ class Order extends Model
         return $this->hasMany(OrderTracking::class)->latest('id');
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');

@@ -47,6 +47,9 @@ class RolePermissionSeeder extends Seeder
                 'payments.manage' => 'Manage payments',
                 'reports.view' => 'View reports',
             ],
+            'Settings' => [
+                'settings.manage' => 'Manage company & invoice settings',
+            ],
         ];
 
         foreach ($catalog as $group => $permissions) {

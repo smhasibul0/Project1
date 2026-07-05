@@ -114,6 +114,25 @@
     </div>
 </div>
 
+{{-- ===================== Payments ===================== --}}
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0">Payments</h6>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="addPaymentBtn"><i class="ri-add-line me-1"></i> Add Payment</button>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 text-muted small fw-semibold d-none d-md-flex px-1 mb-1">
+            <div class="col-md-3">Amount</div>
+            <div class="col-md-3">Date</div>
+            <div class="col-md-3">Method</div>
+            <div class="col-md-2">Note</div>
+            <div class="col-md-1"></div>
+        </div>
+        <div id="paymentsWrap"></div>
+        <small class="text-muted">Record each instalment separately — the received &amp; due totals update automatically.</small>
+    </div>
+</div>
+
 {{-- ===================== Financials + status ===================== --}}
 <div class="row g-3">
     <div class="col-lg-6">
@@ -130,14 +149,6 @@
                 <div class="col-md-6">
                     <label class="form-label">Discount Value</label>
                     <input type="number" step="0.01" min="0" class="form-control" name="discount_value" id="discountValue" value="{{ old('discount_value', $order?->discount_value ?? 0) }}">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Received Amount</label>
-                    <input type="number" step="0.01" min="0" class="form-control" name="received_amount" id="receivedAmount" value="{{ old('received_amount', $order?->received_amount ?? 0) }}">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Amount Received Date</label>
-                    <input type="date" class="form-control" name="amount_received_date" value="{{ old('amount_received_date', optional($order?->amount_received_date)->format('Y-m-d')) }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Delivery Status</label>
@@ -215,13 +226,30 @@
     </div>
 </template>
 
+<template id="paymentTemplate">
+    <div class="row g-2 mb-2 payment-row align-items-center">
+        <div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control form-control-sm calc-pay" data-name="amount" placeholder="Amount"></div>
+        <div class="col-md-3"><input type="date" class="form-control form-control-sm" data-name="payment_date"></div>
+        <div class="col-md-3">
+            <select class="form-control form-control-sm" data-name="method">
+                <option value="">-- Method --</option>
+                @foreach(['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking', 'Other'] as $m)<option value="{{ $m }}">{{ $m }}</option>@endforeach
+            </select>
+        </div>
+        <div class="col-md-2"><input type="text" class="form-control form-control-sm" data-name="note" placeholder="Note"></div>
+        <div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger remove-payment w-100"><i class="ri-close-line"></i></button></div>
+    </div>
+</template>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const itemsWrap = document.getElementById('itemsWrap');
     const expWrap = document.getElementById('expensesWrap');
+    const payWrap = document.getElementById('paymentsWrap');
     const itemTmpl = document.getElementById('itemTemplate');
     const expTmpl = document.getElementById('expenseTemplate');
-    let ii = 0, ei = 0;
+    const payTmpl = document.getElementById('paymentTemplate');
+    let ii = 0, ei = 0, pi = 0;
     const money = n => (Number(n) || 0).toFixed(2);
     const num = el => parseFloat(el?.value) || 0;
 
@@ -238,11 +266,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         expWrap.querySelectorAll('.expense-row').forEach(r => expenses += num(r.querySelector('[data-name="amount"]')));
 
+        let received = 0;
+        payWrap.querySelectorAll('.payment-row').forEach(r => received += num(r.querySelector('[data-name="amount"]')));
+
         const dType = document.getElementById('discountType').value;
         const dVal = num(document.getElementById('discountValue'));
         const discount = dType === 'percentage' ? subtotal * dVal / 100 : dVal;
         const total = subtotal - discount;
-        const received = num(document.getElementById('receivedAmount'));
 
         document.getElementById('sumSubtotal').textContent = money(subtotal);
         document.getElementById('sumDiscount').textContent = money(discount);
@@ -285,19 +315,36 @@ document.addEventListener('DOMContentLoaded', function () {
         recalc();
     }
 
+    function addPayment(data) {
+        const i = pi++;
+        const node = payTmpl.content.cloneNode(true);
+        const row = node.querySelector('.payment-row');
+        row.querySelectorAll('[data-name]').forEach(function (el) {
+            el.name = 'payments[' + i + '][' + el.dataset.name + ']';
+            if (data && data[el.dataset.name] != null) el.value = data[el.dataset.name];
+        });
+        row.querySelector('.calc-pay').addEventListener('input', recalc);
+        row.querySelector('.remove-payment').addEventListener('click', function () { row.remove(); recalc(); });
+        payWrap.appendChild(node);
+        recalc();
+    }
+
     function renumber() {
         itemsWrap.querySelectorAll('.item-block .item-title').forEach((t, n) => t.textContent = 'Product #' + (n + 1));
     }
 
     document.getElementById('addItemBtn').addEventListener('click', () => addItem());
     document.getElementById('addExpenseBtn').addEventListener('click', () => addExpense());
-    ['discountType', 'discountValue', 'receivedAmount'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
+    document.getElementById('addPaymentBtn').addEventListener('click', () => addPayment());
+    ['discountType', 'discountValue'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
     document.getElementById('discountType').addEventListener('change', recalc);
 
     const items = @json($order?->items ?? []);
     const expenses = @json($order?->expenses ?? []);
+    const payments = @json($order?->payments ?? []);
     if (items.length) { items.forEach(addItem); } else { addItem(); }
     expenses.forEach(addExpense);
+    payments.forEach(addPayment);
     recalc();
 });
 </script>

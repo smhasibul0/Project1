@@ -28,7 +28,7 @@
                     <table class="ct-table">
                         <thead>
                             <tr>
-                                <th class="dt-noexport">#</th>
+                                <th class="dt-noexport">Action</th>
                                 <th>Order No</th>
                                 <th>Date</th>
                                 <th>Customer</th>
@@ -40,13 +40,45 @@
                                 <th data-filter="Goods Status">Goods Status</th>
                                 <th data-filter="Delivery">Delivery</th>
                                 <th class="text-end">Profit</th>
-                                <th class="text-end dt-noexport">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($orders as $index => $o)
+                            @foreach($orders as $o)
                             <tr>
-                                <td>{{ $index + 1 }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            @can('orders.manage')
+                                            <li>
+                                                <button type="button" class="dropdown-item pay-btn"
+                                                    data-id="{{ $o->id }}"
+                                                    data-order="{{ $o->order_no }}"
+                                                    data-business="{{ $o->customer->business_name ?? ($o->customer->name ?? '—') }}"
+                                                    data-name="{{ $o->customer->name ?? '—' }}"
+                                                    data-total="{{ number_format($o->total_amount, 2) }}"
+                                                    data-due="{{ number_format($o->due_amount, 2, '.', '') }}">
+                                                    <i class="ri-money-dollar-circle-line me-2"></i>Pay
+                                                </button>
+                                            </li>
+                                            @endcan
+                                            <li><a class="dropdown-item" href="{{ route('order.show', $o->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('order.invoice', $o->id) }}" target="_blank"><i class="ri-file-text-line me-2"></i>Invoice</a></li>
+                                            @can('orders.manage')
+                                            <li><a class="dropdown-item" href="{{ route('order.edit', $o->id) }}"><i class="ri-edit-line me-2"></i>Edit</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form action="{{ route('order.delete', $o->id) }}" method="POST" class="m-0">
+                                                    @csrf @method('DELETE')
+                                                    <button type="button" class="dropdown-item text-danger delete-btn"><i class="ri-delete-bin-line me-2"></i>Delete</button>
+                                                </form>
+                                            </li>
+                                            @endcan
+                                        </ul>
+                                    </div>
+                                </td>
                                 <td><span class="badge bg-light text-dark">{{ $o->order_no }}</span></td>
                                 <td>{{ $o->order_date?->format('d M Y') ?: '—' }}</td>
                                 <td>{{ $o->customer->name ?? '—' }}</td>
@@ -58,16 +90,6 @@
                                 <td><span class="badge bg-info text-capitalize">{{ str_replace('_', ' ', $o->goods_status) }}</span></td>
                                 <td><span class="badge bg-{{ $o->delivery_status === 'delivered' ? 'success' : 'secondary' }} text-capitalize">{{ $o->delivery_status }}</span></td>
                                 <td class="text-end">৳ {{ number_format($o->profit, 2) }}</td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{{ route('order.show', $o->id) }}" class="btn btn-sm btn-outline-secondary" title="View"><i class="ri-eye-line"></i></a>
-                                        <a href="{{ route('order.edit', $o->id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="ri-edit-line"></i></a>
-                                        <form action="{{ route('order.delete', $o->id) }}" method="POST" class="m-0">
-                                            @csrf @method('DELETE')
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"><i class="ri-delete-bin-line"></i></button>
-                                        </form>
-                                    </div>
-                                </td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -78,13 +100,121 @@
     </div>
 </div>
 
+{{-- ===================== Add Payment modal ===================== --}}
+@can('orders.manage')
+<div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="payForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Add payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-2 h-100 small">
+                                <div><strong>Customer:</strong> <span id="payName">—</span></div>
+                                <div><strong>Business:</strong> <span id="payBusiness">—</span></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-2 h-100 small">
+                                <div><strong>Reference No:</strong> <span id="payRef">—</span></div>
+                                <div><strong>Total Amount:</strong> ৳ <span id="payTotal">0.00</span></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-2 h-100 small">
+                                <div><strong>Due Amount:</strong> ৳ <span id="payDueLabel">0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Payment Method <span class="text-danger">*</span></label>
+                            <select class="form-control" name="method">
+                                @foreach(['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking', 'Other'] as $m)<option value="{{ $m }}">{{ $m }}</option>@endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Paid on <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="payment_date" id="payDate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="payAmount" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Payment Account</label>
+                            <select class="form-control" name="payment_account_id">
+                                <option value="">-- None (no ledger entry) --</option>
+                                @foreach($accounts as $acc)
+                                    <option value="{{ $acc->id }}">{{ $acc->name }} (Balance: {{ number_format($acc->balance, 2) }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Attach Document</label>
+                            <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                            <small class="text-muted">.pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Payment Note</label>
+                            <textarea class="form-control" name="note" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Fixed Popper strategy so the responsive-table overflow doesn't clip the open menu.
+    document.querySelectorAll('#ordersTable [data-bs-toggle="dropdown"]').forEach(function (el) {
+        new bootstrap.Dropdown(el, {
+            popperConfig: function (defaultConfig) {
+                return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+            },
+        });
+    });
+
     document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this order?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
             .then(r => { if (r.isConfirmed) form.submit(); });
     }));
+
+    // ----- Pay modal: fill from the clicked row -----
+    const payModalEl = document.getElementById('payModal');
+    if (payModalEl) {
+        const payModal = new bootstrap.Modal(payModalEl);
+        const payForm = document.getElementById('payForm');
+        const today = new Date().toISOString().slice(0, 10);
+
+        document.querySelectorAll('.pay-btn').forEach(btn => btn.addEventListener('click', function () {
+            const d = btn.dataset;
+            payForm.action = '{{ url('orders') }}/' + d.id + '/payment';
+            payForm.reset();
+            document.getElementById('payName').textContent = d.name;
+            document.getElementById('payBusiness').textContent = d.business;
+            document.getElementById('payRef').textContent = d.order;
+            document.getElementById('payTotal').textContent = d.total;
+            document.getElementById('payDueLabel').textContent = Number(d.due).toFixed(2);
+            document.getElementById('payDate').value = today;
+            document.getElementById('payAmount').value = Number(d.due) > 0 ? Number(d.due).toFixed(2) : '';
+            payModal.show();
+        }));
+    }
 });
 </script>
 @endsection

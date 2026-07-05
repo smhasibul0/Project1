@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\CompanySetting;
 use App\Models\Contact;
 use App\Models\Order;
+use App\Models\OrderPayment;
 use App\Models\PackingType;
+use App\Models\PaymentAccount;
 use App\Models\Quotation;
 use App\Models\TransportationMode;
 use App\Models\Unit;
+use App\Support\NumberToWords;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,8 +24,9 @@ class OrderController extends Controller
     public function index()
     {
         $orders = Order::with('customer')->withCount('items')->latest()->get();
+        $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.backend.orders.orders', compact('orders'));
+        return view('admin.backend.orders.orders', compact('orders', 'accounts'));
     }
 
     public function create()
@@ -80,6 +85,7 @@ class OrderController extends Controller
             $order = Order::create($this->headerData($data) + ['added_by' => Auth::id()]);
             $this->syncItems($order, $data['items']);
             $this->syncExpenses($order, $request->input('expenses', []));
+            $this->syncPayments($order, $request->input('payments', []));
             $this->recompute($order);
             $order->logStatus($order->goods_status, 'Order created', Auth::id());
 
@@ -91,7 +97,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'tracking.changedBy'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'payments.paymentAccount', 'tracking.changedBy'])
             ->findOrFail($id);
 
         return view('admin.backend.orders.show', compact('order'));
@@ -99,9 +105,21 @@ class OrderController extends Controller
 
     public function edit($id)
     {
-        $order = Order::with(['items', 'expenses'])->findOrFail($id);
+        $order = Order::with(['items', 'expenses', 'payments'])->findOrFail($id);
 
         return view('admin.backend.orders.edit', array_merge($this->formData(), compact('order')));
+    }
+
+    /**
+     * Printable customer invoice, rendered from the order + company settings.
+     */
+    public function invoice($id)
+    {
+        $order = Order::with(['customer', 'items.unit'])->findOrFail($id);
+        $company = CompanySetting::current();
+        $amountWords = NumberToWords::make((float) $order->total_amount, $company->currency === 'BDT' ? 'Taka' : $company->currency);
+
+        return view('admin.backend.orders.invoice', compact('order', 'company', 'amountWords'));
     }
 
     public function update(Request $request, $id)
@@ -113,8 +131,10 @@ class OrderController extends Controller
             $order->update($this->headerData($data));
             $order->items()->delete();
             $order->expenses()->delete();
+            $order->payments()->delete();
             $this->syncItems($order, $data['items']);
             $this->syncExpenses($order, $request->input('expenses', []));
+            $this->syncPayments($order, $request->input('payments', []));
             $this->recompute($order);
         });
 
@@ -173,6 +193,73 @@ class OrderController extends Controller
     }
 
     /**
+     * Record a single payment against an order (the "Pay" quick action). When a payment
+     * account is chosen, the amount is also deposited into that account's ledger.
+     */
+    public function storePayment(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date',
+            'method' => 'nullable|string|max:50',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'note' => 'nullable|string|max:255',
+            'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
+        ]);
+
+        DB::transaction(function () use ($order, $data, $request) {
+            $attachment = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $attachment = hexdec(uniqid()).'.'.$file->getClientOriginalExtension();
+                $dir = public_path('upload/payments');
+                if (! is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                $file->move($dir, $attachment);
+            }
+
+            $payment = $order->payments()->create([
+                'amount' => $data['amount'],
+                'payment_date' => $data['payment_date'],
+                'method' => $data['method'] ?? null,
+                'payment_account_id' => $data['payment_account_id'] ?? null,
+                'note' => $data['note'] ?? null,
+                'attachment' => $attachment,
+                'added_by' => Auth::id(),
+            ]);
+
+            // Deposit into the selected account's ledger.
+            if (! empty($data['payment_account_id'])) {
+                $account = PaymentAccount::findOrFail($data['payment_account_id']);
+                $account->increment('balance', (float) $data['amount']);
+                $account->transactions()->create([
+                    'type' => 'credit',
+                    'source' => 'order_payment',
+                    'amount' => $data['amount'],
+                    'credit' => $data['amount'],
+                    'debit' => 0,
+                    'running_balance' => $account->fresh()->balance,
+                    'description' => 'Payment for order '.$order->order_no,
+                    'payment_method' => $data['method'] ?? null,
+                    'reference' => $order->order_no,
+                    'note' => $data['note'] ?? null,
+                    'transactionable_type' => OrderPayment::class,
+                    'transactionable_id' => $payment->id,
+                    'added_by' => Auth::id(),
+                    'created_at' => $data['payment_date'],
+                ]);
+            }
+
+            $this->recompute($order);
+        });
+
+        return redirect()->back()->with('success', 'Payment of '.number_format((float) $data['amount'], 2).' recorded.');
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
@@ -196,8 +283,6 @@ class OrderController extends Controller
             'delivered_date' => $data['delivered_date'] ?? null,
             'discount_type' => $data['discount_type'] ?? 'fixed',
             'discount_value' => $data['discount_value'] ?? 0,
-            'received_amount' => $data['received_amount'] ?? 0,
-            'amount_received_date' => $data['amount_received_date'] ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
     }
@@ -245,11 +330,30 @@ class OrderController extends Controller
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $payments
+     */
+    private function syncPayments(Order $order, array $payments): void
+    {
+        foreach ($payments as $row) {
+            if (empty($row['amount'])) {
+                continue;
+            }
+            $order->payments()->create([
+                'amount' => (float) $row['amount'],
+                'payment_date' => $row['payment_date'] ?? null,
+                'method' => $row['method'] ?? null,
+                'note' => $row['note'] ?? null,
+                'added_by' => Auth::id(),
+            ]);
+        }
+    }
+
+    /**
      * Recompute all financial rollups + delivery days from the saved items/expenses.
      */
     private function recompute(Order $order): void
     {
-        $order->load('items', 'expenses');
+        $order->load('items', 'expenses', 'payments');
 
         $subtotal = round((float) $order->items->sum('line_total'), 2);
         $supplierCost = round((float) $order->items->sum(fn ($i) => (float) $i->supplier_asking_price * (float) $i->quantity), 2);
@@ -260,8 +364,11 @@ class OrderController extends Controller
             : round((float) $order->discount_value, 2);
 
         $totalAmount = round($subtotal - $discount, 2);
-        $received = (float) $order->received_amount;
+
+        // Received rolls up from the individual payments.
+        $received = round((float) $order->payments->sum('amount'), 2);
         $due = round($totalAmount - $received, 2);
+        $lastPaymentDate = $order->payments->max('payment_date');
 
         $paymentStatus = $received <= 0 ? 'due' : ($received >= $totalAmount ? 'paid' : 'partial');
 
@@ -273,6 +380,8 @@ class OrderController extends Controller
             'subtotal' => $subtotal,
             'total_amount' => $totalAmount,
             'total_expense' => $totalExpense,
+            'received_amount' => $received,
+            'amount_received_date' => $lastPaymentDate,
             'due_amount' => $due,
             'payment_status' => $paymentStatus,
             'profit' => round($totalAmount - $supplierCost - $totalExpense, 2),
@@ -317,8 +426,6 @@ class OrderController extends Controller
             'delivered_date' => 'nullable|date',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
-            'received_amount' => 'nullable|numeric|min:0',
-            'amount_received_date' => 'nullable|date',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.item_description' => 'nullable|string|max:255',
@@ -335,6 +442,11 @@ class OrderController extends Controller
             'expenses' => 'nullable|array',
             'expenses.*.title' => 'nullable|string|max:255',
             'expenses.*.amount' => 'nullable|numeric|min:0',
+            'payments' => 'nullable|array',
+            'payments.*.amount' => 'nullable|numeric|min:0',
+            'payments.*.payment_date' => 'nullable|date',
+            'payments.*.method' => 'nullable|string|max:50',
+            'payments.*.note' => 'nullable|string|max:255',
         ]);
     }
 }

@@ -17,7 +17,8 @@
                 <small class="text-muted">{{ $order->customer->name ?? '—' }}</small>
             </div>
             <div class="text-end">
-                <a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
+                <a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-text-line me-1"></i> Invoice</a>
+                @can('orders.manage')<a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
                 <a href="{{ route('orders.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
@@ -153,6 +154,38 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Payments ({{ $order->payments->count() }})</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>#</th><th>Date</th><th>Method</th><th>Account</th><th>Note</th><th>Doc</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        @forelse($order->payments as $i => $p)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td>{{ $p->payment_date?->format('d M Y') ?: '—' }}</td>
+                            <td>{{ $p->method ?: '—' }}</td>
+                            <td>{{ $p->paymentAccount->name ?? '—' }}</td>
+                            <td>{{ $p->note ?: '—' }}</td>
+                            <td>@if($p->attachment)<a href="{{ asset('upload/payments/'.$p->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
+                            <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="7" class="text-muted text-center py-3">No payments recorded</td></tr>
+                        @endforelse
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-semibold">
+                            <td colspan="6">Received / Due</td>
+                            <td class="text-end">৳ {{ number_format($order->received_amount, 2) }} / ৳ {{ number_format($order->due_amount, 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
