@@ -111,9 +111,9 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function expenses(): HasMany
+    public function costs(): HasMany
     {
-        return $this->hasMany(OrderExpense::class);
+        return $this->hasMany(OrderCost::class)->latest('id');
     }
 
     public function tracking(): HasMany

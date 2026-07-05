@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\BrandController;
 use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
+use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\LcController;
 use App\Http\Controllers\Backend\OrderController;
@@ -167,6 +168,18 @@ Route::middleware(['auth', 'admin', 'can:orders.view'])->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('order.invoice');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('order.status');
+});
+
+// Order Costs — categorized costs on an order (feeds profit; can debit a payment account)
+Route::middleware(['auth', 'admin', 'can:costs.manage'])->group(function () {
+    Route::post('/orders/{id}/cost', [OrderController::class, 'storeCost'])->name('order.cost.store');
+    Route::delete('/orders/{id}/cost/{costId}', [OrderController::class, 'destroyCost'])->name('order.cost.delete');
+
+    // Cost categories (admin-managed dropdown)
+    Route::get('/cost-categories', [CostCategoryController::class, 'index'])->name('cost.categories');
+    Route::post('/cost-categories', [CostCategoryController::class, 'store'])->name('cost.category.store');
+    Route::put('/cost-categories/{id}', [CostCategoryController::class, 'update'])->name('cost.category.update');
+    Route::delete('/cost-categories/{id}', [CostCategoryController::class, 'destroy'])->name('cost.category.delete');
 });
 
 // LC — Letters of Credit (created from a supplier's purchase invoice against an order)

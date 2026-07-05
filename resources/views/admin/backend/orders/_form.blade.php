@@ -103,17 +103,6 @@
     </div>
 </div>
 
-{{-- ===================== Expenses ===================== --}}
-<div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <h6 class="mb-0">Additional Expenses</h6>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="addExpenseBtn"><i class="ri-add-line me-1"></i> Add Expense</button>
-    </div>
-    <div class="card-body">
-        <div id="expensesWrap"></div>
-    </div>
-</div>
-
 {{-- ===================== Payments ===================== --}}
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
@@ -179,9 +168,9 @@
                     <tr><th>Received</th><td class="text-end">৳ <span id="sumReceived">0.00</span></td></tr>
                     <tr><th>Due</th><td class="text-end">৳ <span id="sumDue">0.00</span></td></tr>
                     <tr><th>Supplier Cost</th><td class="text-end">৳ <span id="sumCost">0.00</span></td></tr>
-                    <tr><th>Expenses</th><td class="text-end">৳ <span id="sumExpense">0.00</span></td></tr>
-                    <tr class="table-light"><th>Profit</th><td class="text-end fw-semibold">৳ <span id="sumProfit">0.00</span></td></tr>
+                    <tr class="table-light"><th>Profit (before costs)</th><td class="text-end fw-semibold">৳ <span id="sumProfit">0.00</span></td></tr>
                 </table>
+                <small class="text-muted">Order costs (freight, customs, LC, etc.) are added on the order page after saving and reduce the final profit.</small>
             </div>
         </div>
     </div>
@@ -218,14 +207,6 @@
     </div>
 </template>
 
-<template id="expenseTemplate">
-    <div class="row g-2 mb-2 expense-row align-items-end">
-        <div class="col-md-6"><input type="text" class="form-control form-control-sm" data-name="title" placeholder="Expense title (e.g. Freight, Customs)"></div>
-        <div class="col-md-4"><input type="number" step="0.01" min="0" class="form-control form-control-sm calc-exp" data-name="amount" placeholder="Amount"></div>
-        <div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger remove-expense w-100"><i class="ri-close-line"></i></button></div>
-    </div>
-</template>
-
 <template id="paymentTemplate">
     <div class="row g-2 mb-2 payment-row align-items-center">
         <div class="col-md-3"><input type="number" step="0.01" min="0" class="form-control form-control-sm calc-pay" data-name="amount" placeholder="Amount"></div>
@@ -244,17 +225,15 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const itemsWrap = document.getElementById('itemsWrap');
-    const expWrap = document.getElementById('expensesWrap');
     const payWrap = document.getElementById('paymentsWrap');
     const itemTmpl = document.getElementById('itemTemplate');
-    const expTmpl = document.getElementById('expenseTemplate');
     const payTmpl = document.getElementById('paymentTemplate');
-    let ii = 0, ei = 0, pi = 0;
+    let ii = 0, pi = 0;
     const money = n => (Number(n) || 0).toFixed(2);
     const num = el => parseFloat(el?.value) || 0;
 
     function recalc() {
-        let subtotal = 0, cost = 0, expenses = 0;
+        let subtotal = 0, cost = 0;
         itemsWrap.querySelectorAll('.item-block').forEach(function (b) {
             const qty = num(b.querySelector('[data-name="quantity"]'));
             const sup = num(b.querySelector('[data-name="supplier_asking_price"]'));
@@ -264,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function () {
             subtotal += lt;
             cost += sup * qty;
         });
-        expWrap.querySelectorAll('.expense-row').forEach(r => expenses += num(r.querySelector('[data-name="amount"]')));
 
         let received = 0;
         payWrap.querySelectorAll('.payment-row').forEach(r => received += num(r.querySelector('[data-name="amount"]')));
@@ -280,8 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('sumReceived').textContent = money(received);
         document.getElementById('sumDue').textContent = money(total - received);
         document.getElementById('sumCost').textContent = money(cost);
-        document.getElementById('sumExpense').textContent = money(expenses);
-        document.getElementById('sumProfit').textContent = money(total - cost - expenses);
+        document.getElementById('sumProfit').textContent = money(total - cost);
     }
 
     function addItem(data) {
@@ -298,20 +275,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         itemsWrap.appendChild(node);
         renumber();
-        recalc();
-    }
-
-    function addExpense(data) {
-        const i = ei++;
-        const node = expTmpl.content.cloneNode(true);
-        const row = node.querySelector('.expense-row');
-        row.querySelectorAll('[data-name]').forEach(function (el) {
-            el.name = 'expenses[' + i + '][' + el.dataset.name + ']';
-            if (data && data[el.dataset.name] != null) el.value = data[el.dataset.name];
-        });
-        row.querySelector('.calc-exp').addEventListener('input', recalc);
-        row.querySelector('.remove-expense').addEventListener('click', function () { row.remove(); recalc(); });
-        expWrap.appendChild(node);
         recalc();
     }
 
@@ -334,16 +297,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('addItemBtn').addEventListener('click', () => addItem());
-    document.getElementById('addExpenseBtn').addEventListener('click', () => addExpense());
     document.getElementById('addPaymentBtn').addEventListener('click', () => addPayment());
     ['discountType', 'discountValue'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
     document.getElementById('discountType').addEventListener('change', recalc);
 
     const items = @json($order?->items ?? []);
-    const expenses = @json($order?->expenses ?? []);
     const payments = @json($order?->payments ?? []);
     if (items.length) { items.forEach(addItem); } else { addItem(); }
-    expenses.forEach(addExpense);
     payments.forEach(addPayment);
     recalc();
 });

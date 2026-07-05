@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\Contact;
+use App\Models\CostCategory;
 use App\Models\Order;
+use App\Models\OrderCost;
 use App\Models\OrderPayment;
 use App\Models\PackingType;
 use App\Models\PaymentAccount;
 use App\Models\Quotation;
+use App\Models\Transaction;
 use App\Models\TransportationMode;
 use App\Models\Unit;
 use App\Support\NumberToWords;
@@ -84,7 +87,6 @@ class OrderController extends Controller
         $order = DB::transaction(function () use ($data, $request) {
             $order = Order::create($this->headerData($data) + ['added_by' => Auth::id()]);
             $this->syncItems($order, $data['items']);
-            $this->syncExpenses($order, $request->input('expenses', []));
             $this->syncPayments($order, $request->input('payments', []));
             $this->recompute($order);
             $order->logStatus($order->goods_status, 'Order created', Auth::id());
@@ -97,15 +99,17 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'payments.paymentAccount', 'tracking.changedBy', 'lcs'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs'])
             ->findOrFail($id);
+        $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
+        $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.backend.orders.show', compact('order'));
+        return view('admin.backend.orders.show', compact('order', 'costCategories', 'accounts'));
     }
 
     public function edit($id)
     {
-        $order = Order::with(['items', 'expenses', 'payments'])->findOrFail($id);
+        $order = Order::with(['items', 'payments'])->findOrFail($id);
 
         return view('admin.backend.orders.edit', array_merge($this->formData(), compact('order')));
     }
@@ -130,10 +134,8 @@ class OrderController extends Controller
         DB::transaction(function () use ($order, $data, $request) {
             $order->update($this->headerData($data));
             $order->items()->delete();
-            $order->expenses()->delete();
             $order->payments()->delete();
             $this->syncItems($order, $data['items']);
-            $this->syncExpenses($order, $request->input('expenses', []));
             $this->syncPayments($order, $request->input('payments', []));
             $this->recompute($order);
         });
@@ -314,19 +316,99 @@ class OrderController extends Controller
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $expenses
+     * Record a cost against an order (the "Add Cost" action). When a payment account is
+     * chosen, the amount is paid out of that account: it decrements the balance and writes
+     * a debit into the Phase-0 ledger.
      */
-    private function syncExpenses(Order $order, array $expenses): void
+    public function storeCost(Request $request, $id)
     {
-        foreach ($expenses as $row) {
-            if (empty($row['title']) && empty($row['amount'])) {
-                continue;
+        $order = Order::findOrFail($id);
+
+        $data = $request->validate([
+            'cost_category_id' => 'nullable|exists:cost_categories,id',
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.01',
+            'cost_date' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
+        ]);
+
+        DB::transaction(function () use ($order, $data, $request) {
+            $attachment = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $attachment = hexdec(uniqid()).'.'.$file->getClientOriginalExtension();
+                $dir = public_path('upload/costs');
+                if (! is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                $file->move($dir, $attachment);
             }
-            $order->expenses()->create([
-                'title' => $row['title'] ?? 'Expense',
-                'amount' => (float) ($row['amount'] ?? 0),
+
+            $cost = $order->costs()->create([
+                'cost_category_id' => $data['cost_category_id'] ?? null,
+                'title' => $data['title'],
+                'amount' => $data['amount'],
+                'cost_date' => $data['cost_date'] ?? now()->toDateString(),
+                'note' => $data['note'] ?? null,
+                'payment_account_id' => $data['payment_account_id'] ?? null,
+                'attachment' => $attachment,
+                'added_by' => Auth::id(),
             ]);
-        }
+
+            // Pay out of the selected account's ledger (money leaving the business).
+            if (! empty($data['payment_account_id'])) {
+                $account = PaymentAccount::findOrFail($data['payment_account_id']);
+                $account->decrement('balance', (float) $data['amount']);
+                $account->transactions()->create([
+                    'type' => 'debit',
+                    'source' => 'order_cost',
+                    'amount' => $data['amount'],
+                    'credit' => 0,
+                    'debit' => $data['amount'],
+                    'running_balance' => $account->fresh()->balance,
+                    'description' => $data['title'].' for order '.$order->order_no,
+                    'reference' => $order->order_no,
+                    'note' => $data['note'] ?? null,
+                    'transactionable_type' => OrderCost::class,
+                    'transactionable_id' => $cost->id,
+                    'added_by' => Auth::id(),
+                    'created_at' => $cost->cost_date,
+                ]);
+            }
+
+            $this->recompute($order);
+        });
+
+        return redirect()->back()->with('success', 'Cost of '.number_format((float) $data['amount'], 2).' recorded.');
+    }
+
+    /**
+     * Delete a cost, reversing its ledger entry (crediting the account back) when it was
+     * paid from a payment account.
+     */
+    public function destroyCost($id, $costId)
+    {
+        $order = Order::findOrFail($id);
+        $cost = $order->costs()->findOrFail($costId);
+
+        DB::transaction(function () use ($order, $cost) {
+            if ($cost->payment_account_id) {
+                $account = PaymentAccount::find($cost->payment_account_id);
+                if ($account) {
+                    $account->increment('balance', (float) $cost->amount);
+                }
+                Transaction::where('transactionable_type', OrderCost::class)
+                    ->where('transactionable_id', $cost->id)
+                    ->delete();
+            }
+
+            $cost->delete();
+            $this->recompute($order);
+        });
+
+        return redirect()->back()->with('success', 'Cost deleted.');
     }
 
     /**
@@ -353,11 +435,11 @@ class OrderController extends Controller
      */
     private function recompute(Order $order): void
     {
-        $order->load('items', 'expenses', 'payments');
+        $order->load('items', 'costs', 'payments');
 
         $subtotal = round((float) $order->items->sum('line_total'), 2);
         $supplierCost = round((float) $order->items->sum(fn ($i) => (float) $i->supplier_asking_price * (float) $i->quantity), 2);
-        $totalExpense = round((float) $order->expenses->sum('amount'), 2);
+        $totalExpense = round((float) $order->costs->sum('amount'), 2);
 
         $discount = $order->discount_type === 'percentage'
             ? round($subtotal * (float) $order->discount_value / 100, 2)
@@ -439,9 +521,6 @@ class OrderController extends Controller
             'items.*.actual_weight' => 'nullable|numeric|min:0',
             'items.*.supplier_asking_price' => 'nullable|numeric|min:0',
             'items.*.our_asking_price' => 'nullable|numeric|min:0',
-            'expenses' => 'nullable|array',
-            'expenses.*.title' => 'nullable|string|max:255',
-            'expenses.*.amount' => 'nullable|numeric|min:0',
             'payments' => 'nullable|array',
             'payments.*.amount' => 'nullable|numeric|min:0',
             'payments.*.payment_date' => 'nullable|date',

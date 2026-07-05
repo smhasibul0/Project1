@@ -3,7 +3,6 @@
 use App\Models\AccountType;
 use App\Models\Contact;
 use App\Models\Order;
-use App\Models\OrderExpense;
 use App\Models\OrderItem;
 use App\Models\PaymentAccount;
 use App\Models\Quotation;
@@ -17,7 +16,7 @@ beforeEach(function () {
     $this->customer = Contact::factory()->customer()->create();
 });
 
-test('an order is created with items, expenses and computed financials', function () {
+test('an order is created with items, payments and computed financials', function () {
     $response = $this->actingAs($this->user)->post(route('order.store'), [
         'order_date' => '2026-07-05',
         'customer_id' => $this->customer->id,
@@ -29,10 +28,6 @@ test('an order is created with items, expenses and computed financials', functio
             ['item_description' => 'Toys', 'quantity' => 10, 'supplier_asking_price' => 100, 'our_asking_price' => 150],
             ['item_description' => 'Bags', 'quantity' => 5, 'supplier_asking_price' => 200, 'our_asking_price' => 300],
         ],
-        'expenses' => [
-            ['title' => 'Freight', 'amount' => 100],
-            ['title' => 'Customs', 'amount' => 50],
-        ],
         'payments' => [
             ['amount' => 600, 'payment_date' => '2026-07-05', 'method' => 'Cash'],
             ['amount' => 400, 'payment_date' => '2026-07-06', 'method' => 'Bank Transfer'],
@@ -41,17 +36,16 @@ test('an order is created with items, expenses and computed financials', functio
 
     $response->assertRedirect(route('orders.index'));
 
-    $order = Order::with(['items', 'expenses', 'payments'])->firstOrFail();
+    $order = Order::with(['items', 'payments'])->firstOrFail();
     expect($order->order_no)->toBe('OR0001');
     expect($order->items)->toHaveCount(2);
-    expect($order->expenses)->toHaveCount(2);
     expect($order->payments)->toHaveCount(2);
 
-    // subtotal 3000, discount 200 -> total 2800 ; cost 2000 ; expenses 150 ; profit 650
+    // subtotal 3000, discount 200 -> total 2800 ; cost 2000 ; no costs yet ; profit 800
     expect($order->subtotal)->toEqual('3000.00');
     expect($order->total_amount)->toEqual('2800.00');
-    expect($order->total_expense)->toEqual('150.00');
-    expect($order->profit)->toEqual('650.00');
+    expect($order->total_expense)->toEqual('0.00');
+    expect($order->profit)->toEqual('800.00');
     // two payments 600+400 = 1000 received -> due 1800, partial
     expect($order->received_amount)->toEqual('1000.00');
     expect($order->due_amount)->toEqual('1800.00');
@@ -117,11 +111,10 @@ test('updating an order replaces items and recomputes', function () {
     expect($order->profit)->toEqual('450.00');          // 900 - 150*3
 });
 
-test('an order can be deleted with items and expenses', function () {
+test('an order can be deleted with its items', function () {
     $this->actingAs($this->user)->post(route('order.store'), [
         'customer_id' => $this->customer->id,
         'items' => [['quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
-        'expenses' => [['title' => 'X', 'amount' => 2]],
     ]);
     $order = Order::firstOrFail();
 
@@ -130,7 +123,6 @@ test('an order can be deleted with items and expenses', function () {
 
     expect(Order::count())->toBe(0);
     expect(OrderItem::count())->toBe(0);
-    expect(OrderExpense::count())->toBe(0);
 });
 
 test('the Pay quick action records a payment and deposits into the chosen account', function () {

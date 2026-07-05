@@ -32,9 +32,12 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasPermission($ability) ? true : null;
         });
 
-        // Composite: anyone who can fully manage OR just update-status may view orders.
+        // Composite: anyone who can fully manage, just update-status, or manage costs
+        // (accountants add costs on the order page) may view orders.
         Gate::define('orders.view', function (User $user) {
-            return $user->hasPermission('orders.manage') || $user->hasPermission('orders.update-status');
+            return $user->hasPermission('orders.manage')
+                || $user->hasPermission('orders.update-status')
+                || $user->hasPermission('costs.manage');
         });
     }
 }

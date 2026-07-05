@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             InventorySeeder::class,
             QuotationLookupSeeder::class,
             CompanySettingSeeder::class,
+            CostCategorySeeder::class,
         ]);
 
         User::factory()->create([

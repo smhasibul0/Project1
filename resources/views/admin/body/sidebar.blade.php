@@ -207,6 +207,24 @@
                 </li>
                 @endcan
 
+                <!-- Order Costs -->
+                @can('costs.manage')
+                <li>
+                    <a href="#sidebarCosts" data-bs-toggle="collapse">
+                        <i data-feather="dollar-sign"></i>
+                        <span> Order Costs </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarCosts">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('cost.categories') }}" class="tp-link">Cost Categories</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
 
                 <!-- Purchases -->
                 <li>

@@ -125,22 +125,51 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-lg-6">
+            <div class="col-lg-7">
                 <div class="card h-100">
-                    <div class="card-header"><h6 class="mb-0">Expenses</h6></div>
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <h6 class="mb-0">Order Costs ({{ $order->costs->count() }})</h6>
+                        @can('costs.manage')
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostModal"><i class="ri-add-line me-1"></i> Add Cost</button>
+                        @endcan
+                    </div>
                     <div class="card-body p-0">
-                        <table class="table table-sm mb-0">
-                            @forelse($order->expenses as $e)
-                            <tr><td>{{ $e->title }}</td><td class="text-end">৳ {{ number_format($e->amount, 2) }}</td></tr>
-                            @empty
-                            <tr><td class="text-muted text-center py-3" colspan="2">No expenses</td></tr>
-                            @endforelse
-                            <tr class="table-light fw-semibold"><td>Total Expenses</td><td class="text-end">৳ {{ number_format($order->total_expense, 2) }}</td></tr>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0 align-middle">
+                                <thead>
+                                    <tr><th>Category</th><th>Title</th><th>Date</th><th>Account</th><th>Doc</th><th class="text-end">Amount</th>@can('costs.manage')<th></th>@endcan</tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($order->costs as $c)
+                                    <tr>
+                                        <td>{{ $c->category->name ?? '—' }}</td>
+                                        <td>{{ $c->title }}</td>
+                                        <td>{{ $c->cost_date?->format('d M Y') ?: '—' }}</td>
+                                        <td>{{ $c->paymentAccount->name ?? '—' }}</td>
+                                        <td>@if($c->attachment)<a href="{{ asset('upload/costs/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
+                                        <td class="text-end">৳ {{ number_format($c->amount, 2) }}</td>
+                                        @can('costs.manage')
+                                        <td class="text-end">
+                                            <form action="{{ route('order.cost.delete', [$order->id, $c->id]) }}" method="POST" class="m-0">
+                                                @csrf @method('DELETE')
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0 delete-cost-btn"><i class="ri-delete-bin-line"></i></button>
+                                            </form>
+                                        </td>
+                                        @endcan
+                                    </tr>
+                                    @empty
+                                    <tr><td colspan="7" class="text-muted text-center py-3">No costs recorded</td></tr>
+                                    @endforelse
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light fw-semibold"><td colspan="5">Total Costs</td><td class="text-end">৳ {{ number_format($order->total_expense, 2) }}</td>@can('costs.manage')<td></td>@endcan</tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-5">
                 <div class="card h-100">
                     <div class="card-header"><h6 class="mb-0">Financials</h6></div>
                     <div class="card-body p-0">
@@ -222,4 +251,75 @@
         @endcan
     </div>
 </div>
+
+{{-- ===================== Add Cost modal ===================== --}}
+@can('costs.manage')
+<div class="modal fade" id="addCostModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('order.cost.store', $order->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Cost — {{ $order->order_no }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Category</label>
+                        <select class="form-control" name="cost_category_id">
+                            <option value="">-- Uncategorized --</option>
+                            @foreach($costCategories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="title" required placeholder="e.g. Sea freight, C&F charge">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Amount <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cost Date</label>
+                        <input type="date" class="form-control" name="cost_date" value="{{ now()->toDateString() }}">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Pay from Account <small class="text-muted">(debits the account ledger)</small></label>
+                        <select class="form-control" name="payment_account_id">
+                            <option value="">-- None (no ledger entry) --</option>
+                            @foreach($accounts as $acc)
+                                <option value="{{ $acc->id }}">{{ $acc->name }} (Balance: {{ number_format($acc->balance, 2) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Attach Document</label>
+                        <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Note</label>
+                        <input type="text" class="form-control" name="note">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save Cost</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.delete-cost-btn').forEach(btn => btn.addEventListener('click', function () {
+        const form = btn.closest('form');
+        Swal.fire({ title: 'Delete this cost?', text: 'Any linked account payment will be reversed.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
+            .then(r => { if (r.isConfirmed) form.submit(); });
+    }));
+});
+</script>
+@endcan
 @endsection
