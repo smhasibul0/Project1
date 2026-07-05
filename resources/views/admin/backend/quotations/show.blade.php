@@ -9,6 +9,16 @@
                 <small class="text-muted">{{ $quotation->customer->name ?? '—' }}</small>
             </div>
             <div class="text-end">
+                @can('orders.manage')
+                    @if($quotation->status === 'converted')
+                        <span class="badge bg-success">Converted to Order</span>
+                    @else
+                        <form action="{{ route('order.from.quotation', $quotation->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-sm"><i class="ri-arrow-right-line me-1"></i> Convert to Order</button>
+                        </form>
+                    @endif
+                @endcan
                 <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
                 <a href="{{ route('quotations.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>

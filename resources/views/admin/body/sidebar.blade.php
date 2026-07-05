@@ -163,6 +163,27 @@
                 </li>
                 @endcan
 
+                <!-- Orders -->
+                @can('orders.manage')
+                <li>
+                    <a href="#sidebarOrders" data-bs-toggle="collapse">
+                        <i data-feather="clipboard"></i>
+                        <span> Orders </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarOrders">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('orders.index') }}" class="tp-link">List Orders</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('orders.create') }}" class="tp-link">Add Order</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
 
                 <!-- Purchases -->
                 <li>

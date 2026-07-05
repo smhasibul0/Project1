@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\BrandController;
 use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\CustomerGroupController;
+use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
 use App\Http\Controllers\Backend\ProductController;
@@ -141,6 +142,18 @@ Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function ()
     Route::post('/packing-types', [PackingTypeController::class, 'store'])->name('packing.type.store');
     Route::put('/packing-types/{id}', [PackingTypeController::class, 'update'])->name('packing.type.update');
     Route::delete('/packing-types/{id}', [PackingTypeController::class, 'destroy'])->name('packing.type.delete');
+});
+
+// Orders + tracking
+Route::middleware(['auth', 'admin', 'can:orders.manage'])->group(function () {
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
+    Route::post('/orders', [OrderController::class, 'store'])->name('order.store');
+    Route::post('/orders/from-quotation/{id}', [OrderController::class, 'fromQuotation'])->name('order.from.quotation');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
+    Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
+    Route::put('/orders/{id}', [OrderController::class, 'update'])->name('order.update');
+    Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('order.delete');
 });
 
 // Access Control: users & roles (admin-managed)
