@@ -2,13 +2,12 @@
 
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = adminUser();
 });
 
 test('deposit increases the account balance and records a credit transaction', function () {

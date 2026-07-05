@@ -27,5 +27,10 @@ class DatabaseSeeder extends Seeder
             'username' => 'testuser',
             'email' => 'test@example.com',
         ]);
+
+        // Roles/permissions last so the seeded user(s) get the Admin role.
+        $this->call([
+            RolePermissionSeeder::class,
+        ]);
     }
 }

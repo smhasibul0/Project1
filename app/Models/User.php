@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -41,5 +42,36 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Slug of the user's role (or null).
+     */
+    public function roleSlug(): ?string
+    {
+        return $this->role?->slug;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->roleSlug() === 'admin';
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->roleSlug() === 'customer';
+    }
+
+    /**
+     * Whether the user's role grants the given permission (Admin bypasses).
+     */
+    public function hasPermission(string $key): bool
+    {
+        return $this->role !== null && $this->role->hasPermission($key);
     }
 }

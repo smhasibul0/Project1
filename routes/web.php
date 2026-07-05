@@ -8,7 +8,9 @@ use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\PaymentAccountController;
 use App\Http\Controllers\Backend\ProductController;
+use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\UnitController;
+use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +21,7 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
     return view('admin.index');
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'admin', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -31,7 +33,7 @@ require __DIR__.'/auth.php';
 
 Route::get('/admin/logout', [AdminController::class, 'AdminLogout'])->name('admin.logout');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/profile', [AdminController::class, 'AdminProfile'])->name('admin.profile');
 
     Route::post('/profile/store', [AdminController::class, 'ProfileStore'])->name('profile.store');
@@ -39,7 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/password/update', [AdminController::class, 'AdminPasswordUpdate'])->name('admin.password.update');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'admin', 'can:accounts.manage'])->group(function () {
     Route::controller(PaymentAccountController::class)->group(function () {
         // Payment Accounts
         Route::get('/payment-accounts', [PaymentAccountController::class, 'index'])->name('payment.accounts');
@@ -64,7 +66,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Contacts: suppliers, customers & customer groups
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'admin', 'can:contacts.manage'])->group(function () {
     // Suppliers & Customers share one controller (Contact) filtered by type.
     Route::get('/suppliers', [ContactController::class, 'suppliers'])->name('suppliers.index');
     Route::get('/customers', [ContactController::class, 'customers'])->name('customers.index');
@@ -81,7 +83,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Products & Inventory: categories, brands, units, warehouses, products
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'admin', 'can:products.manage'])->group(function () {
     // Categories
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('/categories', [CategoryController::class, 'store'])->name('category.store');
@@ -113,4 +115,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
     Route::put('/products/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('product.delete');
+});
+
+// Access Control: users & roles (admin-managed)
+Route::middleware(['auth', 'admin'])->group(function () {
+    // Users
+    Route::middleware('can:users.manage')->group(function () {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('user.store');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('user.update');
+        Route::patch('/users/{id}/toggle-active', [UserController::class, 'toggleActive'])->name('user.toggle');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('user.delete');
+    });
+
+    // Roles & permissions
+    Route::middleware('can:roles.manage')->group(function () {
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::post('/roles', [RoleController::class, 'store'])->name('role.store');
+        Route::put('/roles/{id}', [RoleController::class, 'update'])->name('role.update');
+        Route::delete('/roles/{id}', [RoleController::class, 'destroy'])->name('role.delete');
+    });
 });

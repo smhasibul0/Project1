@@ -3,14 +3,13 @@
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Unit;
-use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = adminUser();
     $this->category = Category::factory()->create();
     $this->unit = Unit::factory()->create();
     $this->warehouse = Warehouse::factory()->create();

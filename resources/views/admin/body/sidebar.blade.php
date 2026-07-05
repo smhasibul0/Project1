@@ -78,6 +78,7 @@
                 <li class="menu-title mt-2">General</li>
 
                 <!-- Contacts -->
+                @can('contacts.manage')
                 <li>
                     <a href="#contacts" data-bs-toggle="collapse">
                         <i data-feather="users"></i>
@@ -98,9 +99,11 @@
                         </ul>
                     </div>
                 </li>
+                @endcan
 
 
                 <!-- Products -->
+                @can('products.manage')
                 <li>
                     <a href="#sidebarProducts" data-bs-toggle="collapse">
                         <i data-feather="package"></i>
@@ -130,6 +133,7 @@
                         </ul>
                     </div>
                 </li>
+                @endcan
 
                 
                 <!-- Purchases -->
@@ -210,6 +214,7 @@
 
 
                 <!-- Payment accounts -->
+                @can('accounts.manage')
                 <li>
                     <a href="#sidebarCharts" data-bs-toggle="collapse">
                         <i data-feather="credit-card"></i>
@@ -233,6 +238,33 @@
                         </ul>
                     </div>
                 </li>
+                @endcan
+
+                <!-- Access Control -->
+                @canany(['users.manage', 'roles.manage'])
+                <li class="menu-title mt-2">Access Control</li>
+                <li>
+                    <a href="#sidebarAccess" data-bs-toggle="collapse">
+                        <i data-feather="shield"></i>
+                        <span> Users &amp; Roles </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarAccess">
+                        <ul class="nav-second-level">
+                            @can('users.manage')
+                            <li>
+                                <a href="{{ route('users.index') }}" class="tp-link">Users</a>
+                            </li>
+                            @endcan
+                            @can('roles.manage')
+                            <li>
+                                <a href="{{ route('roles.index') }}" class="tp-link">Roles &amp; Permissions</a>
+                            </li>
+                            @endcan
+                        </ul>
+                    </div>
+                </li>
+                @endcanany
 
 
                 <!-- Reports -->

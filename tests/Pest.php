@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +46,18 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * A user with the Admin role (bypasses all permission gates). Handy for feature
+ * tests that exercise permission-gated admin routes.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function adminUser(array $attributes = []): User
 {
-    // ..
+    $role = Role::firstOrCreate(
+        ['slug' => 'admin'],
+        ['name' => 'Admin', 'is_system' => true],
+    );
+
+    return User::factory()->create(array_merge(['role_id' => $role->id], $attributes));
 }

@@ -3,14 +3,13 @@
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Unit;
-use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = adminUser();
 });
 
 test('a category can be created, updated and deleted', function () {
