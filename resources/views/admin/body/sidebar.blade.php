@@ -136,6 +136,34 @@
                 @endcan
 
                 
+                <!-- Quotations -->
+                @can('quotations.manage')
+                <li>
+                    <a href="#sidebarQuotations" data-bs-toggle="collapse">
+                        <i data-feather="file-text"></i>
+                        <span> Quotations </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarQuotations">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('quotations.index') }}" class="tp-link">List Quotations</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('quotations.create') }}" class="tp-link">Add Quotation</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('transportation.modes') }}" class="tp-link">Transportation Modes</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('packing.types') }}" class="tp-link">Packing Types</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
+
                 <!-- Purchases -->
                 <li>
                     <a href="#sidebarIcons" data-bs-toggle="collapse">

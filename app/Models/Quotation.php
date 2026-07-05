@@ -1,0 +1,57 @@
+<?php
+
+namespace App\Models;
+
+use Database\Factories\QuotationFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Quotation extends Model
+{
+    /** @use HasFactory<QuotationFactory> */
+    use HasFactory;
+
+    protected $guarded = [];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'query_received_date' => 'date',
+            'submitted_to_customer' => 'boolean',
+            'grand_total' => 'decimal:2',
+            'total_profit' => 'decimal:2',
+            'profit_margin' => 'decimal:2',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Quotation $quotation) {
+            if (empty($quotation->quotation_no)) {
+                $last = static::where('quotation_no', 'like', 'Q%')->orderByDesc('id')->value('quotation_no');
+                $next = $last ? ((int) substr($last, 1)) + 1 : 1;
+                $quotation->quotation_no = 'Q'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Contact::class, 'customer_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(QuotationItem::class);
+    }
+
+    public function addedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'added_by');
+    }
+}

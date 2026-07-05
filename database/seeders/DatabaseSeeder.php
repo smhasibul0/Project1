@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AccountTypeSeeder::class,
             CustomerGroupSeeder::class,
             InventorySeeder::class,
+            QuotationLookupSeeder::class,
         ]);
 
         User::factory()->create([

@@ -6,9 +6,12 @@ use App\Http\Controllers\Backend\BrandController;
 use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\CustomerGroupController;
+use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
 use App\Http\Controllers\Backend\ProductController;
+use App\Http\Controllers\Backend\QuotationController;
 use App\Http\Controllers\Backend\RoleController;
+use App\Http\Controllers\Backend\TransportationModeController;
 use App\Http\Controllers\Backend\UnitController;
 use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
@@ -115,6 +118,29 @@ Route::middleware(['auth', 'admin', 'can:products.manage'])->group(function () {
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
     Route::put('/products/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('product.delete');
+});
+
+// Quotations (+ admin-managed lookups)
+Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function () {
+    Route::get('/quotations', [QuotationController::class, 'index'])->name('quotations.index');
+    Route::get('/quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
+    Route::post('/quotations', [QuotationController::class, 'store'])->name('quotation.store');
+    Route::get('/quotations/{id}', [QuotationController::class, 'show'])->name('quotation.show');
+    Route::get('/quotations/{id}/edit', [QuotationController::class, 'edit'])->name('quotation.edit');
+    Route::put('/quotations/{id}', [QuotationController::class, 'update'])->name('quotation.update');
+    Route::delete('/quotations/{id}', [QuotationController::class, 'destroy'])->name('quotation.delete');
+
+    // Transportation modes (admin-managed dropdown)
+    Route::get('/transportation-modes', [TransportationModeController::class, 'index'])->name('transportation.modes');
+    Route::post('/transportation-modes', [TransportationModeController::class, 'store'])->name('transportation.mode.store');
+    Route::put('/transportation-modes/{id}', [TransportationModeController::class, 'update'])->name('transportation.mode.update');
+    Route::delete('/transportation-modes/{id}', [TransportationModeController::class, 'destroy'])->name('transportation.mode.delete');
+
+    // Packing types (admin-managed dropdown)
+    Route::get('/packing-types', [PackingTypeController::class, 'index'])->name('packing.types');
+    Route::post('/packing-types', [PackingTypeController::class, 'store'])->name('packing.type.store');
+    Route::put('/packing-types/{id}', [PackingTypeController::class, 'update'])->name('packing.type.update');
+    Route::delete('/packing-types/{id}', [PackingTypeController::class, 'destroy'])->name('packing.type.delete');
 });
 
 // Access Control: users & roles (admin-managed)
