@@ -41,6 +41,54 @@
             </div>
         </div>
 
+        {{-- Tracking + status update --}}
+        <div class="row g-3">
+            @can('orders.update-status')
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-header"><h6 class="mb-0">Update Status</h6></div>
+                    <div class="card-body">
+                        <form action="{{ route('order.status', $order->id) }}" method="POST">
+                            @csrf
+                            <label class="form-label">Goods Status</label>
+                            <select class="form-control mb-2" name="goods_status" required>
+                                @foreach(\App\Models\Order::goodsStatuses() as $key => $label)
+                                    <option value="{{ $key }}" @selected($order->goods_status === $key)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <label class="form-label">Note (optional)</label>
+                            <textarea class="form-control mb-2" name="note" rows="2" placeholder="e.g. Received 12 cartons at BD warehouse"></textarea>
+                            <button type="submit" class="btn btn-primary w-100"><i class="ri-refresh-line me-1"></i> Update &amp; Log</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endcan
+            <div class="@can('orders.update-status') col-lg-7 @else col-12 @endcan">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Tracking Timeline</h6>
+                        <a href="{{ route('order.track', ['order_no' => $order->order_no]) }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="ri-external-link-line me-1"></i> Public link</a>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0 order-timeline">
+                            @forelse($order->tracking as $t)
+                            <li class="d-flex gap-2 pb-3">
+                                <div><span class="badge bg-info">{{ $statusLabels[$t->status] ?? $t->status }}</span></div>
+                                <div class="small">
+                                    <div class="text-muted">{{ $t->created_at->format('d M Y, h:i A') }} @if($t->changedBy) · {{ $t->changedBy->name }} @endif</div>
+                                    @if($t->note)<div>{{ $t->note }}</div>@endif
+                                </div>
+                            </li>
+                            @empty
+                            <li class="text-muted text-center py-3">No tracking updates yet.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header"><h6 class="mb-0">Products ({{ $order->items->count() }})</h6></div>
             <div class="card-body p-0">

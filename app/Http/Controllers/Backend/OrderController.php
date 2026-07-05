@@ -63,6 +63,7 @@ class OrderController extends Controller
 
             $quotation->update(['status' => 'converted']);
             $this->recompute($order);
+            $order->logStatus($order->goods_status, 'Order created from quotation '.$quotation->quotation_no, Auth::id());
 
             return $order;
         });
@@ -80,6 +81,7 @@ class OrderController extends Controller
             $this->syncItems($order, $data['items']);
             $this->syncExpenses($order, $request->input('expenses', []));
             $this->recompute($order);
+            $order->logStatus($order->goods_status, 'Order created', Auth::id());
 
             return $order;
         });
@@ -89,7 +91,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'tracking.changedBy'])
             ->findOrFail($id);
 
         return view('admin.backend.orders.show', compact('order'));
@@ -124,6 +126,50 @@ class OrderController extends Controller
         Order::findOrFail($id)->delete();
 
         return redirect()->back()->with('success', 'Order deleted successfully.');
+    }
+
+    /**
+     * Move an order's goods status and log it to the tracking timeline. Available to
+     * limited staff (warehouse/port) via the orders.update-status permission.
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+
+        $data = $request->validate([
+            'goods_status' => 'required|in:'.implode(',', array_keys(Order::goodsStatuses())),
+            'note' => 'nullable|string|max:1000',
+        ]);
+
+        $status = $data['goods_status'];
+        $today = now()->toDateString();
+        $updates = ['goods_status' => $status];
+
+        // Auto-stamp the matching logistics date when a stage is reached.
+        if ($status === 'at_port' && ! $order->port_arrival_date) {
+            $updates['port_arrival_date'] = $today;
+        }
+        if ($status === 'at_bd_warehouse' && ! $order->bd_warehouse_date) {
+            $updates['bd_warehouse_date'] = $today;
+        }
+        if ($status === 'delivered') {
+            $updates['delivery_status'] = 'delivered';
+            if (! $order->delivered_date) {
+                $updates['delivered_date'] = $today;
+            }
+        }
+
+        $order->update($updates);
+
+        if ($status === 'delivered' && $order->goods_handover_date && $order->delivered_date) {
+            $order->update([
+                'total_delivery_days' => Carbon::parse($order->goods_handover_date)->diffInDays(Carbon::parse($order->delivered_date)),
+            ]);
+        }
+
+        $order->logStatus($status, $data['note'] ?? null, Auth::id());
+
+        return redirect()->back()->with('success', 'Status updated to '.$order->statusLabel().'.');
     }
 
     /**

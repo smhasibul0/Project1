@@ -31,6 +31,7 @@ class RolePermissionSeeder extends Seeder
             ],
             'Orders' => [
                 'orders.manage' => 'Manage orders & tracking',
+                'orders.update-status' => 'Update order tracking status only',
             ],
             'Order Costs' => [
                 'costs.manage' => 'Manage order costs',
@@ -70,7 +71,7 @@ class RolePermissionSeeder extends Seeder
         $staff->permissions()->sync(
             Permission::whereIn('key', [
                 'contacts.manage', 'products.manage', 'quotations.manage',
-                'orders.manage', 'lc.manage', 'containers.manage',
+                'orders.manage', 'orders.update-status', 'lc.manage', 'containers.manage',
             ])->pluck('id')
         );
 

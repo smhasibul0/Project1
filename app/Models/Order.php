@@ -16,6 +16,43 @@ class Order extends Model
     protected $guarded = [];
 
     /**
+     * The goods-status pipeline (key => label).
+     *
+     * @return array<string, string>
+     */
+    public static function goodsStatuses(): array
+    {
+        return [
+            'pending' => 'Pending',
+            'sourcing' => 'Sourcing',
+            'at_china_warehouse' => 'At China Warehouse',
+            'shipped' => 'Shipped',
+            'at_port' => 'At Port',
+            'at_bd_warehouse' => 'At BD Warehouse',
+            'delivered' => 'Delivered',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+        ];
+    }
+
+    public function statusLabel(): string
+    {
+        return static::goodsStatuses()[$this->goods_status] ?? ucfirst(str_replace('_', ' ', (string) $this->goods_status));
+    }
+
+    /**
+     * Record a status change on the tracking timeline.
+     */
+    public function logStatus(string $status, ?string $note = null, ?int $userId = null): void
+    {
+        $this->tracking()->create([
+            'status' => $status,
+            'note' => $note,
+            'changed_by' => $userId,
+        ]);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -77,6 +114,11 @@ class Order extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(OrderExpense::class);
+    }
+
+    public function tracking(): HasMany
+    {
+        return $this->hasMany(OrderTracking::class)->latest('id');
     }
 
     public function addedBy(): BelongsTo

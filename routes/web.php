@@ -17,11 +17,15 @@ use App\Http\Controllers\Backend\UnitController;
 use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TrackController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Public order tracking (no login required)
+Route::get('/track', [TrackController::class, 'index'])->name('order.track');
 
 Route::get('/dashboard', function () {
     return view('admin.index');
@@ -144,16 +148,21 @@ Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function ()
     Route::delete('/packing-types/{id}', [PackingTypeController::class, 'destroy'])->name('packing.type.delete');
 });
 
-// Orders + tracking
+// Orders — full management (create/edit/delete)
 Route::middleware(['auth', 'admin', 'can:orders.manage'])->group(function () {
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [OrderController::class, 'store'])->name('order.store');
     Route::post('/orders/from-quotation/{id}', [OrderController::class, 'fromQuotation'])->name('order.from.quotation');
-    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/orders/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');
     Route::put('/orders/{id}', [OrderController::class, 'update'])->name('order.update');
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('order.delete');
+});
+
+// Orders — view & status updates (managers + warehouse/port staff)
+Route::middleware(['auth', 'admin', 'can:orders.view'])->group(function () {
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
+    Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('order.status');
 });
 
 // Access Control: users & roles (admin-managed)

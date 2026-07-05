@@ -164,7 +164,7 @@
                 @endcan
 
                 <!-- Orders -->
-                @can('orders.manage')
+                @can('orders.view')
                 <li>
                     <a href="#sidebarOrders" data-bs-toggle="collapse">
                         <i data-feather="clipboard"></i>
@@ -176,9 +176,11 @@
                             <li>
                                 <a href="{{ route('orders.index') }}" class="tp-link">List Orders</a>
                             </li>
+                            @can('orders.manage')
                             <li>
                                 <a href="{{ route('orders.create') }}" class="tp-link">Add Order</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
