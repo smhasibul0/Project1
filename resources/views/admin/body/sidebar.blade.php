@@ -186,6 +186,27 @@
                 </li>
                 @endcan
 
+                <!-- LC -->
+                @can('lc.manage')
+                <li>
+                    <a href="#sidebarLc" data-bs-toggle="collapse">
+                        <i data-feather="file-text"></i>
+                        <span> LC </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarLc">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('lc.index') }}" class="tp-link">List LC</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('lc.create') }}" class="tp-link">Add LC</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
 
                 <!-- Purchases -->
                 <li>

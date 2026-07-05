@@ -126,6 +126,11 @@ class Order extends Model
         return $this->hasMany(OrderPayment::class);
     }
 
+    public function lcs(): HasMany
+    {
+        return $this->hasMany(Lc::class)->latest('id');
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');

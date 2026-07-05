@@ -97,7 +97,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'payments.paymentAccount', 'tracking.changedBy'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'expenses', 'payments.paymentAccount', 'tracking.changedBy', 'lcs'])
             ->findOrFail($id);
 
         return view('admin.backend.orders.show', compact('order'));

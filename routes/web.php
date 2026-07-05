@@ -7,6 +7,7 @@ use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\CustomerGroupController;
+use App\Http\Controllers\Backend\LcController;
 use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
@@ -166,6 +167,18 @@ Route::middleware(['auth', 'admin', 'can:orders.view'])->group(function () {
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('order.invoice');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('order.status');
+});
+
+// LC — Letters of Credit (created from a supplier's purchase invoice against an order)
+Route::middleware(['auth', 'admin', 'can:lc.manage'])->group(function () {
+    Route::get('/lcs', [LcController::class, 'index'])->name('lc.index');
+    Route::get('/lcs/create', [LcController::class, 'create'])->name('lc.create');
+    Route::post('/lcs', [LcController::class, 'store'])->name('lc.store');
+    Route::get('/lcs/{id}', [LcController::class, 'show'])->name('lc.show');
+    Route::post('/lcs/{id}/status', [LcController::class, 'updateStatus'])->name('lc.status');
+    Route::get('/lcs/{id}/edit', [LcController::class, 'edit'])->name('lc.edit');
+    Route::put('/lcs/{id}', [LcController::class, 'update'])->name('lc.update');
+    Route::delete('/lcs/{id}', [LcController::class, 'destroy'])->name('lc.delete');
 });
 
 // Company / invoice settings (admin)
