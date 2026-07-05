@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Models\CostCategory;
 use App\Models\Lc;
+use App\Models\LcCost;
 use App\Models\Order;
+use App\Models\PaymentAccount;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LcController extends Controller
 {
@@ -33,16 +38,22 @@ class LcController extends Controller
         $data['pi_document'] = $this->uploadDocument($request);
         $data['added_by'] = Auth::id();
 
-        Lc::create($data);
+        $lc = Lc::create($data);
+        $lc->order->recomputeFinancials();
 
         return redirect()->route('lc.index')->with('success', 'LC created successfully.');
     }
 
     public function show($id)
     {
-        $lc = Lc::with(['order.customer', 'supplier', 'addedBy'])->findOrFail($id);
+        $lc = Lc::with(['order.customer', 'supplier', 'addedBy', 'costs.category', 'costs.paymentAccount'])->findOrFail($id);
 
-        return view('admin.backend.lc.show', ['lc' => $lc, 'statuses' => Lc::statuses()]);
+        return view('admin.backend.lc.show', [
+            'lc' => $lc,
+            'statuses' => Lc::statuses(),
+            'costCategories' => CostCategory::where('is_active', true)->orderBy('name')->get(),
+            'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 
     public function edit($id)
@@ -64,13 +75,17 @@ class LcController extends Controller
         }
 
         $lc->update($data);
+        $lc->order->recomputeFinancials();
 
         return redirect()->route('lc.index')->with('success', 'LC updated successfully.');
     }
 
     public function destroy($id)
     {
-        Lc::findOrFail($id)->delete();
+        $lc = Lc::findOrFail($id);
+        $order = $lc->order;
+        $lc->delete();
+        $order?->recomputeFinancials();
 
         return redirect()->back()->with('success', 'LC deleted successfully.');
     }
@@ -99,6 +114,100 @@ class LcController extends Controller
         $lc->update($updates);
 
         return redirect()->back()->with('success', 'LC status updated to '.$lc->statusLabel().'.');
+    }
+
+    /**
+     * Record an LC charge line (the "Add LC Charge" action). When a payment account is
+     * chosen, it is paid out of that account: decrement its balance + write a debit
+     * Transaction into the ledger. LC charges feed the linked order's cost/profit.
+     */
+    public function storeCost(Request $request, $id)
+    {
+        $lc = Lc::findOrFail($id);
+
+        $data = $request->validate([
+            'cost_category_id' => 'nullable|exists:cost_categories,id',
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.01',
+            'cost_date' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
+        ]);
+
+        DB::transaction(function () use ($lc, $data, $request) {
+            $attachment = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $attachment = hexdec(uniqid()).'.'.$file->getClientOriginalExtension();
+                $dir = public_path('upload/lc');
+                if (! is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                $file->move($dir, $attachment);
+            }
+
+            $cost = $lc->costs()->create([
+                'cost_category_id' => $data['cost_category_id'] ?? null,
+                'title' => $data['title'],
+                'amount' => $data['amount'],
+                'cost_date' => $data['cost_date'] ?? now()->toDateString(),
+                'note' => $data['note'] ?? null,
+                'payment_account_id' => $data['payment_account_id'] ?? null,
+                'attachment' => $attachment,
+                'added_by' => Auth::id(),
+            ]);
+
+            if (! empty($data['payment_account_id'])) {
+                $account = PaymentAccount::findOrFail($data['payment_account_id']);
+                $account->decrement('balance', (float) $data['amount']);
+                $account->transactions()->create([
+                    'type' => 'debit',
+                    'source' => 'lc_cost',
+                    'amount' => $data['amount'],
+                    'credit' => 0,
+                    'debit' => $data['amount'],
+                    'running_balance' => $account->fresh()->balance,
+                    'description' => $data['title'].' for LC '.$lc->lc_code,
+                    'reference' => $lc->lc_number ?: $lc->lc_code,
+                    'note' => $data['note'] ?? null,
+                    'transactionable_type' => LcCost::class,
+                    'transactionable_id' => $cost->id,
+                    'added_by' => Auth::id(),
+                    'created_at' => $cost->cost_date,
+                ]);
+            }
+
+            $lc->order->recomputeFinancials();
+        });
+
+        return redirect()->back()->with('success', 'LC charge of '.number_format((float) $data['amount'], 2).' recorded.');
+    }
+
+    /**
+     * Delete an LC charge, reversing its ledger entry when it was paid from an account.
+     */
+    public function destroyCost($id, $costId)
+    {
+        $lc = Lc::findOrFail($id);
+        $cost = $lc->costs()->findOrFail($costId);
+
+        DB::transaction(function () use ($lc, $cost) {
+            if ($cost->payment_account_id) {
+                $account = PaymentAccount::find($cost->payment_account_id);
+                if ($account) {
+                    $account->increment('balance', (float) $cost->amount);
+                }
+                Transaction::where('transactionable_type', LcCost::class)
+                    ->where('transactionable_id', $cost->id)
+                    ->delete();
+            }
+
+            $cost->delete();
+            $lc->order->recomputeFinancials();
+        });
+
+        return redirect()->back()->with('success', 'LC charge deleted.');
     }
 
     /**

@@ -120,6 +120,37 @@ test('an LC can be deleted', function () {
     expect(Lc::count())->toBe(0);
 });
 
+test('LC bank charges and charge lines feed the linked order cost and profit', function () {
+    // Order with revenue 500, supplier cost 300.
+    $this->order->items()->create([
+        'item_description' => 'Toys', 'quantity' => 5,
+        'our_asking_price' => 100, 'supplier_asking_price' => 60, 'line_total' => 500,
+    ]);
+
+    // LC with 300 bank charges (invoice 12000, received 11700).
+    $this->actingAs($this->user)->post(route('lc.store'), [
+        'order_id' => $this->order->id,
+        'invoice_amount' => 12000,
+        'net_amount_received' => 11700,
+    ]);
+    $lc = Lc::firstOrFail();
+
+    $this->order->refresh();
+    expect($this->order->lc_cost)->toEqual('300.00');
+    // profit 500 - 300 supplier - 0 order costs - 300 lc = -100
+    expect($this->order->profit)->toEqual('-100.00');
+
+    // Add an LC charge line of 200.
+    $this->actingAs($this->user)->post(route('lc.cost.store', $lc->id), [
+        'title' => 'LC opening charge',
+        'amount' => 200,
+    ])->assertSessionHas('success');
+
+    $this->order->refresh();
+    expect($this->order->lc_cost)->toEqual('500.00'); // 300 bank + 200 charge
+    expect($this->order->profit)->toEqual('-300.00');
+});
+
 test('the LC list and create pages load', function () {
     $this->actingAs($this->user)->get(route('lc.index'))->assertOk();
     $this->actingAs($this->user)->get(route('lc.create'))->assertOk()->assertSee('Add LC');

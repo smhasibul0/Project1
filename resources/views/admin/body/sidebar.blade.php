@@ -207,6 +207,27 @@
                 </li>
                 @endcan
 
+                <!-- Containers -->
+                @can('containers.manage')
+                <li>
+                    <a href="#sidebarContainers" data-bs-toggle="collapse">
+                        <i data-feather="truck"></i>
+                        <span> Containers </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarContainers">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('container.index') }}" class="tp-link">List Containers</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('container.create') }}" class="tp-link">Add Container</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
                 <!-- Order Costs -->
                 @can('costs.manage')
                 <li>

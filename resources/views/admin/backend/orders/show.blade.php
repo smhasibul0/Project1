@@ -179,6 +179,10 @@
                             <tr><th>Total Amount</th><td class="text-end fw-semibold">৳ {{ number_format($order->total_amount, 2) }}</td></tr>
                             <tr><th>Received ({{ ucfirst($order->payment_status) }})</th><td class="text-end">৳ {{ number_format($order->received_amount, 2) }}</td></tr>
                             <tr><th>Due</th><td class="text-end">৳ {{ number_format($order->due_amount, 2) }}</td></tr>
+                            <tr><td colspan="2" class="text-muted small pt-2">Cost breakdown</td></tr>
+                            <tr><th class="fw-normal ps-3">Order Costs</th><td class="text-end">৳ {{ number_format($order->total_expense, 2) }}</td></tr>
+                            <tr><th class="fw-normal ps-3">LC Cost</th><td class="text-end">৳ {{ number_format($order->lc_cost, 2) }}</td></tr>
+                            <tr><th class="fw-normal ps-3">Allocated Container Cost</th><td class="text-end">৳ {{ number_format($order->container_cost, 2) }}</td></tr>
                             <tr class="table-light"><th>Profit</th><td class="text-end fw-semibold">৳ {{ number_format($order->profit, 2) }}</td></tr>
                         </table>
                     </div>
@@ -217,6 +221,34 @@
                 </table>
             </div>
         </div>
+
+        {{-- Containers --}}
+        @if($order->containers->isNotEmpty())
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">Containers ({{ $order->containers->count() }})</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr><th>Code</th><th>Shipment No</th><th>Container No</th><th class="text-end">CTN</th><th class="text-end">Weight</th><th class="text-end">CBM</th><th>Status</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($order->containers as $ct)
+                        <tr>
+                            <td>{{ $ct->container_code }}</td>
+                            <td>{{ $ct->shipment_no ?: '—' }}</td>
+                            <td>{{ $ct->container_number ?: '—' }}</td>
+                            <td class="text-end">{{ rtrim(rtrim(number_format($ct->pivot->ctn, 2), '0'), '.') }}</td>
+                            <td class="text-end">{{ rtrim(rtrim(number_format($ct->pivot->weight, 2), '0'), '.') }}</td>
+                            <td class="text-end">{{ rtrim(rtrim(number_format($ct->pivot->cbm, 4), '0'), '.') }}</td>
+                            <td><span class="badge bg-secondary">{{ $ct->statusLabel() }}</span></td>
+                            <td class="text-end">@can('containers.manage')<a href="{{ route('container.show', $ct->id) }}" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a>@endcan</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
 
         {{-- Letters of Credit --}}
         @can('lc.manage')

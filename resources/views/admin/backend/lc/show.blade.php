@@ -93,6 +93,110 @@
                 </div>
             </div>
         </div>
+
+        {{-- LC charges (feed the order's cost/profit) --}}
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0">LC Charges ({{ $lc->costs->count() }}) <small class="text-muted">— added to the order's cost alongside bank charges</small></h6>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addLcCostModal"><i class="ri-add-line me-1"></i> Add Charge</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                            <tr><th>Category</th><th>Title</th><th>Date</th><th>Account</th><th>Doc</th><th class="text-end">Amount</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5">Bank Charges (auto)</td><td class="text-end">{{ number_format($lc->bank_charges, 2) }}</td><td></td></tr>
+                            @foreach($lc->costs as $c)
+                            <tr>
+                                <td>{{ $c->category->name ?? '—' }}</td>
+                                <td>{{ $c->title }}</td>
+                                <td>{{ $c->cost_date?->format('d M Y') ?: '—' }}</td>
+                                <td>{{ $c->paymentAccount->name ?? '—' }}</td>
+                                <td>@if($c->attachment)<a href="{{ asset('upload/lc/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
+                                <td class="text-end">{{ number_format($c->amount, 2) }}</td>
+                                <td class="text-end">
+                                    <form action="{{ route('lc.cost.delete', [$lc->id, $c->id]) }}" method="POST" class="m-0">
+                                        @csrf @method('DELETE')
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 confirm-remove"><i class="ri-delete-bin-line"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-semibold"><td colspan="5">Total LC Cost to Order</td><td class="text-end">{{ number_format($lc->lcCost(), 2) }}</td><td></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+{{-- ===================== Add LC Charge modal ===================== --}}
+<div class="modal fade" id="addLcCostModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('lc.cost.store', $lc->id) }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Add LC Charge</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Category</label>
+                        <select class="form-control" name="cost_category_id">
+                            <option value="">-- Uncategorized --</option>
+                            @foreach($costCategories as $cat)<option value="{{ $cat->id }}">{{ $cat->name }}</option>@endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="title" required placeholder="e.g. LC opening charge, Amendment fee">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Amount <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cost Date</label>
+                        <input type="date" class="form-control" name="cost_date" value="{{ now()->toDateString() }}">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Pay from Account <small class="text-muted">(debits the account ledger)</small></label>
+                        <select class="form-control" name="payment_account_id">
+                            <option value="">-- None (no ledger entry) --</option>
+                            @foreach($accounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }} (Balance: {{ number_format($acc->balance, 2) }})</option>@endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Attach Document</label>
+                        <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Note</label>
+                        <input type="text" class="form-control" name="note">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save Charge</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.confirm-remove').forEach(btn => btn.addEventListener('click', function () {
+        const form = btn.closest('form');
+        Swal.fire({ title: 'Delete this charge?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
+            .then(r => { if (r.isConfirmed) form.submit(); });
+    }));
+});
+</script>
 @endsection

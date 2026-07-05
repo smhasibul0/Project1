@@ -99,7 +99,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs', 'containers'])
             ->findOrFail($id);
         $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
@@ -431,44 +431,12 @@ class OrderController extends Controller
     }
 
     /**
-     * Recompute all financial rollups + delivery days from the saved items/expenses.
+     * Recompute all financial rollups. Delegates to the Order model, which is the single
+     * source of the profit formula (also used by the LC and Container controllers).
      */
     private function recompute(Order $order): void
     {
-        $order->load('items', 'costs', 'payments');
-
-        $subtotal = round((float) $order->items->sum('line_total'), 2);
-        $supplierCost = round((float) $order->items->sum(fn ($i) => (float) $i->supplier_asking_price * (float) $i->quantity), 2);
-        $totalExpense = round((float) $order->costs->sum('amount'), 2);
-
-        $discount = $order->discount_type === 'percentage'
-            ? round($subtotal * (float) $order->discount_value / 100, 2)
-            : round((float) $order->discount_value, 2);
-
-        $totalAmount = round($subtotal - $discount, 2);
-
-        // Received rolls up from the individual payments.
-        $received = round((float) $order->payments->sum('amount'), 2);
-        $due = round($totalAmount - $received, 2);
-        $lastPaymentDate = $order->payments->max('payment_date');
-
-        $paymentStatus = $received <= 0 ? 'due' : ($received >= $totalAmount ? 'paid' : 'partial');
-
-        $days = ($order->goods_handover_date && $order->delivered_date)
-            ? Carbon::parse($order->goods_handover_date)->diffInDays(Carbon::parse($order->delivered_date))
-            : null;
-
-        $order->update([
-            'subtotal' => $subtotal,
-            'total_amount' => $totalAmount,
-            'total_expense' => $totalExpense,
-            'received_amount' => $received,
-            'amount_received_date' => $lastPaymentDate,
-            'due_amount' => $due,
-            'payment_status' => $paymentStatus,
-            'profit' => round($totalAmount - $supplierCost - $totalExpense, 2),
-            'total_delivery_days' => $days,
-        ]);
+        $order->recomputeFinancials();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\BrandController;
 use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
+use App\Http\Controllers\Backend\ContainerController;
 use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\LcController;
@@ -192,6 +193,38 @@ Route::middleware(['auth', 'admin', 'can:lc.manage'])->group(function () {
     Route::get('/lcs/{id}/edit', [LcController::class, 'edit'])->name('lc.edit');
     Route::put('/lcs/{id}', [LcController::class, 'update'])->name('lc.update');
     Route::delete('/lcs/{id}', [LcController::class, 'destroy'])->name('lc.delete');
+
+    // LC charge lines (bank/LC fees that feed the order's cost)
+    Route::post('/lcs/{id}/cost', [LcController::class, 'storeCost'])->name('lc.cost.store');
+    Route::delete('/lcs/{id}/cost/{costId}', [LcController::class, 'destroyCost'])->name('lc.cost.delete');
+});
+
+// Containers & Shipments (group orders into a container; shared costs distributed to orders)
+Route::middleware(['auth', 'admin', 'can:containers.manage'])->group(function () {
+    Route::get('/containers', [ContainerController::class, 'index'])->name('container.index');
+    Route::get('/containers/create', [ContainerController::class, 'create'])->name('container.create');
+    Route::post('/containers', [ContainerController::class, 'store'])->name('container.store');
+    Route::get('/containers/{id}', [ContainerController::class, 'show'])->name('container.show');
+    Route::get('/containers/{id}/edit', [ContainerController::class, 'edit'])->name('container.edit');
+    Route::put('/containers/{id}', [ContainerController::class, 'update'])->name('container.update');
+    Route::delete('/containers/{id}', [ContainerController::class, 'destroy'])->name('container.delete');
+    Route::post('/containers/{id}/status', [ContainerController::class, 'updateStatus'])->name('container.status');
+
+    // Assigned orders
+    Route::post('/containers/{id}/order', [ContainerController::class, 'storeOrder'])->name('container.order.store');
+    Route::delete('/containers/{id}/order/{orderId}', [ContainerController::class, 'destroyOrder'])->name('container.order.delete');
+
+    // Container costs (distributed to member orders)
+    Route::post('/containers/{id}/cost', [ContainerController::class, 'storeCost'])->name('container.cost.store');
+    Route::delete('/containers/{id}/cost/{costId}', [ContainerController::class, 'destroyCost'])->name('container.cost.delete');
+
+    // Documents (B/L, packing list, invoice, ...)
+    Route::post('/containers/{id}/document', [ContainerController::class, 'storeDocument'])->name('container.document.store');
+    Route::delete('/containers/{id}/document/{docId}', [ContainerController::class, 'destroyDocument'])->name('container.document.delete');
+
+    // Generated printable lists
+    Route::get('/containers/{id}/packing-list', [ContainerController::class, 'packingList'])->name('container.packing.list');
+    Route::get('/containers/{id}/loading-list', [ContainerController::class, 'loadingList'])->name('container.loading.list');
 });
 
 // Company / invoice settings (admin)

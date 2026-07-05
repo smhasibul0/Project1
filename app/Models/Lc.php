@@ -6,6 +6,7 @@ use Database\Factories\LcFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lc extends Model
 {
@@ -74,8 +75,22 @@ class Lc extends Model
         return $this->belongsTo(Contact::class, 'supplier_id');
     }
 
+    public function costs(): HasMany
+    {
+        return $this->hasMany(LcCost::class)->latest('id');
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');
+    }
+
+    /**
+     * The LC's total cost to the order: bank charges plus any booked LC charge lines.
+     * (The goods value is not counted here — it already lives in the order items.)
+     */
+    public function lcCost(): float
+    {
+        return round((float) $this->bank_charges + (float) $this->costs->sum('amount'), 2);
     }
 }
