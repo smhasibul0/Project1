@@ -17,7 +17,7 @@ class PaymentAccountController extends Controller
 {
     public function index()
     {
-        $accounts = PaymentAccount::with(['accountType', 'addedBy'])->where('is_active', 1)->paginate(100);
+        $accounts = PaymentAccount::with(['accountType', 'addedBy'])->latest()->get();
         $accountTypes = AccountType::all();
 
         return view('admin.backend.payment_accounts.payment_accounts', compact('accounts', 'accountTypes'));
@@ -45,14 +45,6 @@ class PaymentAccountController extends Controller
         return redirect()->route('payment.accounts')->with('success', 'Account created successfully.');
     }
 
-    public function edit($id)
-    {
-        $account = PaymentAccount::findOrFail($id);
-        $accountTypes = AccountType::all();
-
-        return view('admin.backend.payment_accounts.edit_account', compact('account', 'accountTypes'));
-    }
-
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -74,11 +66,12 @@ class PaymentAccountController extends Controller
         return redirect()->route('payment.accounts')->with('success', 'Account updated successfully.');
     }
 
-    public function close($id)
+    public function toggleActive($id)
     {
-        PaymentAccount::findOrFail($id)->update(['is_active' => 0]);
+        $account = PaymentAccount::findOrFail($id);
+        $account->update(['is_active' => ! $account->is_active]);
 
-        return back()->with('success', 'Account closed.');
+        return back()->with('success', 'Account '.($account->is_active ? 'activated' : 'deactivated').'.');
     }
 
     public function book(Request $request, $id)

@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\AccountType;
+use Illuminate\Http\Request;
 
 class AccountTypeController extends Controller
 {
-
     // Store Account Type
     public function store(Request $request)
     {
@@ -23,18 +22,6 @@ class AccountTypeController extends Controller
 
         return redirect()->back()->with('success', 'Account Type Added Successfully');
     }
-
-
-
-    // Edit Account Type
-    public function edit($id)
-    {
-        $accountType = AccountType::findOrFail($id);
-
-        return view('admin.backend.accounts.edit_account_type', compact('accountType'));
-    }
-
-
 
     // Update Account Type
     public function update(Request $request, $id)
@@ -53,8 +40,6 @@ class AccountTypeController extends Controller
         return redirect()->route('payment.accounts')->with('success', 'Account Type Updated Successfully');
     }
 
-
-
     // Delete Account Type
     public function destroy($id)
     {
@@ -64,5 +49,4 @@ class AccountTypeController extends Controller
 
         return redirect()->back()->with('success', 'Account Type Deleted Successfully');
     }
-
 }

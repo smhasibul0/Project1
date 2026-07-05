@@ -121,7 +121,8 @@ class OrderController extends Controller
     {
         $order = Order::with(['customer', 'items.unit'])->findOrFail($id);
         $company = CompanySetting::current();
-        $amountWords = NumberToWords::make((float) $order->total_amount, $company->currency === 'BDT' ? 'Taka' : $company->currency);
+        $currency = $company->currency ?: 'BDT';
+        $amountWords = NumberToWords::make((float) $order->total_amount, $currency === 'BDT' ? 'Taka' : $currency);
 
         return view('admin.backend.orders.invoice', compact('order', 'company', 'amountWords'));
     }

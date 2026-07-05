@@ -193,7 +193,7 @@
                                                 @endif
                                                 @if($txn->invoice_no)
                                                     <div><strong>Invoice No.:</strong>
-                                                        <a href="#" class="text-primary">{{ $txn->invoice_no }}</a>
+                                                        <span class="text-primary">{{ $txn->invoice_no }}</span>
                                                     </div>
                                                 @endif
                                                 @if($txn->pay_reference)

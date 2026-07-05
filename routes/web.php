@@ -58,9 +58,8 @@ Route::middleware(['auth', 'admin', 'can:accounts.manage'])->group(function () {
         // Payment Accounts
         Route::get('/payment-accounts', [PaymentAccountController::class, 'index'])->name('payment.accounts');
         Route::post('/payment-accounts', [PaymentAccountController::class, 'store'])->name('payment.account.store');
-        Route::get('/payment-accounts/{id}/edit', [PaymentAccountController::class, 'edit'])->name('payment.account.edit');
         Route::put('/payment-accounts/{id}', [PaymentAccountController::class, 'update'])->name('payment.account.update');
-        Route::patch('/payment-accounts/{id}/close', [PaymentAccountController::class, 'close'])->name('payment.account.close');
+        Route::patch('/payment-accounts/{id}/toggle-active', [PaymentAccountController::class, 'toggleActive'])->name('payment.account.toggle');
         Route::get('/payment-accounts/{id}/book', [PaymentAccountController::class, 'book'])->name('payment.account.book');
         Route::post('/payment-accounts/fund-transfer', [PaymentAccountController::class, 'fundTransfer'])->name('payment.account.fund.transfer');
         Route::post('/payment-accounts/deposit', [PaymentAccountController::class, 'deposit'])->name('payment.account.deposit');
@@ -71,7 +70,6 @@ Route::middleware(['auth', 'admin', 'can:accounts.manage'])->group(function () {
 
         // Account Types
         Route::post('/account-types', [AccountTypeController::class, 'store'])->name('account.type.store');
-        Route::get('/account-types/{id}/edit', [AccountTypeController::class, 'edit'])->name('account.type.edit');
         Route::put('/account-types/{id}', [AccountTypeController::class, 'update'])->name('account.type.update');
         Route::delete('/account-types/{id}', [AccountTypeController::class, 'destroy'])->name('account.type.delete');
     });

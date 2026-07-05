@@ -4,6 +4,13 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<style>
+    /* Compact row-action buttons for the accounts table */
+    .acct-actions { max-width: 220px; }
+    .acct-actions .btn { font-size: .68rem; padding: .12rem .45rem; line-height: 1.35; }
+    .acct-actions .btn i { font-size: .8rem; vertical-align: -1px; }
+</style>
+
 <div class="content">
     <div class="container-xxl">
 
@@ -43,83 +50,43 @@
             <div class="tab-pane fade show active" id="accounts" role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <label class="mb-0 me-1">Status:</label>
-                            <select class="form-select form-select-sm" id="statusFilter" style="width:160px;">
-                                <option value="active" selected>Active</option>
-                                <option value="closed">Closed</option>
-                                <option value="all">All</option>
-                            </select>
-                        </div>
+                        <h5 class="mb-0">Payment Accounts</h5>
                         <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addAccountModal">
                             <i class="ri-add-line me-1"></i> Add
                         </button>
                     </div>
 
-                    <div class="card-body">
-                        {{-- DataTable toolbar --}}
-                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            <label class="mb-0">Show</label>
-                            <select class="form-select form-select-sm" style="width:80px;" id="showEntries">
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100" selected>100</option>
-                            </select>
-                            <label class="mb-0">entries</label>
-
-                            <button class="btn btn-sm btn-outline-secondary ms-2">
-                                <i class="ri-file-text-line me-1"></i>Export CSV
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="ri-file-excel-line me-1"></i>Export Excel
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="ri-printer-line me-1"></i>Print
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="ri-eye-line me-1"></i>Column visibility
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary">
-                                <i class="ri-file-pdf-line me-1"></i>Export PDF
-                            </button>
-
-                            <div class="ms-auto">
-                                <input type="text" class="form-control form-control-sm" placeholder="Search ..." id="tableSearch" style="width:200px;">
-                            </div>
-                        </div>
-
-                        {{-- Table --}}
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover align-middle" id="accountsTable">
-                                <thead class="table-light">
+                    <div class="card-body p-0">
+                        <x-data-table id="accountsTable" export-name="payment-accounts">
+                            <table class="ct-table">
+                                <thead>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Name <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Account Type <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Account Number <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Note <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Balance <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Account details</th>
-                                        <th>Added By <i class="ri-arrow-up-down-line text-muted"></i></th>
-                                        <th>Action</th>
+                                        <th>Name</th>
+                                        <th>Account Type</th>
+                                        <th>Account Number</th>
+                                        <th>Note</th>
+                                        <th class="text-end">Balance</th>
+                                        <th data-filter="Status">Status</th>
+                                        <th>Account Details</th>
+                                        <th>Added By</th>
+                                        <th class="dt-noexport">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($accounts as $index => $account)
+                                    @forelse($accounts as $account)
                                     <tr>
-                                        <td>{{ $index + 1 }}</td>
                                         <td>{{ $account->name }}</td>
                                         <td>{{ $account->accountType->name ?? '-' }}</td>
                                         <td>{{ $account->account_number ?? '-' }}</td>
                                         <td>{{ $account->note ?? '-' }}</td>
-                                        <td>৳ {{ number_format($account->balance, 2) }}</td>
+                                        <td class="text-end">৳ {{ number_format($account->balance, 2) }}</td>
+                                        <td><span class="badge bg-{{ $account->is_active ? 'success' : 'secondary' }}">{{ $account->is_active ? 'Active' : 'Closed' }}</span></td>
                                         <td>{{ $account->account_details ?? '-' }}</td>
                                         <td>{{ $account->addedBy->name ?? '-' }}</td>
                                         <td>
-                                            <div class="d-flex flex-column gap-1">
+                                            <div class="d-flex flex-wrap gap-1 acct-actions">
                                                 <button type="button"
-                                                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 edit-account-btn"
+                                                        class="btn btn-sm btn-outline-primary edit-account-btn"
                                                         data-bs-toggle="modal" data-bs-target="#editAccountModal"
                                                         data-id="{{ $account->id }}"
                                                         data-name="{{ $account->name }}"
@@ -127,53 +94,46 @@
                                                         data-account-number="{{ $account->account_number }}"
                                                         data-account-details="{{ $account->account_details }}"
                                                         data-note="{{ $account->note }}"
-                                                        data-is-active="{{ $account->is_active ? 1 : 0 }}">
+                                                        data-is-active="{{ $account->is_active ? 1 : 0 }}"
+                                                        title="Edit">
                                                     <i class="ri-edit-line"></i> Edit
                                                 </button>
                                                 <a href="{{ route('payment.account.book', $account->id) }}"
-                                                   class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1">
-                                                    <i class="ri-book-line"></i> Account Book
+                                                   class="btn btn-sm btn-outline-warning" title="Account Book">
+                                                    <i class="ri-book-line"></i> Book
                                                 </a>
-                                                <button class="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                                                <button class="btn btn-sm btn-outline-info"
                                                         data-bs-toggle="modal" data-bs-target="#fundTransferModal"
                                                         data-account-id="{{ $account->id }}"
-                                                        data-account-name="{{ $account->name }}">
-                                                    <i class="ri-exchange-line"></i> Fund Transfer
+                                                        data-account-name="{{ $account->name }}" title="Fund Transfer">
+                                                    <i class="ri-exchange-line"></i> Transfer
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                                                <button class="btn btn-sm btn-outline-success"
                                                         data-bs-toggle="modal" data-bs-target="#depositModal"
                                                         data-account-id="{{ $account->id }}"
-                                                        data-account-name="{{ $account->name }}">
+                                                        data-account-name="{{ $account->name }}" title="Deposit">
                                                     <i class="ri-money-dollar-circle-line"></i> Deposit
                                                 </button>
-                                                @if($account->is_active)
-                                                <form action="{{ route('payment.account.close', $account->id) }}" method="POST">
+                                                <form action="{{ route('payment.account.toggle', $account->id) }}" method="POST" class="m-0">
                                                     @csrf @method('PATCH')
-                                                    <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 w-100 close-account-btn">
-                                                        <i class="ri-power-off-line"></i> Close
+                                                    <button type="button"
+                                                            class="btn btn-sm toggle-account-btn {{ $account->is_active ? 'btn-outline-danger' : 'btn-outline-secondary' }}"
+                                                            data-action="{{ $account->is_active ? 'deactivate' : 'activate' }}"
+                                                            title="{{ $account->is_active ? 'Deactivate' : 'Activate' }}">
+                                                        <i class="ri-{{ $account->is_active ? 'forbid-line' : 'check-line' }}"></i> {{ $account->is_active ? 'Deactivate' : 'Activate' }}
                                                     </button>
                                                 </form>
-                                                @endif
                                             </div>
                                         </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="10" class="text-center text-muted py-4">No accounts found.</td>
+                                        <td colspan="9" class="text-center text-muted py-4">No accounts found.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
                             </table>
-                        </div>
-
-                        {{-- Pagination --}}
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <small class="text-muted">
-                                Showing {{ $accounts->firstItem() ?? 0 }} to {{ $accounts->lastItem() ?? 0 }}
-                                of {{ $accounts->total() ?? 0 }} entries
-                            </small>
-                            {{ $accounts->links() }}
-                        </div>
+                        </x-data-table>
                     </div>
                 </div>
             </div>
@@ -690,18 +650,19 @@ $(document).ready(function () {
         unhighlight: function (el) { $(el).removeClass('is-invalid'); },
     });
 
-    // ----- Close Account: SweetAlert2 confirmation -----
-    $(document).on('click', '.close-account-btn', function (e) {
+    // ----- Activate / Deactivate account: SweetAlert2 confirmation -----
+    $(document).on('click', '.toggle-account-btn', function (e) {
         e.preventDefault();
         const form = $(this).closest('form');
+        const action = $(this).data('action') || 'update'; // 'activate' | 'deactivate'
         Swal.fire({
-            title: 'Are you sure ?',
+            title: action.charAt(0).toUpperCase() + action.slice(1) + ' this account?',
             icon: 'warning',
             iconColor: '#f59e0b',
             showCancelButton: true,
-            confirmButtonText: 'OK',
+            confirmButtonText: 'Yes, ' + action,
             cancelButtonText: 'Cancel',
-            confirmButtonColor: '#ef4444',
+            confirmButtonColor: action === 'activate' ? '#16a34a' : '#ef4444',
             cancelButtonColor: '#e5e7eb',
             customClass: {
                 cancelButton: 'text-dark',
@@ -709,14 +670,6 @@ $(document).ready(function () {
             reverseButtons: false,
         }).then(result => {
             if (result.isConfirmed) form.submit();
-        });
-    });
-
-    // ----- Simple client-side search -----
-    $('#tableSearch').on('keyup', function () {
-        const val = $(this).val().toLowerCase();
-        $('#accountsTable tbody tr').filter(function () {
-            $(this).toggle($(this).text().toLowerCase().indexOf(val) > -1);
         });
     });
 

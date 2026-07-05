@@ -16,10 +16,7 @@
             </ul>
 
             <ul class="list-unstyled topnav-menu mb-0 d-flex align-items-center">
-                <li class="d-none d-lg-block">
-                    <button type="button" class="btn btn-outline-dark">POS</button>
-                </li>
-
+                
                 <li class="d-none d-sm-flex">
                     <button type="button" class="btn nav-link" data-toggle="fullscreen">
                         <i data-feather="maximize" class="align-middle fullscreen noti-icon"></i>
@@ -37,7 +34,7 @@
                         <div class="dropdown-item noti-title">
                             <h5 class="m-0">
                                 <span class="float-end">
-                                    <a href="" class="text-dark">
+                                    <a href="javascript:void(0);" class="text-dark">
                                         <small>Clear All</small>
                                     </a>
                                 </span>Notification
@@ -101,7 +98,7 @@
                     <a class="nav-link dropdown-toggle nav-user me-0" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
                         <img src="{{ (!empty(Auth::user()->photo)) ? url('upload/user_images/'.Auth::user()->photo) : url('upload/no_image.jpg') }}" alt="user-image" class="rounded-circle">
                         <span class="pro-user-name ms-1">
-                            Christian <i class="mdi mdi-chevron-down"></i> 
+                            {{ Auth::user()->name ?: Auth::user()->first_name }} <i class="mdi mdi-chevron-down"></i>
                         </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-end profile-dropdown ">

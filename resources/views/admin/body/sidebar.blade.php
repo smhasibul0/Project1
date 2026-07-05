@@ -34,47 +34,6 @@
                     </a>
                 </li>
 
-                <li class="menu-title">Pages</li>
-
-                <li>
-                    <a href="#sidebarAuth" data-bs-toggle="collapse">
-                        <i data-feather="users"></i>
-                        <span> Authentication </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarAuth">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="auth-login.html" class="tp-link">Log In</a>
-                            </li>
-                            <li>
-                                <a href="auth-register.html" class="tp-link">Register</a>
-                            </li>
-                            
-                        </ul>
-                    </div>
-                </li>
-
-                <li>
-                    <a href="#sidebarError" data-bs-toggle="collapse">
-                        <i data-feather="alert-octagon"></i>
-                        <span> Error Pages </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarError">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="error-404.html" class="tp-link">Error 404</a>
-                            </li>
-                            <li>
-                                <a href="error-500.html" class="tp-link">Error 500</a>
-                            </li>
-                            
-                        </ul>
-                    </div>
-                </li>
-
-                
                 <li class="menu-title mt-2">General</li>
 
                 <!-- Contacts -->
@@ -246,84 +205,6 @@
                 </li>
                 @endcan
 
-
-                <!-- Purchases -->
-                <li>
-                    <a href="#sidebarIcons" data-bs-toggle="collapse">
-                        <i data-feather="shopping-bag"></i>
-                        <span> Purchases </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarIcons">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="#" class="tp-link">List Purchases</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Add Purchase</a>
-                            </li>
-                            
-                        </ul>
-                    </div>
-                </li>
-                
-
-                <!-- Sell -->
-                <li>
-                    <a href="#sidebarForms" data-bs-toggle="collapse">
-                        <i data-feather="shopping-cart"></i>
-                        <span> Sell </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarForms">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="#" class="tp-link">All Sales</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Add Sale</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">List POS</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">POS</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">List Sell Return</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Add Sell Return</a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-
-
-                <!-- Expenses -->
-                <li>
-                    <a href="#sidebarTables" data-bs-toggle="collapse">
-                        <i data-feather="dollar-sign"></i>
-                        <span> Expenses </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarTables">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="#" class="tp-link">List Expenses</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Add Expense</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Expense Categories</a>
-                            </li>
-                            
-                        </ul>
-                    </div>
-                </li>
-
-
                 <!-- Payment accounts -->
                 @can('accounts.manage')
                 <li>
@@ -336,15 +217,6 @@
                         <ul class="nav-second-level">
                             <li>
                                 <a href="{{ route('payment.accounts') }}" class="tp-link">List Accounts</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Balance Sheet</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Cash Flow</a>
-                            </li>
-                            <li>
-                                <a href="#" class="tp-link">Payment Account Report</a>
                             </li>
                         </ul>
                     </div>
@@ -388,27 +260,6 @@
                 @endcan
 
 
-                <!-- Reports -->
-                <li>
-                    <a href="#sidebarMaps" data-bs-toggle="collapse">
-                        <i data-feather="clipboard"></i>
-                        <span> Reports </span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse" id="sidebarMaps">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="extended-carousel.html" class="tp-link">Profit Loss Report</a>
-                            </li>
-                            <li>
-                                <a href="extended-notifications.html" class="tp-link">Purchase and Sell Report</a>
-                            </li>
-                            
-                        </ul>
-                    </div>
-                </li>
-
-                
             </ul>
         </div>
         <!-- End Sidebar -->
