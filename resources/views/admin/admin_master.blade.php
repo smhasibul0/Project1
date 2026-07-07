@@ -10,8 +10,15 @@
         <meta name="author" content="Hasibul Hasan"/>
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-        <!-- App favicon -->
-        <link rel="shortcut icon" href="{{ asset('backend/assets/images/favicon.ico') }}">
+        @php
+            $company = \App\Models\CompanySetting::current();
+            $accent = $company->primary_color ?: '#537AEF';
+            $hx = ltrim($accent, '#');
+            $accentRgb = strlen($hx) === 6 ? hexdec(substr($hx, 0, 2)).', '.hexdec(substr($hx, 2, 2)).', '.hexdec(substr($hx, 4, 2)) : '83, 122, 239';
+            $companyLogo = $company->logo && file_exists(public_path('upload/company/'.$company->logo)) ? asset('upload/company/'.$company->logo) : null;
+        @endphp
+        <!-- App favicon (company logo when uploaded) -->
+        <link rel="shortcut icon" href="{{ $companyLogo ?? asset('backend/assets/images/favicon.ico') }}">
 
         <!-- Datatables css -->
         <link href="{{ asset('backend/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css') }}" rel="stylesheet" type="text/css" />
@@ -32,6 +39,23 @@
 
         <!-- Toaster -->
         <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css" >
+
+        {{-- Brand accent: everything (buttons, links, tables, dashboard) follows the
+             Company Settings primary colour, with the theme blue as the fallback. --}}
+        <style>
+            :root { --brand: {{ $accent }}; --brand-rgb: {{ $accentRgb }}; --bs-primary: {{ $accent }}; --bs-primary-rgb: {{ $accentRgb }}; }
+            .btn-primary { --bs-btn-bg: var(--brand); --bs-btn-border-color: var(--brand); --bs-btn-hover-bg: rgba(var(--brand-rgb), .9); --bs-btn-hover-border-color: rgba(var(--brand-rgb), .9); --bs-btn-active-bg: var(--brand); --bs-btn-active-border-color: var(--brand); --bs-btn-disabled-bg: var(--brand); --bs-btn-disabled-border-color: var(--brand); }
+            .btn-outline-primary { --bs-btn-color: var(--brand); --bs-btn-border-color: var(--brand); --bs-btn-hover-bg: var(--brand); --bs-btn-hover-border-color: var(--brand); --bs-btn-active-bg: var(--brand); --bs-btn-active-border-color: var(--brand); }
+            .text-primary { color: var(--brand) !important; }
+            .bg-primary, .badge.bg-primary { background-color: var(--brand) !important; }
+            .link-primary { color: var(--brand) !important; }
+            a.text-primary:hover { color: rgba(var(--brand-rgb), .85) !important; }
+            .form-check-input:checked { background-color: var(--brand); border-color: var(--brand); }
+            .form-switch .form-check-input:checked { background-color: var(--brand); border-color: var(--brand); }
+            .form-control:focus, .form-select:focus { border-color: var(--brand); box-shadow: 0 0 0 .15rem rgba(var(--brand-rgb), .2); }
+            .page-title-box .breadcrumb .breadcrumb-item a, .breadcrumb-item a { color: var(--brand); }
+            #side-menu .menuitem-active > a, #side-menu li a.active, .nav-pills .nav-link.active { color: var(--brand) !important; }
+        </style>
 
     </head>
 

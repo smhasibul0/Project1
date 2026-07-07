@@ -1,3 +1,8 @@
+@php
+    $company = \App\Models\CompanySetting::current();
+    $companyLogo = $company->logo && file_exists(public_path('upload/company/'.$company->logo))
+        ? asset('upload/company/'.$company->logo) : null;
+@endphp
 <div class="app-sidebar-menu">
     <div class="h-100" data-simplebar>
 
@@ -7,18 +12,18 @@
             <div class="logo-box">
                 <a href="{{ route('dashboard') }}" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="{{ asset('backend/assets/images/logo-sm.png') }}" alt="" height="22">
+                        <img src="{{ $companyLogo ?? asset('backend/assets/images/logo-sm.png') }}" alt="" height="22">
                     </span>
                     <span class="logo-lg">
-                        <img src="{{ asset('backend/assets/images/logo-light.png') }}" alt="" height="40">
+                        <img src="{{ $companyLogo ?? asset('backend/assets/images/logo-light.png') }}" alt="" style="max-height:40px; width:auto; max-width:170px;">
                     </span>
                 </a>
                 <a href="{{ route('dashboard') }}" class="logo logo-dark">
                     <span class="logo-sm">
-                        <img src="{{ asset('backend/assets/images/logo-sm.png') }}" alt="" height="22">
+                        <img src="{{ $companyLogo ?? asset('backend/assets/images/logo-sm.png') }}" alt="" height="22">
                     </span>
                     <span class="logo-lg">
-                        <img src="{{ asset('backend/assets/images/logo-dark.png') }}" alt="" height="40">
+                        <img src="{{ $companyLogo ?? asset('backend/assets/images/logo-dark.png') }}" alt="" style="max-height:40px; width:auto; max-width:170px;">
                     </span>
                 </a>
             </div>

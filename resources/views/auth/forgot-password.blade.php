@@ -1,25 +1,27 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+@extends('auth.layout')
+@section('title', 'Reset password')
+@section('auth')
+<h2>Forgot password?</h2>
+<div class="sub">No problem — enter your email and we'll send you a reset link.</div>
+
+@if (session('status'))
+    <div class="auth-status">{{ session('status') }}</div>
+@endif
+
+<form method="POST" action="{{ route('password.email') }}">
+    @csrf
+
+    <div class="mb-3">
+        <label for="email">Email address</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-mail-line"></i></span>
+            <input class="form-control" type="email" name="email" id="email" value="{{ old('email') }}" required autofocus placeholder="you@example.com">
+        </div>
+        @error('email')<span class="field-err">{{ $message }}</span>@enderror
     </div>
 
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <button type="submit" class="btn-accent"><i class="ri-mail-send-line me-1"></i> Send Reset Link</button>
+</form>
 
-    <form method="POST" action="{{ route('password.email') }}">
-        @csrf
-
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Email Password Reset Link') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+<div class="foot"><a href="{{ route('login') }}"><i class="ri-arrow-left-line me-1"></i>Back to sign in</a></div>
+@endsection

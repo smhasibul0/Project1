@@ -1,179 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
+@extends('auth.layout')
+@section('title', 'Create account')
+@section('auth')
+<h2>Create your account</h2>
+<div class="sub">Get started in a minute.</div>
 
-        <meta charset="utf-8" />
-        <title>Register</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="A fully functional Inventory Management and POS System"/>
-        <meta name="author" content="Hasibul Hasan"/>
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<form method="POST" action="{{ route('register') }}">
+    @csrf
 
-        <!-- App favicon -->
-        <link rel="shortcut icon" href="{{ asset('backend/assets/images/favicon.ico') }}">
+    <div class="row g-2 mb-3">
+        <div class="col-4">
+            <label for="prefix">Prefix</label>
+            <input class="form-control rounded" type="text" name="prefix" id="prefix" value="{{ old('prefix') }}" placeholder="Mr.">
+        </div>
+        <div class="col-8">
+            <label for="first_name">First Name</label>
+            <input class="form-control rounded" type="text" name="first_name" id="first_name" value="{{ old('first_name') }}" required placeholder="First name">
+            @error('first_name')<span class="field-err">{{ $message }}</span>@enderror
+        </div>
+    </div>
 
-        <!-- App css -->
-        <link href="{{ asset('backend/assets/css/app.min.css') }}" rel="stylesheet" type="text/css" id="app-style" />
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label for="middle_name">Middle Name</label>
+            <input class="form-control rounded" type="text" name="middle_name" id="middle_name" value="{{ old('middle_name') }}" placeholder="Optional">
+        </div>
+        <div class="col-6">
+            <label for="last_name">Last Name</label>
+            <input class="form-control rounded" type="text" name="last_name" id="last_name" value="{{ old('last_name') }}" placeholder="Last name">
+        </div>
+    </div>
 
-        <!-- Icons -->
-        <link href="{{ asset('backend/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
+    <div class="mb-3">
+        <label for="username">Username</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-at-line"></i></span>
+            <input class="form-control" type="text" name="username" id="username" value="{{ old('username') }}" required placeholder="username">
+        </div>
+        @error('username')<span class="field-err">{{ $message }}</span>@enderror
+    </div>
 
-        <!-- Toaster -->
-        <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css" >
+    <div class="mb-3">
+        <label for="email">Email address</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="ri-mail-line"></i></span>
+            <input class="form-control" type="email" name="email" id="email" value="{{ old('email') }}" required placeholder="you@example.com">
+        </div>
+        @error('email')<span class="field-err">{{ $message }}</span>@enderror
+    </div>
 
-    </head>
-
-    <body class="bg-white">
-        <!-- Begin page -->
-        <div class="account-page">
-            <div class="container-fluid p-0">
-                <div class="row align-items-center g-0">
-                    <div class="col-xl-5">
-                        <div class="row">
-                            <div class="col-md-7 mx-auto">
-                                <div class="mb-0 border-0 p-md-5 p-lg-0 p-4">
-                                    <div class="mb-4 p-0">
-                                        <a href="{{ url('/') }}" class="auth-logo">
-                                            <img src="{{ asset('backend/assets/images/logo-dark.png') }}" alt="logo-dark" class="mx-auto" height="50" />
-                                        </a>
-                                    </div>
-    
-                                    <div class="pt-0">
-                                        <form method="POST" action="{{ route('register') }}" class="my-4">
-                                            @csrf
-
-                                    <!-- Prefix + First Name (same row) -->
-                                    <div class="row mb-3">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label for="prefix" class="form-label">Prefix</label>
-                                                <input class="form-control" type="text" name="prefix" id="prefix" required="" placeholder="Enter your prefix">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-8">
-                                            <div class="form-group">
-                                                <label for="first_name" class="form-label">First Name</label>
-                                                <input class="form-control" type="text" name="first_name" id="first_name" required="" placeholder="Enter your first name">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Middle Name + Last Name (same row) -->
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label for="middle_name" class="form-label">Middle Name</label>
-                                                <input class="form-control" type="text" name="middle_name" id="middle_name" placeholder="Enter your middle name (optional)">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label for="last_name" class="form-label">Last Name</label>
-                                                <input class="form-control" type="text" name="last_name" id="last_name" required="" placeholder="Enter your last name">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                            <!-- Username -->
-                                            <div class="form-group mb-3">
-                                                <label for="username" class="form-label">Username</label>
-                                                <input class="form-control" type="text" name="username" id="username" required="" placeholder="Enter your username">
-                                            </div>
-
-                                            <!-- Email -->
-                                            <div class="form-group mb-3">
-                                                <label for="emailaddress" class="form-label">Email address</label>
-                                                <input class="form-control" type="email" type="email" name="email" id="email" required="" placeholder="Enter your email">
-                                            </div>
-                
-                                            <!-- Password -->
-                                            <div class="form-group mb-3">
-                                                <label for="password" class="form-label">Password</label>
-                                                <input class="form-control" type="password" required="" id="password" name="password" placeholder="Enter your password">
-                                            </div>
-
-                                            <!-- Confirm Password -->
-                                            <div class="form-group mb-3">
-                                                <label for="password_confirmation" class="form-label">Confirm Password</label>
-                                                <input class="form-control" type="password" required="" id="password_confirmation" name="password_confirmation" placeholder="Confirm your password">
-                                            </div>
-                
-                                            <!-- Register Button -->
-                                            <div class="form-group mb-0 row">
-                                                <div class="col-12">
-                                                    <div class="d-grid">
-                                                        <button class="btn btn-primary" type="submit"> Register </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
-    
-                                        <!-- Already have an account? Login -->
-                                        <div class="text-center text-muted mb-4">
-                                            <p class="mb-0">Already have an account ?<a class='text-primary ms-2 fw-medium' href="{{ route('login') }}">Log in</a></p>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-    
-                    <div class="col-xl-7">
-                        <div class="account-page-bg p-md-5 p-4">
-                            <!-- Side Text -->
-                            <div class="text-center">
-                                <h3 class="text-dark mb-3 pera-title">Hello There! Sign up to get started</h3>
-                                <!-- Side Image -->
-                                <div class="auth-image">
-                                    <img src="{{ asset('backend/assets/images/authentication.svg') }}" class="mx-auto img-fluid"  alt="images">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label for="password">Password</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="ri-lock-2-line"></i></span>
+                <input class="form-control" type="password" name="password" id="password" required placeholder="••••••••">
+            </div>
+            @error('password')<span class="field-err">{{ $message }}</span>@enderror
+        </div>
+        <div class="col-6">
+            <label for="password_confirmation">Confirm</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="ri-lock-2-line"></i></span>
+                <input class="form-control" type="password" name="password_confirmation" id="password_confirmation" required placeholder="••••••••">
             </div>
         </div>
-        
-        <!-- END wrapper -->
+    </div>
 
-        <!-- Vendor -->
-        <script src="{{ asset('backend/assets/libs/jquery/jquery.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/simplebar/simplebar.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/node-waves/waves.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/waypoints/lib/jquery.waypoints.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/jquery.counterup/jquery.counterup.min.js') }}"></script>
-        <script src="{{ asset('backend/assets/libs/feather-icons/feather.min.js') }}"></script>
+    <button type="submit" class="btn-accent"><i class="ri-user-add-line me-1"></i> Create Account</button>
+</form>
 
-        <!-- App js-->
-        <script src="{{ asset('backend/assets/js/app.js') }}"></script>
-
-        <!-- Toaster JS -->
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-
-        <script>
-        @if(Session::has('message'))
-        var type = "{{ Session::get('alert-type','info') }}"
-        switch(type){
-            case 'info':
-            toastr.info(" {{ Session::get('message') }} ");
-            break;
-
-            case 'success':
-            toastr.success(" {{ Session::get('message') }} ");
-            break;
-
-            case 'warning':
-            toastr.warning(" {{ Session::get('message') }} ");
-            break;
-
-            case 'error':
-            toastr.error(" {{ Session::get('message') }} ");
-            break; 
-        }
-        @endif 
-        </script>
-        
-    </body>
-</html>
+<div class="foot">Already have an account? <a href="{{ route('login') }}">Log in</a></div>
+@endsection

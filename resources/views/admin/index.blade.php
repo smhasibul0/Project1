@@ -17,7 +17,7 @@
 @endphp
 
 <style>
-    .dash { --accent:#537AEF; --accent-soft:#e8eeff; --accent-ink:#3a54c4; }
+    .dash { --accent: var(--brand, #537AEF); --accent-soft: rgba(var(--brand-rgb, 83, 122, 239), .12); --accent-ink: var(--brand, #3a54c4); }
     .dash .card, .dash .dash-card { border:1px solid #eceff4; border-radius:16px; box-shadow:0 1px 3px rgba(16,24,40,.04); background:#fff; }
     .dash .kpi { padding:1.15rem 1.25rem; }
     .dash .kpi .top { display:flex; align-items:flex-start; justify-content:space-between; }
@@ -188,13 +188,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof ApexCharts === 'undefined') { return; }
+    const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#537AEF';
     const trend = @json($trend);
     new ApexCharts(document.querySelector('#revTrend'), {
         chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit', parentHeightOffset: 0 },
         series: [{ name: 'Revenue', data: trend.revenue }],
         xaxis: { categories: trend.labels, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8' } } },
         yaxis: { labels: { style: { colors: '#94a3b8' }, formatter: v => '৳' + Math.round(v).toLocaleString() } },
-        colors: ['#537AEF'],
+        colors: [brand],
         stroke: { curve: 'smooth', width: 3 },
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .28, opacityTo: .02, stops: [0, 100] } },
         dataLabels: { enabled: false },

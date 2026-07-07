@@ -77,13 +77,14 @@
                     <div class="card">
                         <div class="card-header"><h6 class="mb-0">Logo</h6></div>
                         <div class="card-body text-center">
-                            @if($setting->logo && file_exists(public_path('upload/company/'.$setting->logo)))
-                                <img src="{{ asset('upload/company/'.$setting->logo) }}" alt="logo" class="img-fluid mb-3" style="max-height:120px;">
-                            @else
-                                <div class="text-muted mb-3">No logo uploaded</div>
-                            @endif
-                            <input type="file" class="form-control" name="logo" accept="image/*">
-                            <small class="text-muted d-block mt-2">JPG/PNG/WebP, up to 2 MB</small>
+                            @php $hasLogo = $setting->logo && file_exists(public_path('upload/company/'.$setting->logo)); @endphp
+                            <div class="border rounded p-3 mb-2 d-flex align-items-center justify-content-center" style="min-height:130px; background:#fafbfe;">
+                                <img id="logoPreview" src="{{ $hasLogo ? asset('upload/company/'.$setting->logo) : '' }}" alt="logo" class="img-fluid" style="max-height:110px; {{ $hasLogo ? '' : 'display:none;' }}">
+                                <div id="logoPlaceholder" class="text-muted" style="{{ $hasLogo ? 'display:none;' : '' }}"><i class="ri-image-line d-block fs-3 mb-1"></i>No logo uploaded</div>
+                            </div>
+                            <small id="logoPreviewNote" class="text-primary d-block mb-2" style="display:none;"><i class="ri-eye-line me-1"></i>Preview — click Save Settings to apply</small>
+                            <input type="file" class="form-control" id="logoInput" name="logo" accept="image/*">
+                            <small class="text-muted d-block mt-2">JPG/PNG/WebP, up to 2 MB · used across the whole site</small>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Save Settings</button>
@@ -92,4 +93,26 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('logoInput');
+    const preview = document.getElementById('logoPreview');
+    const placeholder = document.getElementById('logoPlaceholder');
+    const note = document.getElementById('logoPreviewNote');
+    if (!input) { return; }
+    input.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        if (!file) { return; }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            preview.src = e.target.result;
+            preview.style.display = '';
+            if (placeholder) { placeholder.style.display = 'none'; }
+            if (note) { note.style.display = ''; }
+        };
+        reader.readAsDataURL(file);
+    });
+});
+</script>
 @endsection
