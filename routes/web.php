@@ -9,6 +9,7 @@ use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\ContainerController;
 use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
+use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\LcController;
 use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
@@ -33,9 +34,8 @@ Route::get('/', function () {
 // Public order tracking (no login required)
 Route::get('/track', [TrackController::class, 'index'])->name('order.track');
 
-Route::get('/dashboard', function () {
-    return view('admin.index');
-})->middleware(['auth', 'admin', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'admin', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

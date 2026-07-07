@@ -1,394 +1,206 @@
 @extends('admin.admin_master')
 @section('admin')
 
-<div class="content">
+@php
+    $statusColors = [
+        'pending' => '#94a3b8', 'sourcing' => '#f59e0b', 'at_china_warehouse' => '#6366f1',
+        'shipped' => '#0ea5e9', 'at_port' => '#8b5cf6', 'at_bd_warehouse' => '#0891b2',
+        'delivered' => '#537AEF', 'completed' => '#7c5cf0', 'cancelled' => '#ef4444',
+    ];
+    $payPill = ['paid' => 'accent', 'partial' => 'warning', 'due' => 'muted'];
+    $maxPipe = max(1, collect($pipeline)->max('count') ?? 1);
+    $statusKeys = collect(\App\Models\Order::goodsStatuses());
+    $delta = function ($pct) {
+        $up = $pct >= 0;
+        return '<span class="dl '.($up ? 'dl-up' : 'dl-down').'">'.($up ? '+' : '').$pct.'% <i class="ri-arrow-right-'.($up ? 'up' : 'down').'-line"></i></span>';
+    };
+@endphp
 
-    <!-- Start Content-->
+<style>
+    .dash { --accent:#537AEF; --accent-soft:#e8eeff; --accent-ink:#3a54c4; }
+    .dash .card, .dash .dash-card { border:1px solid #eceff4; border-radius:16px; box-shadow:0 1px 3px rgba(16,24,40,.04); background:#fff; }
+    .dash .kpi { padding:1.15rem 1.25rem; }
+    .dash .kpi .top { display:flex; align-items:flex-start; justify-content:space-between; }
+    .dash .kpi .lbl { color:#64748b; font-weight:600; font-size:.82rem; }
+    .dash .kpi .val { font-size:1.9rem; font-weight:800; letter-spacing:-.02em; margin:.35rem 0 .5rem; line-height:1; }
+    .dash .kpi .ic { width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-size:1.2rem; }
+    .dash .kpi .sub { color:#94a3b8; font-size:.78rem; }
+    .dl { font-weight:700; font-size:.74rem; padding:.12rem .45rem; border-radius:999px; white-space:nowrap; }
+    .dl-up { background:var(--accent-soft); color:var(--accent-ink); }
+    .dl-down { background:#fee2e2; color:#b91c1c; }
+    .ic-amber { background:#fff7ed; color:#ea580c; } .ic-blue { background:#e0f2fe; color:#0284c7; }
+    .ic-indigo { background:#eef2ff; color:#4f46e5; } .ic-red { background:#fee2e2; color:#dc2626; }
+    .ic-accent { background:var(--accent-soft); color:var(--accent); } .ic-violet { background:#f2edff; color:#7c5cf0; }
+    .dash .hd { padding:1.05rem 1.25rem .25rem; display:flex; align-items:center; justify-content:space-between; }
+    .dash .hd h5 { font-size:1rem; font-weight:700; margin:0; }
+    .dash .hd .mut { color:#94a3b8; font-size:.8rem; }
+    .dash .dtable { width:100%; font-size:.84rem; }
+    .dash .dtable th { text-transform:uppercase; font-size:.68rem; letter-spacing:.04em; color:#94a3b8; font-weight:700; padding:.7rem 1.25rem; border-bottom:1px solid #eef1f6; text-align:left; }
+    .dash .dtable td { padding:.75rem 1.25rem; border-bottom:1px solid #f2f4f8; vertical-align:middle; }
+    .dash .dtable tr:last-child td { border-bottom:none; }
+    .dash .dtable tr:hover td { background:#fafbfe; }
+    .dash .st { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; font-size:.74rem; font-weight:700; text-transform:capitalize; }
+    .dash .st::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .st-accent { background:var(--accent-soft); color:var(--accent-ink); } .st-warning { background:#fef3c7; color:#b45309; }
+    .st-muted { background:#eef1f6; color:#475569; } .st-info { background:#e0f2fe; color:#0369a1; }
+    .pipe-row { display:flex; align-items:center; gap:.7rem; margin-bottom:.85rem; }
+    .pipe-row .pl { width:120px; font-size:.8rem; color:#475569; font-weight:600; flex:none; }
+    .pipe-row .track { flex:1; height:9px; background:#f1f4f9; border-radius:999px; overflow:hidden; }
+    .pipe-row .fill { height:100%; border-radius:999px; }
+    .pipe-row .cn { width:34px; text-align:right; font-weight:700; font-size:.82rem; }
+    .mini { display:flex; align-items:center; gap:.75rem; padding:.65rem 0; border-bottom:1px solid #f2f4f8; }
+    .mini:last-child { border-bottom:none; }
+    .mini .mi { width:38px; height:38px; border-radius:10px; display:grid; place-items:center; font-size:1.05rem; flex:none; }
+    .mini .mv { font-weight:800; font-size:1.05rem; line-height:1; }
+    .mini .ml { color:#94a3b8; font-size:.76rem; font-weight:600; }
+    .dash .btn-add { background:var(--accent); border:none; color:#fff; font-weight:600; border-radius:11px; padding:.6rem 1.15rem; }
+    .dash .btn-add:hover { filter:brightness(.94); color:#fff; }
+</style>
+
+<div class="content dash">
     <div class="container-xxl">
 
-        <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
-            <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Dashboard</h4>
+        <div class="py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <h4 class="fs-20 fw-bold m-0">Dashboard</h4>
+                <small class="text-muted">Overview of orders, revenue &amp; shipments · {{ now()->format('d M Y') }}</small>
             </div>
+            @can('orders.manage')
+            <a href="{{ route('orders.create') }}" class="btn btn-add"><i class="ri-add-line me-1"></i> Add Order</a>
+            @endcan
         </div>
 
-        <!-- start row -->
-        <div class="row">
-            <div class="col-md-12 col-xl-12">
-                <div class="row g-3">
-
-                    <div class="col-md-6 col-xl-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="fs-14 mb-1">Website Traffic</div>
-                                </div>
-
-                                <div class="d-flex align-items-baseline mb-2">
-                                    <div class="fs-22 mb-0 me-2 fw-semibold text-black">91.6K</div>
-                                    <div class="me-auto">
-                                        <span class="text-primary d-inline-flex align-items-center">
-                                            15%
-                                            <i data-feather="trending-up" class="ms-1" style="height: 22px; width: 22px;"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div id="website-visitors" class="apex-charts"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="fs-14 mb-1">Conversion rate</div>
-                                </div>
-
-                                <div class="d-flex align-items-baseline mb-2">
-                                    <div class="fs-22 mb-0 me-2 fw-semibold text-black">15%</div>
-                                    <div class="me-auto">
-                                        <span class="text-danger d-inline-flex align-items-center">
-                                            10%
-                                            <i data-feather="trending-down" class="ms-1" style="height: 22px; width: 22px;"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div id="conversion-visitors" class="apex-charts"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="fs-14 mb-1">Session duration</div>
-                                </div>
-
-                                <div class="d-flex align-items-baseline mb-2">
-                                    <div class="fs-22 mb-0 me-2 fw-semibold text-black">90 Sec</div>
-                                    <div class="me-auto">
-                                        <span class="text-success d-inline-flex align-items-center">
-                                            25%
-                                            <i data-feather="trending-up" class="ms-1" style="height: 22px; width: 22px;"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div id="session-visitors" class="apex-charts"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-3">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="fs-14 mb-1">Active Users</div>
-                                </div>
-
-                                <div class="d-flex align-items-baseline mb-2">
-                                    <div class="fs-22 mb-0 me-2 fw-semibold text-black">2,986</div>
-                                    <div class="me-auto">
-                                        <span class="text-success d-inline-flex align-items-center">
-                                            4%
-                                            <i data-feather="trending-up" class="ms-1" style="height: 22px; width: 22px;"></i>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div id="active-users" class="apex-charts"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> <!-- end sales -->
-        </div> <!-- end row -->
-
-        <!-- Start Monthly Sales -->
-        <div class="row">
-            <div class="col-md-6 col-xl-8">
-                <div class="card">
-                    
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div class="border border-dark rounded-2 me-2 widget-icons-sections">
-                                <i data-feather="bar-chart" class="widgets-icons"></i>
-                            </div>
-                            <h5 class="card-title mb-0">Monthly Sales</h5>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <div id="monthly-sales" class="apex-charts"></div>
-                    </div>
-                    
+        {{-- ===== KPI row ===== --}}
+        <div class="row g-3">
+            <div class="col-md-6 col-xl-3">
+                <div class="dash-card kpi h-100">
+                    <div class="top"><span class="lbl">Orders (this month)</span><span class="ic ic-amber"><i class="ri-shopping-bag-3-line"></i></span></div>
+                    <div class="val">{{ number_format($kpis['orders']['value']) }}</div>
+                    <div class="sub">{{ $kpis['orders']['diff'] >= 0 ? '+' : '' }}{{ number_format($kpis['orders']['diff']) }} vs last month {!! $delta($kpis['orders']['pct']) !!}</div>
                 </div>
             </div>
-
-            <div class="col-md-6 col-xl-4">
-                <div class="card overflow-hidden">
-
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div class="border border-dark rounded-2 me-2 widget-icons-sections">
-                                <i data-feather="tablet" class="widgets-icons"></i>
-                            </div>
-                            <h5 class="card-title mb-0">Best Traffic Source</h5>
-                        </div>
-                    </div>
-
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-traffic mb-0">
-                                <tbody>
-                                    <thead>
-                                        <tr>
-                                            <th>Network</th>
-                                            <th colspan="2">Visitors</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tr>
-                                        <td>Instagram</td>
-                                        <td>3,550</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-danger" style="width: 80.0%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>Facebook</td>
-                                        <td>1,245</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-primary" style="width: 55.9%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>Twitter</td>
-                                        <td>1,798</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-secondary" style="width: 67.0%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>YouTube</td>
-                                        <td>986</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-success" style="width: 38.72%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>Pinterest</td>
-                                        <td>854</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-danger" style="width: 45.08%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>Linkedin</td>
-                                        <td>650</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-warning" style="width: 68.0%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>Nextdoor</td>
-                                        <td>420</td>
-                                        <td class="w-50">
-                                            <div class="progress progress-md mt-0">
-                                                <div class="progress-bar bg-info" style="width: 56.4%"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
+            <div class="col-md-6 col-xl-3">
+                <div class="dash-card kpi h-100">
+                    <div class="top"><span class="lbl">Revenue (this month)</span><span class="ic ic-accent"><i class="ri-money-dollar-circle-line"></i></span></div>
+                    <div class="val">৳{{ number_format($kpis['revenue']['value']) }}</div>
+                    <div class="sub">{{ $kpis['revenue']['diff'] >= 0 ? '+' : '−' }}৳{{ number_format(abs($kpis['revenue']['diff'])) }} vs last month {!! $delta($kpis['revenue']['pct']) !!}</div>
                 </div>
             </div>
-        </div>
-        <!-- End Monthly Sales -->
-
-        <div class="row">
-            <div class="col-md-6 col-xl-6">
-                <div class="card">
-                    
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div class="border border-dark rounded-2 me-2 widget-icons-sections">
-                                <i data-feather="minus-square" class="widgets-icons"></i>
-                            </div>
-                            <h5 class="card-title mb-0">Audiences By Time Of Day</h5>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <div id="audiences-daily" class="apex-charts mt-n3"></div>
-                    </div>
-                    
+            <div class="col-md-6 col-xl-3">
+                <div class="dash-card kpi h-100">
+                    <div class="top"><span class="lbl">Profit (this month)</span><span class="ic ic-indigo"><i class="ri-line-chart-line"></i></span></div>
+                    <div class="val">৳{{ number_format($kpis['profit']['value']) }}</div>
+                    <div class="sub">{{ $kpis['profit']['diff'] >= 0 ? '+' : '−' }}৳{{ number_format(abs($kpis['profit']['diff'])) }} vs last month {!! $delta($kpis['profit']['pct']) !!}</div>
                 </div>
             </div>
-
-            <div class="col-md-6 col-xl-6">
-                <div class="card overflow-hidden">
-                    
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div class="border border-dark rounded-2 me-2 widget-icons-sections">
-                                <i data-feather="table" class="widgets-icons"></i>
-                            </div>
-                            <h5 class="card-title mb-0">Most Visited Pages</h5>
-                        </div>
-                    </div>
-
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-traffic mb-0">
-                                <tbody>
-
-                                    <thead>
-                                        <tr>
-                                            <th>Page name</th>
-                                            <th>Visitors</th>
-                                            <th>Unique</th>
-                                            <th colspan="2">Bounce rate</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tr>
-                                        <td>
-                                            /home
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>5,896</td>
-                                        <td>3,654</td>
-                                        <td>82.54%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-1" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /about.html
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>3,898</td>
-                                        <td>3,450</td>
-                                        <td>76.29%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-2" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /index.html 
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>3,057</td>
-                                        <td>2,589</td>
-                                        <td>72.68%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-3" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /invoice.html
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>867</td>
-                                        <td>795</td>
-                                        <td>44.78%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-4" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /docs/
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>958</td>
-                                        <td>801</td>
-                                        <td>41.15%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-5" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /service.html
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>658</td>
-                                        <td>589</td>
-                                        <td>32.65%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-6" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            /analytical.html
-                                            <a href="#" class="ms-1" aria-label="Open website">
-                                                <i data-feather="link" class="ms-1 text-primary" style="height: 15px; width: 15px;"></i>
-                                            </a>
-                                        </td>
-                                        <td>457</td>
-                                        <td>859</td>
-                                        <td>32.65%</td>
-                                        <td class="w-25">
-                                            <div id="sparkline-bounce-7" class="apex-charts"></div>
-                                        </td>
-                                    </tr>
-
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
+            <div class="col-md-6 col-xl-3">
+                <div class="dash-card kpi h-100">
+                    <div class="top"><span class="lbl">Total Receivables</span><span class="ic ic-red"><i class="ri-time-line"></i></span></div>
+                    <div class="val">৳{{ number_format($kpis['due']['value']) }}</div>
+                    <div class="sub">Outstanding dues across all orders</div>
                 </div>
             </div>
         </div>
 
-    </div> <!-- container-fluid -->
+        {{-- ===== Trend + Pipeline ===== --}}
+        <div class="row g-3 mt-1">
+            <div class="col-xl-8">
+                <div class="dash-card h-100">
+                    <div class="hd"><div><h5>Revenue Trend</h5><span class="mut">Last 6 months</span></div></div>
+                    <div class="p-2"><div id="revTrend"></div></div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="dash-card h-100">
+                    <div class="hd"><div><h5>Order Pipeline</h5><span class="mut">By goods status</span></div></div>
+                    <div class="p-3 pt-2">
+                        @forelse($pipeline as $p)
+                        <div class="pipe-row">
+                            <span class="pl">{{ $p['label'] }}</span>
+                            <span class="track"><span class="fill" style="width:{{ round($p['count'] / $maxPipe * 100) }}%; background:{{ $statusColors[$statusKeys->search($p['label'])] ?? '#537AEF' }};"></span></span>
+                            <span class="cn">{{ $p['count'] }}</span>
+                        </div>
+                        @empty
+                        <div class="text-muted text-center py-4">No orders yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ===== Recent Orders + Side ===== --}}
+        <div class="row g-3 mt-1">
+            <div class="col-xl-8">
+                <div class="dash-card h-100">
+                    <div class="hd"><div><h5>Recent Orders</h5></div><a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill">View all</a></div>
+                    <div class="table-responsive mt-2">
+                        <table class="dtable">
+                            <thead><tr><th>Order No</th><th>Customer</th><th>Date</th><th style="text-align:right;">Total</th><th style="text-align:right;">Due</th><th>Status</th></tr></thead>
+                            <tbody>
+                                @forelse($recentOrders as $o)
+                                <tr>
+                                    <td><a href="{{ route('order.show', $o->id) }}" class="fw-semibold text-dark">{{ $o->order_no }}</a></td>
+                                    <td>{{ $o->customer->name ?? '—' }}</td>
+                                    <td>{{ $o->order_date?->format('d M Y') ?: '—' }}</td>
+                                    <td style="text-align:right;">৳{{ number_format($o->total_amount, 2) }}</td>
+                                    <td style="text-align:right;">৳{{ number_format($o->due_amount, 2) }}</td>
+                                    <td><span class="st st-{{ $payPill[$o->payment_status] ?? 'muted' }}">{{ $o->payment_status }}</span></td>
+                                </tr>
+                                @empty
+                                <tr><td colspan="6" class="text-center text-muted py-4">No orders yet.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="dash-card mb-3">
+                    <div class="p-3">
+                        <div class="mini"><span class="mi ic-indigo"><i class="ri-file-list-3-line"></i></span><div><div class="mv">{{ $side['quotationsPending'] }}</div><div class="ml">Pending quotation requests</div></div></div>
+                        <div class="mini"><span class="mi ic-amber"><i class="ri-truck-line"></i></span><div><div class="mv">{{ $side['containersActive'] }}</div><div class="ml">Containers in transit</div></div></div>
+                        <div class="mini"><span class="mi ic-blue"><i class="ri-bank-line"></i></span><div><div class="mv">৳{{ number_format($side['cashBank'], 0) }}</div><div class="ml">Cash &amp; bank balance</div></div></div>
+                        <div class="mini"><span class="mi ic-accent"><i class="ri-user-3-line"></i></span><div><div class="mv">{{ $side['customers'] }}</div><div class="ml">Total customers</div></div></div>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <div class="hd"><div><h5>Top Customers</h5><span class="mut">By revenue</span></div></div>
+                    <div class="p-3 pt-2">
+                        @forelse($topCustomers as $tc)
+                        <div class="d-flex align-items-center justify-content-between py-2" style="border-bottom:1px solid #f2f4f8;">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="mi ic-accent" style="width:32px;height:32px;font-size:.85rem;">{{ strtoupper(substr($tc->customer->name ?? '?', 0, 1)) }}</span>
+                                <div><div class="fw-semibold" style="font-size:.85rem;">{{ $tc->customer->name ?? '—' }}</div><div class="ml">{{ $tc->orders }} orders</div></div>
+                            </div>
+                            <div class="fw-bold" style="font-size:.85rem;">৳{{ number_format($tc->revenue, 0) }}</div>
+                        </div>
+                        @empty
+                        <div class="text-muted text-center py-3">No data yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof ApexCharts === 'undefined') { return; }
+    const trend = @json($trend);
+    new ApexCharts(document.querySelector('#revTrend'), {
+        chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'inherit', parentHeightOffset: 0 },
+        series: [{ name: 'Revenue', data: trend.revenue }],
+        xaxis: { categories: trend.labels, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8' } } },
+        yaxis: { labels: { style: { colors: '#94a3b8' }, formatter: v => '৳' + Math.round(v).toLocaleString() } },
+        colors: ['#537AEF'],
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .28, opacityTo: .02, stops: [0, 100] } },
+        dataLabels: { enabled: false },
+        grid: { borderColor: '#eef1f6', strokeDashArray: 4, padding: { left: 8, right: 8 } },
+        tooltip: { y: { formatter: v => '৳' + Number(v).toLocaleString() } },
+    }).render();
+});
+</script>
 @endsection

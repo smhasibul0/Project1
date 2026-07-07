@@ -79,18 +79,8 @@
         <script src="{{ asset('backend/assets/libs/jquery.counterup/jquery.counterup.min.js') }}"></script>
         <script src="{{ asset('backend/assets/libs/feather-icons/feather.min.js') }}"></script>
 
-        <!-- Apexcharts JS -->
+        <!-- Apexcharts JS (charts are initialised per-page, e.g. the dashboard) -->
         <script src="{{ asset('backend/assets/libs/apexcharts/apexcharts.min.js') }}"></script>
-
-        {{-- Dashboard-only chart widgets. These init scripts target dashboard chart
-             elements; loading them elsewhere throws "Element not found" on every page. --}}
-        @if(request()->routeIs('dashboard'))
-        <!-- for basic area chart -->
-        <script src="https://apexcharts.com/samples/assets/stock-prices.js"></script>
-
-        <!-- Widgets Init Js -->
-        <script src="{{ asset('backend/assets/js/pages/analytics-dashboard.init.js') }}"></script>
-        @endif
 
         <!-- Sweet Alerts js -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script> 
