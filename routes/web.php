@@ -52,7 +52,7 @@ Route::middleware(['auth', 'customer'])->prefix('portal')->name('portal.')->grou
     Route::post('/quotations', [PortalController::class, 'quotationStore'])->name('quotation.store');
     Route::get('/quotations/{id}', [PortalController::class, 'quotationShow'])->name('quotation.show');
     Route::post('/quotations/{id}/accept', [PortalController::class, 'quotationAccept'])->name('quotation.accept');
-    Route::post('/quotations/{id}/reject', [PortalController::class, 'quotationReject'])->name('quotation.reject');
+    Route::post('/quotations/{id}/negotiate', [PortalController::class, 'quotationNegotiate'])->name('quotation.negotiate');
 
     Route::get('/orders', [PortalController::class, 'orders'])->name('orders');
     Route::get('/orders/{id}', [PortalController::class, 'orderShow'])->name('order.show');
@@ -150,11 +150,13 @@ Route::middleware(['auth', 'admin', 'can:products.manage'])->group(function () {
 // Quotations (+ admin-managed lookups)
 Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function () {
     Route::get('/quotations', [QuotationController::class, 'index'])->name('quotations.index');
+    Route::get('/quotations/requests', [QuotationController::class, 'requests'])->name('quotation.requests');
     Route::get('/quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
     Route::post('/quotations', [QuotationController::class, 'store'])->name('quotation.store');
     Route::get('/quotations/{id}', [QuotationController::class, 'show'])->name('quotation.show');
     Route::get('/quotations/{id}/edit', [QuotationController::class, 'edit'])->name('quotation.edit');
     Route::put('/quotations/{id}', [QuotationController::class, 'update'])->name('quotation.update');
+    Route::post('/quotations/{id}/deny', [QuotationController::class, 'deny'])->name('quotation.deny');
     Route::delete('/quotations/{id}', [QuotationController::class, 'destroy'])->name('quotation.delete');
 
     // Transportation modes (admin-managed dropdown)

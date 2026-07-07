@@ -21,7 +21,11 @@ class CategoryController extends Controller
         $data = $this->validated($request);
         $data['added_by'] = Auth::id();
 
-        Category::create($data);
+        $category = Category::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['id' => $category->id, 'name' => $category->name]);
+        }
 
         return redirect()->back()->with('success', 'Category created successfully.');
     }

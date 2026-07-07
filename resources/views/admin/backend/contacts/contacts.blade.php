@@ -389,6 +389,16 @@
                         <tr><th>Remarks</th><td data-view="notes"></td></tr>
                     </tbody>
                 </table>
+
+                @if($isCustomer)
+                <h6 class="fw-semibold mt-3 mb-2"><i class="ri-file-list-3-line me-1"></i>Quotation Requests</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0" id="vcRequests">
+                        <thead><tr><th>No</th><th>Requested</th><th>Status</th><th class="text-end">Quoted Total</th><th></th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                @endif
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -492,6 +502,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             cell.textContent = (val === null || val === undefined || val === '') ? '—' : val;
         });
+
+        // Customer quotation requests (portal + admin quotations for this customer)
+        const reqBody = viewModal.querySelector('#vcRequests tbody');
+        if (reqBody) {
+            const rows = (c.quotations || []);
+            const badge = { draft: 'secondary', requested: 'warning', quoted: 'info', accepted: 'success', negotiating: 'primary', rejected: 'danger', converted: 'dark' };
+            reqBody.innerHTML = rows.length ? rows.map(function (q) {
+                const total = Number(q.grand_total) > 0 ? '৳' + Number(q.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—';
+                const d = (q.query_received_date || q.created_at || '').substring(0, 10);
+                return '<tr><td>' + q.quotation_no + '</td><td>' + d + '</td>'
+                    + '<td><span class="badge bg-' + (badge[q.status] || 'secondary') + ' text-capitalize">' + q.status + '</span></td>'
+                    + '<td class="text-end">' + total + '</td>'
+                    + '<td class="text-end"><a href="{{ url('quotations') }}/' + q.id + '" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a></td></tr>';
+            }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No requests yet.</td></tr>';
+        }
     });
 
     // Delegated so handlers survive table paging / row reordering.

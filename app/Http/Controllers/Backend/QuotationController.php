@@ -16,9 +16,22 @@ class QuotationController extends Controller
 {
     public function index()
     {
-        $quotations = Quotation::with('customer')->withCount('items')->latest()->get();
+        // Pending customer requests live on their own page until they're quoted.
+        $quotations = Quotation::with('customer')->withCount('items')
+            ->where('status', '!=', 'requested')->latest()->get();
 
         return view('admin.backend.quotations.quotations', compact('quotations'));
+    }
+
+    /**
+     * Pending quotation requests submitted by customers from the portal.
+     */
+    public function requests()
+    {
+        $quotations = Quotation::with('customer')->withCount('items')
+            ->where('status', 'requested')->latest()->get();
+
+        return view('admin.backend.quotations.requests', compact('quotations'));
     }
 
     public function create()
@@ -29,13 +42,14 @@ class QuotationController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $send = $request->input('action') === 'send';
 
-        DB::transaction(function () use ($data, $request) {
+        DB::transaction(function () use ($data, $send) {
             $quotation = Quotation::create([
                 'query_received_date' => $data['query_received_date'] ?? null,
                 'customer_id' => $data['customer_id'] ?? null,
-                'submitted_to_customer' => $request->boolean('submitted_to_customer'),
-                'status' => $data['status'] ?? 'draft',
+                'submitted_to_customer' => $send,
+                'status' => $send ? 'quoted' : 'draft',
                 'remarks' => $data['remarks'] ?? null,
                 'added_by' => Auth::id(),
             ]);
@@ -43,12 +57,13 @@ class QuotationController extends Controller
             $this->syncItems($quotation, $data['items']);
         });
 
-        return redirect()->route('quotations.index')->with('success', 'Quotation created successfully.');
+        return redirect()->route('quotations.index')
+            ->with('success', $send ? 'Quotation sent to the customer.' : 'Quotation saved as draft.');
     }
 
     public function show($id)
     {
-        $quotation = Quotation::with(['customer', 'items.category', 'items.supplier', 'items.transportationMode', 'items.packingType'])
+        $quotation = Quotation::with(['customer', 'items.product', 'items.category', 'items.supplier', 'items.transportationMode', 'items.packingType'])
             ->findOrFail($id);
 
         return view('admin.backend.quotations.show', compact('quotation'));
@@ -65,13 +80,15 @@ class QuotationController extends Controller
     {
         $quotation = Quotation::findOrFail($id);
         $data = $this->validated($request);
+        $send = $request->input('action') === 'send';
 
-        DB::transaction(function () use ($quotation, $data, $request) {
+        DB::transaction(function () use ($quotation, $data, $send) {
             $quotation->update([
                 'query_received_date' => $data['query_received_date'] ?? null,
                 'customer_id' => $data['customer_id'] ?? null,
-                'submitted_to_customer' => $request->boolean('submitted_to_customer'),
-                'status' => $data['status'] ?? 'draft',
+                // "Send to Customer" quotes it; otherwise keep its current status (draft save).
+                'submitted_to_customer' => $send ? true : $quotation->submitted_to_customer,
+                'status' => $send ? 'quoted' : $quotation->status,
                 'remarks' => $data['remarks'] ?? null,
             ]);
 
@@ -79,7 +96,18 @@ class QuotationController extends Controller
             $this->syncItems($quotation, $data['items']);
         });
 
-        return redirect()->route('quotations.index')->with('success', 'Quotation updated successfully.');
+        return redirect()->route($send ? 'quotations.index' : 'quotation.show', $send ? [] : $quotation->id)
+            ->with('success', $send ? 'Quotation sent to the customer.' : 'Quotation saved.');
+    }
+
+    /**
+     * Admin denies a quotation (e.g. after a customer asks to negotiate).
+     */
+    public function deny($id)
+    {
+        Quotation::findOrFail($id)->update(['status' => 'rejected']);
+
+        return redirect()->back()->with('success', 'Quotation rejected.');
     }
 
     public function destroy($id)
@@ -110,6 +138,7 @@ class QuotationController extends Controller
             $margin = $sell > 0 ? round(($unitProfit / $sell) * 100, 2) : 0;
 
             $quotation->items()->create([
+                'product_id' => $row['product_id'] ?? null,
                 'category_id' => $row['category_id'] ?? null,
                 'hs_code' => $row['hs_code'] ?? null,
                 'transportation_mode_id' => $row['transportation_mode_id'] ?? null,
@@ -166,9 +195,9 @@ class QuotationController extends Controller
         return $request->validate([
             'query_received_date' => 'nullable|date',
             'customer_id' => 'nullable|exists:contacts,id',
-            'status' => 'nullable|in:draft,submitted,accepted,rejected,converted',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.category_id' => 'nullable|exists:categories,id',
             'items.*.hs_code' => 'nullable|string|max:100',
             'items.*.transportation_mode_id' => 'nullable|exists:transportation_modes,id',

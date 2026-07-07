@@ -109,6 +109,9 @@
                                 <a href="{{ route('quotations.index') }}" class="tp-link">List Quotations</a>
                             </li>
                             <li>
+                                <a href="{{ route('quotation.requests') }}" class="tp-link">Quotation Requests</a>
+                            </li>
+                            <li>
                                 <a href="{{ route('quotations.create') }}" class="tp-link">Add Quotation</a>
                             </li>
                             <li>

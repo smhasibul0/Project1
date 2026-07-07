@@ -2,6 +2,7 @@
 
 use App\Models\Contact;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\Role;
 use App\Models\User;
@@ -90,18 +91,39 @@ test('a non-customer cannot reach the portal', function () {
     $this->actingAs(adminUser())->get(route('portal.dashboard'))->assertForbidden();
 });
 
-test('a customer can submit a quotation request scoped to their contact', function () {
+test('a customer can submit a request with catalogue and custom items', function () {
     $contact = Contact::factory()->customer()->create();
     $user = customerUser($contact);
+    $product = Product::factory()->create();
 
     $this->actingAs($user)->post(route('portal.quotation.store'), [
-        'items' => [['description' => 'LED Bulbs 9W', 'package_quantity' => 100]],
+        'items' => [
+            ['product_id' => $product->id, 'description' => $product->name, 'package_quantity' => 100],
+            ['description' => 'Custom widget', 'package_quantity' => 10],
+        ],
     ])->assertRedirect(route('portal.quotations'));
 
-    $q = Quotation::firstOrFail();
+    $q = Quotation::with('items')->firstOrFail();
     expect($q->customer_id)->toBe($contact->id);
-    expect($q->status)->toBe('submitted');
-    expect($q->items)->toHaveCount(1);
+    expect($q->status)->toBe('requested');
+    expect($q->source)->toBe('customer');
+    expect($q->items)->toHaveCount(2);
+    expect($q->items->firstWhere('product_id', $product->id))->not->toBeNull();
+});
+
+test('portal requests appear on the admin quotation requests page (admin quotes do not)', function () {
+    $contact = Contact::factory()->customer()->create(['name' => 'Portal Cust']);
+    $this->actingAs(customerUser($contact))->post(route('portal.quotation.store'), [
+        'items' => [['description' => 'Thing', 'package_quantity' => 1]],
+    ]);
+    Quotation::factory()->create(['source' => 'admin']);
+
+    $this->actingAs(adminUser())->get(route('quotation.requests'))
+        ->assertOk()
+        ->assertSee('Quotation Requests')
+        ->assertSee('Portal Cust');
+
+    expect(Quotation::where('source', 'customer')->count())->toBe(1);
 });
 
 test('a customer cannot view another customer order or quotation', function () {
@@ -114,17 +136,24 @@ test('a customer cannot view another customer order or quotation', function () {
     $this->actingAs($user)->get(route('portal.quotation.show', $otherQuote->id))->assertNotFound();
 });
 
-test('a customer can accept a priced quotation but not an unpriced one', function () {
+test('a customer can accept or negotiate a quoted quotation, but not one still requested', function () {
     $contact = Contact::factory()->customer()->create();
     $user = customerUser($contact);
 
-    $priced = Quotation::factory()->create(['customer_id' => $contact->id, 'status' => 'submitted', 'grand_total' => 5000]);
-    $this->actingAs($user)->post(route('portal.quotation.accept', $priced->id))->assertRedirect();
-    expect($priced->fresh()->status)->toBe('accepted');
+    // A quoted quotation can be accepted.
+    $quoted = Quotation::factory()->create(['customer_id' => $contact->id, 'status' => 'quoted', 'grand_total' => 5000]);
+    $this->actingAs($user)->post(route('portal.quotation.accept', $quoted->id))->assertRedirect();
+    expect($quoted->fresh()->status)->toBe('accepted');
 
-    $unpriced = Quotation::factory()->create(['customer_id' => $contact->id, 'status' => 'submitted', 'grand_total' => 0]);
-    $this->actingAs($user)->post(route('portal.quotation.accept', $unpriced->id))->assertSessionHas('error');
-    expect($unpriced->fresh()->status)->toBe('submitted');
+    // Another quoted one can be negotiated.
+    $quoted2 = Quotation::factory()->create(['customer_id' => $contact->id, 'status' => 'quoted', 'grand_total' => 5000]);
+    $this->actingAs($user)->post(route('portal.quotation.negotiate', $quoted2->id))->assertRedirect();
+    expect($quoted2->fresh()->status)->toBe('negotiating');
+
+    // A request that hasn't been quoted yet cannot be actioned.
+    $requested = Quotation::factory()->create(['customer_id' => $contact->id, 'status' => 'requested']);
+    $this->actingAs($user)->post(route('portal.quotation.accept', $requested->id))->assertSessionHas('error');
+    expect($requested->fresh()->status)->toBe('requested');
 });
 
 test('portal pages load', function () {

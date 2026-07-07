@@ -21,12 +21,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label">Customer</label>
-            <select class="form-control" name="customer_id">
-                <option value="">-- Select Customer --</option>
-                @foreach($customers as $c)
-                    <option value="{{ $c->id }}" @selected(old('customer_id', $order?->customer_id) == $c->id)>{{ $c->name }} @if($c->business_name)({{ $c->business_name }})@endif</option>
-                @endforeach
-            </select>
+            <x-customer-select :customers="$customers" :selected="old('customer_id', $order?->customer_id)" />
         </div>
         <div class="col-md-3">
             <label class="form-label">Quotation</label>

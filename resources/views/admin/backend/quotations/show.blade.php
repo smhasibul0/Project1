@@ -9,17 +9,33 @@
                 <small class="text-muted">{{ $quotation->customer->name ?? '—' }}</small>
             </div>
             <div class="text-end">
-                @can('orders.manage')
-                    @if($quotation->status === 'converted')
-                        <span class="badge bg-success">Converted to Order</span>
-                    @else
+                @if($quotation->status === 'converted')
+                    <span class="badge bg-success">Converted to Order</span>
+                @else
+                    {{-- Customer accepted -> can be turned into an order --}}
+                    @if($quotation->status === 'accepted')
+                        @can('orders.manage')
                         <form action="{{ route('order.from.quotation', $quotation->id) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm"><i class="ri-arrow-right-line me-1"></i> Convert to Order</button>
                         </form>
+                        @endcan
                     @endif
-                @endcan
-                <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
+
+                    {{-- Customer wants to negotiate -> re-quote or deny --}}
+                    @if($quotation->status === 'negotiating')
+                        <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-price-tag-3-line me-1"></i> Re-quote</a>
+                        <form action="{{ route('quotation.deny', $quotation->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger btn-sm deny-btn"><i class="ri-close-line me-1"></i> Deny</button>
+                        </form>
+                    @endif
+
+                    {{-- Still requested / draft -> respond/edit --}}
+                    @if(in_array($quotation->status, ['requested', 'draft', 'quoted', 'rejected']))
+                        <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> {{ $quotation->status === 'requested' ? 'Respond' : 'Edit' }}</a>
+                    @endif
+                @endif
                 <a href="{{ route('quotations.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
@@ -29,7 +45,8 @@
                 <div class="col-md-3"><small class="text-muted d-block">Quotation No</small><strong>{{ $quotation->quotation_no }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">Query Date</small><strong>{{ $quotation->query_received_date?->format('d M Y') ?: '—' }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">Customer</small><strong>{{ $quotation->customer->name ?? '—' }}</strong></div>
-                <div class="col-md-3"><small class="text-muted d-block">Status</small><span class="badge bg-info text-capitalize">{{ $quotation->status }}</span> @if($quotation->submitted_to_customer)<span class="badge bg-success">Submitted</span>@endif</div>
+                @php $qc = ['draft' => 'secondary', 'requested' => 'warning', 'quoted' => 'info', 'accepted' => 'success', 'negotiating' => 'primary', 'rejected' => 'danger', 'converted' => 'dark']; @endphp
+                <div class="col-md-3"><small class="text-muted d-block">Status</small><span class="badge bg-{{ $qc[$quotation->status] ?? 'secondary' }}">{{ $quotation->statusLabel() }}</span>@if($quotation->status === 'accepted')<span class="badge bg-success-subtle text-success ms-1">by customer</span>@endif</div>
                 @if($quotation->remarks)<div class="col-12"><small class="text-muted d-block">Remarks</small>{{ $quotation->remarks }}</div>@endif
             </div>
         </div>
@@ -41,7 +58,7 @@
                     <table class="table table-sm table-striped align-middle mb-0" style="font-size:.8rem;">
                         <thead>
                             <tr>
-                                <th>#</th><th>Category</th><th>HS Code</th><th>Transport</th><th>Loading</th><th>Packing</th>
+                                <th>#</th><th>Item</th><th>Category</th><th>HS Code</th><th>Transport</th><th>Loading</th><th>Packing</th>
                                 <th class="text-end">Qty</th><th class="text-end">CBM</th>
                                 <th>Supplier</th><th class="text-end">Sup. Price</th><th class="text-end">Our Price</th>
                                 <th class="text-end">Line Total</th><th class="text-end">Profit</th><th class="text-end">Margin</th>
@@ -51,6 +68,7 @@
                             @foreach($quotation->items as $i => $item)
                             <tr>
                                 <td>{{ $i + 1 }}</td>
+                                <td>{{ $item->product->name ?? ($item->remarks ?: '—') }}@if($item->product)<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.6rem;">catalogue</span>@endif</td>
                                 <td>{{ $item->category->name ?? '—' }}</td>
                                 <td>{{ $item->hs_code ?: '—' }}</td>
                                 <td>{{ $item->transportationMode->name ?? '—' }}</td>
@@ -69,7 +87,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="fw-semibold">
-                                <td colspan="11" class="text-end">Totals:</td>
+                                <td colspan="12" class="text-end">Totals:</td>
                                 <td class="text-end">৳ {{ number_format($quotation->grand_total, 2) }}</td>
                                 <td class="text-end">৳ {{ number_format($quotation->total_profit, 2) }}</td>
                                 <td class="text-end">{{ number_format($quotation->profit_margin, 2) }}%</td>

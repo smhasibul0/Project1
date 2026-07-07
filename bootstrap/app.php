@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust the tunnel/reverse proxy so Laravel builds correct https:// URLs
+        // (needed when sharing the local server through Cloudflare/ngrok).
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'admin' => EnsureAdminAccess::class,
             'customer' => EnsureCustomerAccess::class,

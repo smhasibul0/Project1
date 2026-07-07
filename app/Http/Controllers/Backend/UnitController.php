@@ -22,7 +22,11 @@ class UnitController extends Controller
         $data['conversion_factor'] = $request->conversion_factor ?: 1;
         $data['added_by'] = Auth::id();
 
-        Unit::create($data);
+        $unit = Unit::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['id' => $unit->id, 'name' => $unit->name]);
+        }
 
         return redirect()->back()->with('success', 'Unit created successfully.');
     }

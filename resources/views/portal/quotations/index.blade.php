@@ -3,7 +3,7 @@
 @section('portal')
 
 @php
-    $pill = ['draft' => 'pill-muted', 'submitted' => 'pill-info', 'accepted' => 'pill-success', 'rejected' => 'pill-danger', 'converted' => 'pill-brand'];
+    $pill = ['draft' => 'pill-muted', 'requested' => 'pill-warning', 'quoted' => 'pill-info', 'accepted' => 'pill-success', 'negotiating' => 'pill-brand', 'rejected' => 'pill-danger', 'converted' => 'pill-success'];
 @endphp
 
 <div class="pt-head">
@@ -26,7 +26,7 @@
                         <td>{{ $q->query_received_date?->format('d M Y') ?: $q->created_at->format('d M Y') }}</td>
                         <td class="num">{{ $q->items_count }}</td>
                         <td class="num money">{{ (float) $q->grand_total > 0 ? '৳'.number_format($q->grand_total, 2) : '—' }}</td>
-                        <td><span class="pill {{ $pill[$q->status] ?? 'pill-muted' }}">{{ $q->status }}</span></td>
+                        <td><span class="pill {{ $pill[$q->status] ?? 'pill-muted' }}">{{ $q->statusLabel() }}</span></td>
                         <td class="num"><a href="{{ route('portal.quotation.show', $q->id) }}" class="pt-btn pt-btn-ghost pt-btn-sm">View</a></td>
                     </tr>
                     @empty

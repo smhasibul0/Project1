@@ -21,7 +21,11 @@ class BrandController extends Controller
         $data = $this->validated($request);
         $data['added_by'] = Auth::id();
 
-        Brand::create($data);
+        $brand = Brand::create($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['id' => $brand->id, 'name' => $brand->name]);
+        }
 
         return redirect()->back()->with('success', 'Brand created successfully.');
     }

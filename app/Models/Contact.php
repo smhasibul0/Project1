@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contact extends Model
@@ -64,6 +65,14 @@ class Contact extends Model
     public function user(): HasOne
     {
         return $this->hasOne(User::class, 'contact_id');
+    }
+
+    /**
+     * Quotations where this contact is the customer (incl. portal requests).
+     */
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class, 'customer_id')->latest();
     }
 
     public function addedBy(): BelongsTo

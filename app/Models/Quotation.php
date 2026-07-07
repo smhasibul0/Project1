@@ -16,6 +16,29 @@ class Quotation extends Model
     protected $guarded = [];
 
     /**
+     * The quotation lifecycle (key => label).
+     *
+     * @return array<string, string>
+     */
+    public static function statuses(): array
+    {
+        return [
+            'draft' => 'Draft',
+            'requested' => 'Requested',       // customer submitted a request
+            'quoted' => 'Quoted',             // admin priced it & sent to customer
+            'accepted' => 'Accepted',         // customer accepted
+            'negotiating' => 'Negotiating',   // customer wants to negotiate
+            'rejected' => 'Rejected',
+            'converted' => 'Converted',
+        ];
+    }
+
+    public function statusLabel(): string
+    {
+        return static::statuses()[$this->status] ?? ucfirst((string) $this->status);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

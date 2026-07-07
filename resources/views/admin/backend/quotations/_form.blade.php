@@ -9,30 +9,16 @@
             <input type="date" class="form-control" name="query_received_date"
                    value="{{ old('query_received_date', optional($quotation?->query_received_date)->format('Y-m-d')) }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-5">
             <label class="form-label">Customer</label>
-            <select class="form-control" name="customer_id">
-                <option value="">-- Select Customer --</option>
-                @foreach($customers as $c)
-                    <option value="{{ $c->id }}" @selected(old('customer_id', $quotation?->customer_id) == $c->id)>{{ $c->name }} @if($c->business_name)({{ $c->business_name }})@endif</option>
-                @endforeach
-            </select>
+            <x-customer-select :customers="$customers" :selected="old('customer_id', $quotation?->customer_id)" />
         </div>
+        @if($quotation)
         <div class="col-md-3">
-            <label class="form-label">Status</label>
-            <select class="form-control" name="status">
-                @foreach(['draft','submitted','accepted','rejected','converted'] as $s)
-                    <option value="{{ $s }}" @selected(old('status', $quotation?->status ?? 'draft') === $s)>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
+            <label class="form-label d-block">Current Status</label>
+            <span class="badge bg-info text-capitalize fs-6">{{ $quotation->statusLabel() }}</span>
         </div>
-        <div class="col-md-2 d-flex align-items-center">
-            <div class="form-check form-switch mt-4">
-                <input class="form-check-input" type="checkbox" name="submitted_to_customer" value="1"
-                       @checked(old('submitted_to_customer', $quotation?->submitted_to_customer))>
-                <label class="form-check-label fw-semibold">Submitted to customer</label>
-            </div>
-        </div>
+        @endif
     </div>
 </div>
 
@@ -65,7 +51,8 @@
 </div>
 
 <div class="d-flex gap-2 mb-4">
-    <button type="submit" class="btn btn-primary px-4">{{ $quotation ? 'Update Quotation' : 'Save Quotation' }}</button>
+    <button type="submit" name="action" value="send" class="btn btn-primary px-4"><i class="ri-send-plane-line me-1"></i> Send to Customer</button>
+    <button type="submit" name="action" value="draft" class="btn btn-outline-primary px-4">Save as Draft</button>
     <a href="{{ route('quotations.index') }}" class="btn btn-secondary">Cancel</a>
 </div>
 
@@ -73,6 +60,7 @@
 <template id="itemTemplate">
     <div class="border rounded p-3 mb-3 item-block position-relative">
         <button type="button" class="btn btn-sm btn-outline-danger remove-item position-absolute" style="top:.5rem; right:.5rem;"><i class="ri-close-line"></i></button>
+        <input type="hidden" data-name="product_id">
         <div class="fw-semibold text-muted small mb-2 item-title">Product</div>
 
         <div class="row g-2">

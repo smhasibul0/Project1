@@ -42,6 +42,11 @@ class QuotationItem extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
     public function transportationMode(): BelongsTo
     {
         return $this->belongsTo(TransportationMode::class);

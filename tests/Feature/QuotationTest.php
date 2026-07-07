@@ -23,8 +23,7 @@ test('a quotation is created with items and computed totals & profit', function 
     $response = $this->actingAs($this->user)->post(route('quotation.store'), [
         'query_received_date' => '2026-07-05',
         'customer_id' => $this->customer->id,
-        'status' => 'submitted',
-        'submitted_to_customer' => '1',
+        'action' => 'send',
         'items' => [
             [
                 'category_id' => $this->category->id,
@@ -51,6 +50,7 @@ test('a quotation is created with items and computed totals & profit', function 
     $q = Quotation::with('items')->firstOrFail();
     expect($q->quotation_no)->toBe('Q0001');
     expect($q->customer_id)->toBe($this->customer->id);
+    expect($q->status)->toBe('quoted');            // "Send to Customer" quotes it
     expect($q->submitted_to_customer)->toBeTrue();
     expect($q->items)->toHaveCount(2);
 
@@ -97,13 +97,13 @@ test('updating a quotation replaces items and recomputes totals', function () {
 
     $this->actingAs($this->user)->put(route('quotation.update', $q->id), [
         'customer_id' => $this->customer->id,
-        'status' => 'accepted',
+        'action' => 'send',
         'items' => [['package_quantity' => 3, 'our_asking_price' => 200, 'supplier_asking_price' => 150]],
     ]);
 
     $q->refresh()->load('items');
     expect($q->items)->toHaveCount(1);
-    expect($q->status)->toBe('accepted');
+    expect($q->status)->toBe('quoted');           // sending to the customer
     expect($q->grand_total)->toEqual('600.00');   // 200*3
     expect($q->total_profit)->toEqual('150.00');  // (200-150)*3
 });
@@ -120,6 +120,24 @@ test('a quotation can be deleted with its items', function () {
 
     expect(Quotation::count())->toBe(0);
     expect(QuotationItem::count())->toBe(0);
+});
+
+test('admin can deny a quotation (e.g. after a negotiation request)', function () {
+    $q = Quotation::factory()->create(['status' => 'negotiating']);
+
+    $this->actingAs($this->user)->post(route('quotation.deny', $q->id))
+        ->assertRedirect()->assertSessionHas('success');
+
+    expect($q->fresh()->status)->toBe('rejected');
+});
+
+test('the quotation requests page shows only pending requests', function () {
+    Quotation::factory()->create(['status' => 'requested']);
+    Quotation::factory()->create(['status' => 'quoted']);
+
+    $response = $this->actingAs($this->user)->get(route('quotation.requests'));
+    $response->assertOk();
+    expect($response->viewData('quotations'))->toHaveCount(1);
 });
 
 test('admin can add transportation modes and packing types', function () {

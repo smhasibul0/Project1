@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Quotation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +46,7 @@ class PortalController extends Controller
     {
         return view('portal.quotations.create', [
             'categories' => Category::orderBy('name')->get(),
+            'products' => Product::with('category')->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -53,6 +55,7 @@ class PortalController extends Controller
         $data = $request->validate([
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.category_id' => 'nullable|exists:categories,id',
             'items.*.description' => 'nullable|string|max:255',
             'items.*.hs_code' => 'nullable|string|max:100',
@@ -65,15 +68,17 @@ class PortalController extends Controller
             $quotation = Quotation::create([
                 'customer_id' => $this->contactId(),
                 'query_received_date' => now()->toDateString(),
-                'status' => 'submitted',
+                'status' => 'requested',
+                'source' => 'customer',
                 'submitted_to_customer' => false,
                 'remarks' => $data['remarks'] ?? null,
                 'added_by' => Auth::id(),
             ]);
 
             foreach ($data['items'] as $row) {
-                // Customers request items without pricing; the admin quotes them later.
+                // Customers request items (catalogue or custom) without pricing; admin quotes later.
                 $quotation->items()->create([
+                    'product_id' => $row['product_id'] ?? null,
                     'category_id' => $row['category_id'] ?? null,
                     'hs_code' => $row['hs_code'] ?? null,
                     'package_quantity' => $row['package_quantity'] ?? 0,
@@ -101,22 +106,22 @@ class PortalController extends Controller
 
     public function quotationAccept($id)
     {
-        return $this->respondToQuote($id, 'accepted', 'Quotation accepted. We will process your order.');
+        return $this->respondToQuote($id, 'accepted', 'Quotation accepted — we will process your order.');
     }
 
-    public function quotationReject($id)
+    public function quotationNegotiate($id)
     {
-        return $this->respondToQuote($id, 'rejected', 'Quotation rejected.');
+        return $this->respondToQuote($id, 'negotiating', 'We have received your negotiation request and will get back to you.');
     }
 
     /**
-     * Accept/reject a quote the admin has priced (grand_total > 0) and still pending.
+     * Respond to a quote the admin has sent (status "quoted"): accept or ask to negotiate.
      */
     private function respondToQuote($id, string $status, string $message)
     {
         $quotation = Quotation::where('customer_id', $this->contactId())->findOrFail($id);
 
-        if ($quotation->status !== 'submitted' || (float) $quotation->grand_total <= 0) {
+        if ($quotation->status !== 'quoted') {
             return redirect()->back()->with('error', 'This quotation cannot be actioned yet.');
         }
 

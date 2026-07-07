@@ -33,7 +33,7 @@ class ContactController extends Controller
      */
     public function customers()
     {
-        $contacts = Contact::customers()->with(['addedBy', 'customerGroup', 'user'])->latest()->get();
+        $contacts = Contact::customers()->with(['addedBy', 'customerGroup', 'user', 'quotations'])->latest()->get();
 
         return view('admin.backend.contacts.contacts', [
             'contacts' => $contacts,

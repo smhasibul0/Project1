@@ -1,6 +1,8 @@
 @extends('admin.admin_master')
 @section('admin')
 
+@php $qc = ['draft' => 'secondary', 'requested' => 'warning', 'quoted' => 'info', 'accepted' => 'success', 'negotiating' => 'primary', 'rejected' => 'danger', 'converted' => 'dark']; @endphp
+
 <div class="content">
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
@@ -28,7 +30,7 @@
                     <table class="ct-table">
                         <thead>
                             <tr>
-                                <th class="dt-noexport">#</th>
+                                <th class="dt-noexport">Action</th>
                                 <th>Quotation No</th>
                                 <th>Query Date</th>
                                 <th>Customer</th>
@@ -38,13 +40,45 @@
                                 <th class="text-end">Margin</th>
                                 <th data-filter="Submitted">Submitted</th>
                                 <th data-filter="Status">Status</th>
-                                <th class="text-end dt-noexport">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($quotations as $index => $q)
+                            @foreach($quotations as $q)
                             <tr>
-                                <td>{{ $index + 1 }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ route('quotation.show', $q->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('quotation.edit', $q->id) }}"><i class="ri-edit-line me-2"></i>{{ $q->status === 'requested' ? 'Respond' : 'Edit' }}</a></li>
+                                            @can('orders.manage')
+                                            @if($q->status === 'accepted')
+                                            <li>
+                                                <form action="{{ route('order.from.quotation', $q->id) }}" method="POST" class="m-0">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item text-success"><i class="ri-arrow-right-line me-2"></i>Convert to Order</button>
+                                                </form>
+                                            </li>
+                                            @endif
+                                            @endif
+                                            @if($q->status === 'negotiating')
+                                            <li>
+                                                <form action="{{ route('quotation.deny', $q->id) }}" method="POST" class="m-0">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item"><i class="ri-close-line me-2"></i>Deny</button>
+                                                </form>
+                                            </li>
+                                            @endif
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form action="{{ route('quotation.delete', $q->id) }}" method="POST" class="m-0">
+                                                    @csrf @method('DELETE')
+                                                    <button type="button" class="dropdown-item text-danger delete-btn"><i class="ri-delete-bin-line me-2"></i>Delete</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
                                 <td><span class="badge bg-light text-dark">{{ $q->quotation_no }}</span></td>
                                 <td>{{ $q->query_received_date?->format('d M Y') ?: '—' }}</td>
                                 <td>{{ $q->customer->name ?? '—' }}</td>
@@ -53,17 +87,7 @@
                                 <td class="text-end">৳ {{ number_format($q->total_profit, 2) }}</td>
                                 <td class="text-end">{{ number_format($q->profit_margin, 2) }}%</td>
                                 <td>{!! $q->submitted_to_customer ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>' !!}</td>
-                                <td><span class="badge bg-info text-capitalize">{{ $q->status }}</span></td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <a href="{{ route('quotation.show', $q->id) }}" class="btn btn-sm btn-outline-secondary" title="View"><i class="ri-eye-line"></i></a>
-                                        <a href="{{ route('quotation.edit', $q->id) }}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="ri-edit-line"></i></a>
-                                        <form action="{{ route('quotation.delete', $q->id) }}" method="POST" class="m-0">
-                                            @csrf @method('DELETE')
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"><i class="ri-delete-bin-line"></i></button>
-                                        </form>
-                                    </div>
-                                </td>
+                                <td><span class="badge bg-{{ $qc[$q->status] ?? 'secondary' }}">{{ $q->statusLabel() }}</span></td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -76,6 +100,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Fixed Popper strategy so the responsive-table overflow doesn't clip the open menu.
+    document.querySelectorAll('#quotationsTable [data-bs-toggle="dropdown"]').forEach(function (el) {
+        new bootstrap.Dropdown(el, {
+            popperConfig: function (defaultConfig) {
+                return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+            },
+        });
+    });
+
     document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this quotation?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
