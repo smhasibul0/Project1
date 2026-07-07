@@ -33,11 +33,11 @@ test('a role only reaches modules its permissions allow', function () {
     $this->actingAs(userWithRole('staff'))->get(route('users.index'))->assertForbidden();
 });
 
-test('a customer is blocked from the admin panel entirely', function () {
+test('a customer is bounced from the admin panel to their portal', function () {
     $customer = userWithRole('customer');
 
-    $this->actingAs($customer)->get(route('suppliers.index'))->assertForbidden();
-    $this->actingAs($customer)->get(route('products.index'))->assertForbidden();
+    $this->actingAs($customer)->get(route('suppliers.index'))->assertRedirect(route('portal.dashboard'));
+    $this->actingAs($customer)->get(route('products.index'))->assertRedirect(route('portal.dashboard'));
 });
 
 test('hasPermission reflects the assigned role, admin bypasses', function () {

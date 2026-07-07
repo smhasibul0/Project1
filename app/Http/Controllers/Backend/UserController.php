@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Contact;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,15 +14,18 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('role')->latest()->get();
+        $users = User::with(['role', 'contact'])->latest()->get();
         $roles = Role::orderBy('name')->get();
+        // Customer logins must be linked to a customer contact.
+        $customerContacts = Contact::customers()->orderBy('name')->get();
 
-        return view('admin.backend.users.users', compact('users', 'roles'));
+        return view('admin.backend.users.users', compact('users', 'roles', 'customerContacts'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate($this->rules());
+        $data = $request->validate($this->rules() + $this->contactRules($request));
+        $data['contact_id'] = $this->isCustomerRole($data['role_id']) ? (int) $request->contact_id : null;
         $data['status'] = $request->has('is_active') ? 'active' : 'inactive';
         $data['password'] = Hash::make($request->password);
 
@@ -34,7 +38,8 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->validate($this->rules($user->id));
+        $data = $request->validate($this->rules($user->id) + $this->contactRules($request, $user->id));
+        $data['contact_id'] = $this->isCustomerRole($data['role_id']) ? (int) $request->contact_id : null;
         $data['status'] = $request->has('is_active') ? 'active' : 'inactive';
 
         if ($request->filled('password')) {
@@ -67,6 +72,27 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->back()->with('success', 'User deleted successfully.');
+    }
+
+    private function isCustomerRole(int|string|null $roleId): bool
+    {
+        return $roleId !== null && Role::whereKey($roleId)->where('slug', 'customer')->exists();
+    }
+
+    /**
+     * When the chosen role is customer, a unique customer contact must be linked.
+     *
+     * @return array<string, mixed>
+     */
+    private function contactRules(Request $request, ?int $ignoreId = null): array
+    {
+        if (! $this->isCustomerRole($request->input('role_id'))) {
+            return [];
+        }
+
+        return [
+            'contact_id' => ['required', 'exists:contacts,id', Rule::unique('users', 'contact_id')->ignore($ignoreId)],
+        ];
     }
 
     /**

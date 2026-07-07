@@ -50,6 +50,14 @@ class User extends Authenticatable
     }
 
     /**
+     * The customer business record this login belongs to (portal users only).
+     */
+    public function contact(): BelongsTo
+    {
+        return $this->belongsTo(Contact::class);
+    }
+
+    /**
      * Slug of the user's role (or null).
      */
     public function roleSlug(): ?string

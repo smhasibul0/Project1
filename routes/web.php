@@ -21,6 +21,7 @@ use App\Http\Controllers\Backend\TransportationModeController;
 use App\Http\Controllers\Backend\UnitController;
 use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrackController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Customer Portal (customer logins only; every query scoped to their linked contact)
+Route::middleware(['auth', 'customer'])->prefix('portal')->name('portal.')->group(function () {
+    Route::get('/', [PortalController::class, 'dashboard'])->name('dashboard');
+
+    Route::get('/quotations', [PortalController::class, 'quotations'])->name('quotations');
+    Route::get('/quotations/new', [PortalController::class, 'quotationCreate'])->name('quotation.create');
+    Route::post('/quotations', [PortalController::class, 'quotationStore'])->name('quotation.store');
+    Route::get('/quotations/{id}', [PortalController::class, 'quotationShow'])->name('quotation.show');
+    Route::post('/quotations/{id}/accept', [PortalController::class, 'quotationAccept'])->name('quotation.accept');
+    Route::post('/quotations/{id}/reject', [PortalController::class, 'quotationReject'])->name('quotation.reject');
+
+    Route::get('/orders', [PortalController::class, 'orders'])->name('orders');
+    Route::get('/orders/{id}', [PortalController::class, 'orderShow'])->name('order.show');
+
+    Route::get('/payments', [PortalController::class, 'payments'])->name('payments');
 });
 
 require __DIR__.'/auth.php';
@@ -84,6 +102,7 @@ Route::middleware(['auth', 'admin', 'can:contacts.manage'])->group(function () {
     Route::post('/contacts', [ContactController::class, 'store'])->name('contact.store');
     Route::put('/contacts/{id}', [ContactController::class, 'update'])->name('contact.update');
     Route::patch('/contacts/{id}/toggle-active', [ContactController::class, 'toggleActive'])->name('contact.toggle');
+    Route::post('/customers/{id}/create-login', [ContactController::class, 'createLogin'])->name('contact.create.login');
     Route::delete('/contacts/{id}', [ContactController::class, 'destroy'])->name('contact.delete');
 
     // Customer Groups

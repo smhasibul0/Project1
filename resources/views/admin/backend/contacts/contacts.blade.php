@@ -93,6 +93,20 @@
                                                     <i class="ri-edit-line me-2"></i>Edit
                                                 </button>
                                             </li>
+                                            @if($isCustomer)
+                                            <li>
+                                                @if($contact->user)
+                                                    <span class="dropdown-item text-success" style="cursor:default;"><i class="ri-user-follow-line me-2"></i>Login: {{ $contact->user->email }}</span>
+                                                @else
+                                                    <button type="button" class="dropdown-item create-login-btn" data-bs-toggle="modal" data-bs-target="#createLoginModal"
+                                                            data-id="{{ $contact->id }}"
+                                                            data-name="{{ $contact->name ?: $contact->business_name }}"
+                                                            data-email="{{ $contact->email }}">
+                                                        <i class="ri-user-add-line me-2"></i>Create Login
+                                                    </button>
+                                                @endif
+                                            </li>
+                                            @endif
                                             <li>
                                                 <form action="{{ route('contact.toggle', $contact->id) }}" method="POST" class="m-0">
                                                     @csrf @method('PATCH')
@@ -383,8 +397,58 @@
     </div>
 </div>
 
+{{-- ===================== Create Login modal (customers) ===================== --}}
+@if($isCustomer)
+<div class="modal fade" id="createLoginModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="createLoginForm" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Portal Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Create a login for <strong id="clName">—</strong> so they can access the customer portal.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="username" id="clUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" id="clEmail" required>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="password" required minlength="6">
+                        <small class="text-muted">Share this with the customer. Minimum 6 characters.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Create Login</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    // Create-login modal: fill the form from the clicked customer row.
+    const clModal = document.getElementById('createLoginModal');
+    if (clModal) {
+        clModal.addEventListener('show.bs.modal', function (e) {
+            const btn = e.relatedTarget;
+            if (!btn) { return; }
+            document.getElementById('createLoginForm').action = '{{ url('customers') }}/' + btn.dataset.id + '/create-login';
+            document.getElementById('clName').textContent = btn.dataset.name || 'this customer';
+            document.getElementById('clEmail').value = btn.dataset.email || '';
+            document.getElementById('clUsername').value = btn.dataset.email || '';
+        });
+    }
 
     // Render Actions dropdowns with a fixed Popper strategy so the responsive-table
     // overflow doesn't clip the open menu.

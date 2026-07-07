@@ -59,7 +59,7 @@
                                     <div class="d-flex gap-1 justify-content-end">
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-user-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-user="{{ json_encode($user->only(['id','first_name','last_name','username','email','phone','role_id','status'])) }}" title="Edit">
+                                                data-user="{{ json_encode($user->only(['id','first_name','last_name','username','email','phone','role_id','contact_id','status'])) }}" title="Edit">
                                             <i class="ri-edit-line"></i>
                                         </button>
                                         <form action="{{ route('user.toggle', $user->id) }}" method="POST" class="m-0">
@@ -120,12 +120,22 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Role <span class="text-danger">*</span></label>
-                        <select class="form-control" name="role_id" data-field="role_id" required>
+                        <select class="form-control role-select" name="role_id" data-field="role_id" required>
                             <option value="">-- Select Role --</option>
                             @foreach($roles as $role)
-                                <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                <option value="{{ $role->id }}" data-slug="{{ $role->slug }}">{{ $role->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div class="col-md-6 customer-contact-field" style="display:none;">
+                        <label class="form-label">Customer <span class="text-danger">*</span></label>
+                        <select class="form-control" name="contact_id" data-field="contact_id">
+                            <option value="">-- Select Customer --</option>
+                            @foreach($customerContacts as $c)
+                                <option value="{{ $c->id }}">{{ $c->name ?: $c->business_name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">The customer this login belongs to (portal access).</small>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Password @if($mode === 'add')<span class="text-danger">*</span>@endif</label>
@@ -150,6 +160,19 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Show the Customer selector only when the Customer role is chosen.
+    function toggleContactField(select) {
+        const form = select.closest('form');
+        const field = form.querySelector('.customer-contact-field');
+        const opt = select.options[select.selectedIndex];
+        const isCustomer = opt && opt.dataset.slug === 'customer';
+        field.style.display = isCustomer ? '' : 'none';
+        field.querySelector('[name="contact_id"]').required = isCustomer;
+    }
+    document.querySelectorAll('.role-select').forEach(function (sel) {
+        sel.addEventListener('change', () => toggleContactField(sel));
+    });
+
     document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
         const u = JSON.parse(e.relatedTarget.dataset.user);
         const form = document.getElementById('editForm');
@@ -159,7 +182,9 @@ document.addEventListener('DOMContentLoaded', function () {
             else { f.value = (u[f.dataset.field] ?? '') === null ? '' : (u[f.dataset.field] ?? ''); }
         });
         form.querySelector('[name="password"]').value = '';
+        toggleContactField(form.querySelector('.role-select'));
     });
+
     document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this user?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })

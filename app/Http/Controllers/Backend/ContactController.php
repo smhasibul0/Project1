@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\CustomerGroup;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class ContactController extends Controller
 {
@@ -30,7 +33,7 @@ class ContactController extends Controller
      */
     public function customers()
     {
-        $contacts = Contact::customers()->with(['addedBy', 'customerGroup'])->latest()->get();
+        $contacts = Contact::customers()->with(['addedBy', 'customerGroup', 'user'])->latest()->get();
 
         return view('admin.backend.contacts.contacts', [
             'contacts' => $contacts,
@@ -80,6 +83,37 @@ class ContactController extends Controller
         $contact->update(['is_active' => ! $contact->is_active]);
 
         return redirect()->back()->with('success', 'Contact '.($contact->is_active ? 'activated' : 'deactivated').' successfully.');
+    }
+
+    /**
+     * Create a customer portal login for a contact (one login per customer).
+     */
+    public function createLogin(Request $request, $id)
+    {
+        $contact = Contact::findOrFail($id);
+
+        if ($contact->user) {
+            return redirect()->back()->with('error', 'This customer already has a login.');
+        }
+
+        $data = $request->validate([
+            'username' => 'required|string|max:255|unique:users,username',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $role = Role::where('slug', 'customer')->first();
+
+        User::create([
+            'first_name' => $contact->name ?: $contact->business_name ?: 'Customer',
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role_id' => $role?->id,
+            'contact_id' => $contact->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Customer login created for '.($contact->name ?: $contact->business_name).'.');
     }
 
     /**

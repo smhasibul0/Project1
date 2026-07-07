@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contact extends Model
 {
@@ -55,6 +56,14 @@ class Contact extends Model
     public function customerGroup(): BelongsTo
     {
         return $this->belongsTo(CustomerGroup::class, 'customer_group_id');
+    }
+
+    /**
+     * The portal login (User) for this customer, if one has been created.
+     */
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class, 'contact_id');
     }
 
     public function addedBy(): BelongsTo

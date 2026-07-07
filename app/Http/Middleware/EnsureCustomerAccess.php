@@ -6,10 +6,10 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureAdminAccess
+class EnsureCustomerAccess
 {
     /**
-     * Handle an incoming request.
+     * Restrict the portal to customer logins that are linked to a business record.
      *
      * @param  Closure(Request): (Response)  $next
      */
@@ -21,9 +21,8 @@ class EnsureAdminAccess
             return redirect()->route('login');
         }
 
-        // Customers belong in their portal, never the admin panel — bounce them there.
-        if ($user->isCustomer()) {
-            return redirect()->route('portal.dashboard');
+        if (! $user->isCustomer() || ! $user->contact_id) {
+            abort(403, 'This area is for customer accounts.');
         }
 
         return $next($request);
