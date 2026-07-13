@@ -30,6 +30,7 @@ use App\Http\Controllers\Warehouse\DashboardController as WarehouseDashboardCont
 use App\Http\Controllers\Warehouse\ExpenseController as WarehouseExpenseController;
 use App\Http\Controllers\Warehouse\InventoryController as WarehouseInventoryController;
 use App\Http\Controllers\Warehouse\OrderController as WarehouseOrderController;
+use App\Http\Controllers\Warehouse\StaffController as WarehouseStaffController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -83,6 +84,16 @@ Route::middleware(['auth', 'warehouse'])->prefix('warehouse')->name('warehouse.'
     Route::get('/expenses', [WarehouseExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [WarehouseExpenseController::class, 'store'])->name('expenses.store');
     Route::delete('/expenses/{id}', [WarehouseExpenseController::class, 'destroy'])->name('expenses.delete');
+
+    Route::get('/staff', [WarehouseStaffController::class, 'index'])->name('staff.index');
+    Route::post('/staff', [WarehouseStaffController::class, 'store'])->name('staff.store');
+    Route::get('/staff/{id}', [WarehouseStaffController::class, 'show'])->name('staff.show');
+    Route::put('/staff/{id}', [WarehouseStaffController::class, 'update'])->name('staff.update');
+    Route::delete('/staff/{id}', [WarehouseStaffController::class, 'destroy'])->name('staff.delete');
+    Route::post('/staff/{id}/documents', [WarehouseStaffController::class, 'storeDocument'])->name('staff.document.store');
+    Route::delete('/staff/{id}/documents/{documentId}', [WarehouseStaffController::class, 'destroyDocument'])->name('staff.document.delete');
+    Route::post('/staff/{id}/salary', [WarehouseStaffController::class, 'storeSalary'])->name('staff.salary.store');
+    Route::delete('/staff/{id}/salary/{paymentId}', [WarehouseStaffController::class, 'destroySalary'])->name('staff.salary.delete');
 });
 
 require __DIR__.'/auth.php';

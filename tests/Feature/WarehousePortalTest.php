@@ -4,12 +4,15 @@ use App\Models\ExpenseCategory;
 use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Role;
+use App\Models\StaffSalaryPayment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseExpense;
+use App\Models\WarehouseStaff;
 use App\Models\WarehouseStock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 
 uses(RefreshDatabase::class);
 
@@ -194,4 +197,102 @@ test('a warehouse user cannot delete another warehouse expense', function () {
 test('the expense pages render', function () {
     $this->actingAs(adminUser())->get(route('expense.categories'))->assertOk();
     $this->actingAs(warehouseUser(Warehouse::factory()->create()))->get(route('warehouse.expenses.index'))->assertOk();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Phase 11C — Staff & Salary
+|--------------------------------------------------------------------------
+*/
+
+test('a warehouse user can add staff scoped to their warehouse', function () {
+    $warehouse = Warehouse::factory()->create();
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.staff.store'), [
+        'name' => 'Karim', 'designation' => 'Loader', 'monthly_salary' => 15000,
+    ])->assertRedirect();
+
+    $staff = WarehouseStaff::firstOrFail();
+    expect($staff->warehouse_id)->toBe($warehouse->id);
+    expect($staff->name)->toBe('Karim');
+});
+
+test('a warehouse user cannot open another warehouse staff', function () {
+    $other = WarehouseStaff::create(['warehouse_id' => Warehouse::factory()->create()->id, 'name' => 'Theirs']);
+
+    $this->actingAs(warehouseUser(Warehouse::factory()->create()))
+        ->get(route('warehouse.staff.show', $other->id))->assertNotFound();
+});
+
+test('a salary payment from an account debits the ledger', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 50000]);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim', 'monthly_salary' => 15000]);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 15000, 'payment_date' => '2026-07-14', 'payment_account_id' => $account->id,
+    ])->assertRedirect();
+
+    expect(StaffSalaryPayment::count())->toBe(1);
+    expect((float) $account->fresh()->balance)->toBe(35000.0);
+
+    $txn = Transaction::where('source', 'staff_salary')->first();
+    expect($txn)->not->toBeNull();
+    expect((float) $txn->debit)->toBe(15000.0);
+});
+
+test('deleting a salary payment reverses the ledger', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 20000]);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 5000, 'payment_date' => '2026-07-14', 'payment_account_id' => $account->id,
+    ]);
+    $payment = StaffSalaryPayment::firstOrFail();
+    expect((float) $account->fresh()->balance)->toBe(15000.0);
+
+    $this->actingAs($user)->delete(route('warehouse.staff.salary.delete', [$staff->id, $payment->id]))->assertRedirect();
+
+    expect((float) $account->fresh()->balance)->toBe(20000.0);
+    expect(Transaction::where('source', 'staff_salary')->count())->toBe(0);
+    expect(StaffSalaryPayment::count())->toBe(0);
+});
+
+test('a salary payment without an account records no ledger entry', function () {
+    $warehouse = Warehouse::factory()->create();
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 5000, 'payment_date' => '2026-07-14',
+    ])->assertRedirect();
+
+    expect(StaffSalaryPayment::count())->toBe(1);
+    expect(Transaction::where('source', 'staff_salary')->count())->toBe(0);
+});
+
+test('a titled staff document can be uploaded', function () {
+    $warehouse = Warehouse::factory()->create();
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.staff.document.store', $staff->id), [
+        'title' => 'National ID',
+        'file' => UploadedFile::fake()->create('nid.pdf', 20, 'application/pdf'),
+    ])->assertRedirect();
+
+    $doc = $staff->documents()->firstOrFail();
+    expect($doc->title)->toBe('National ID');
+
+    // Clean up the file this test wrote to public/upload.
+    @unlink(public_path('upload/staff_documents/'.$doc->file));
+});
+
+test('the staff pages render', function () {
+    $warehouse = Warehouse::factory()->create();
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->get(route('warehouse.staff.index'))->assertOk()->assertSee('Karim');
+    $this->actingAs($user)->get(route('warehouse.staff.show', $staff->id))->assertOk();
 });
