@@ -296,3 +296,45 @@ test('the staff pages render', function () {
     $this->actingAs($user)->get(route('warehouse.staff.index'))->assertOk()->assertSee('Karim');
     $this->actingAs($user)->get(route('warehouse.staff.show', $staff->id))->assertOk();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Phase 11D — P&L / Net Profit integration
+|--------------------------------------------------------------------------
+*/
+
+test('the P&L nets operating expenses (warehouse + salaries) off order profit', function () {
+    $warehouse = Warehouse::factory()->create();
+    Order::factory()->create(['profit' => 1000, 'total_amount' => 5000, 'order_date' => '2026-07-10']);
+    WarehouseExpense::create(['warehouse_id' => $warehouse->id, 'amount' => 200, 'expense_date' => '2026-07-10']);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+    StaffSalaryPayment::create(['warehouse_staff_id' => $staff->id, 'warehouse_id' => $warehouse->id, 'salary_month' => '2026-07', 'amount' => 300, 'payment_date' => '2026-07-10']);
+
+    $response = $this->actingAs(adminUser())->get(route('reports.profit-loss'));
+    $response->assertOk();
+
+    expect($response->viewData('operating')['total'])->toBe(500.0);
+    expect($response->viewData('netProfit'))->toBe(500.0); // 1000 gross - 500 operating
+});
+
+test('operating expenses honour the P&L date filter', function () {
+    $warehouse = Warehouse::factory()->create();
+    WarehouseExpense::create(['warehouse_id' => $warehouse->id, 'amount' => 200, 'expense_date' => '2026-07-10']);
+    WarehouseExpense::create(['warehouse_id' => $warehouse->id, 'amount' => 999, 'expense_date' => '2026-01-01']);
+
+    $response = $this->actingAs(adminUser())->get(route('reports.profit-loss', ['from' => '2026-07-01', 'to' => '2026-07-31']));
+
+    expect($response->viewData('operating')['warehouse_expenses'])->toBe(200.0);
+});
+
+test('the warehouse operations report aggregates per warehouse', function () {
+    $warehouse = Warehouse::factory()->create();
+    WarehouseExpense::create(['warehouse_id' => $warehouse->id, 'amount' => 150, 'expense_date' => '2026-07-10']);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim']);
+    StaffSalaryPayment::create(['warehouse_staff_id' => $staff->id, 'warehouse_id' => $warehouse->id, 'salary_month' => '2026-07', 'amount' => 250, 'payment_date' => '2026-07-10']);
+
+    $response = $this->actingAs(adminUser())->get(route('reports.warehouse-summary'));
+    $response->assertOk();
+
+    expect($response->viewData('totals')['operating'])->toBe(400.0);
+});

@@ -287,6 +287,7 @@
                         <ul class="nav-second-level">
                             <li><a href="{{ route('reports.profit-loss') }}" class="tp-link">Profit &amp; Loss</a></li>
                             <li><a href="{{ route('reports.receivables') }}" class="tp-link">Receivables</a></li>
+                            <li><a href="{{ route('reports.warehouse-summary') }}" class="tp-link">Warehouse Operations</a></li>
                         </ul>
                     </div>
                 </li>

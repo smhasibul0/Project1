@@ -297,6 +297,7 @@ Route::middleware(['auth', 'admin', 'can:reports.view'])->group(function () {
     Route::get('/reports/receivables', [ReportController::class, 'receivables'])->name('reports.receivables');
     Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
     Route::get('/reports/cash-flow', [ReportController::class, 'cashFlow'])->name('reports.cash-flow');
+    Route::get('/reports/warehouse-summary', [ReportController::class, 'warehouseSummary'])->name('reports.warehouse-summary');
 });
 
 // Company / invoice settings (admin)

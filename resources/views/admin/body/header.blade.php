@@ -163,6 +163,7 @@ window.__adminSearch = [
     { l: 'Receivables', i: 'ri-time-line', u: '{{ route('reports.receivables') }}', k: 'report dues aging' },
     { l: 'Cash Flow', i: 'ri-exchange-line', u: '{{ route('reports.cash-flow') }}', k: 'report cash' },
     { l: 'Balance Sheet', i: 'ri-scales-3-line', u: '{{ route('reports.balance-sheet') }}', k: 'report balance' },
+    { l: 'Warehouse Operations', i: 'ri-store-2-line', u: '{{ route('reports.warehouse-summary') }}', k: 'report warehouse expenses staff inventory' },
     @endcan
     @can('users.manage')
     { l: 'Users', i: 'ri-team-line', u: '{{ route('users.index') }}', k: 'staff access' },

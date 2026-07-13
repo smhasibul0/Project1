@@ -48,9 +48,9 @@
         {{-- Summary cards --}}
         <div class="row g-3 mb-1">
             <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Total Revenue</small><h4 class="mb-0">৳ {{ number_format($totals['revenue'], 2) }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Total Cost</small><h4 class="mb-0">৳ {{ number_format($totals['cost'], 2) }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Total Profit</small><h4 class="mb-0 {{ $totals['profit'] < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($totals['profit'], 2) }}</h4></div></div></div>
-            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Avg Margin</small><h4 class="mb-0">{{ number_format($totals['margin'], 2) }}%</h4></div></div></div>
+            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Gross Profit (orders)</small><h4 class="mb-0 {{ $totals['profit'] < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($totals['profit'], 2) }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Operating Expenses</small><h4 class="mb-0 text-danger">৳ {{ number_format($operating['total'], 2) }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card h-100 border-primary"><div class="card-body"><small class="text-muted d-block">Net Profit</small><h4 class="mb-0 {{ $netProfit < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($netProfit, 2) }}</h4><small class="text-muted">{{ number_format($netMargin, 2) }}% margin</small></div></div></div>
         </div>
 
         <div class="card">
@@ -104,6 +104,31 @@
                         </tfoot>
                     </table>
                 </x-data-table>
+            </div>
+        </div>
+
+        {{-- Operating expenses → Net Profit --}}
+        <div class="row justify-content-end">
+            <div class="col-lg-5">
+                <div class="card">
+                    <div class="card-header"><h6 class="mb-0">Order Profit → Net Profit</h6></div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0 align-middle">
+                            <tbody>
+                                <tr><td class="ps-3">Gross profit from orders</td><td class="text-end pe-3">৳ {{ number_format($totals['profit'], 2) }}</td></tr>
+                                <tr><td class="ps-3 text-muted">Less: Warehouse expenses</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['warehouse_expenses'], 2) }})</td></tr>
+                                <tr><td class="ps-3 text-muted">Less: Staff salaries</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['salaries'], 2) }})</td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light fw-semibold">
+                                    <td class="ps-3">Net Profit</td>
+                                    <td class="text-end pe-3 {{ $netProfit < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($netProfit, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <small class="text-muted d-block mb-4">Operating expenses are warehouse overheads &amp; salaries in the selected date range, across all warehouses.</small>
             </div>
         </div>
     </div>

@@ -6,7 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\PaymentAccount;
+use App\Models\StaffSalaryPayment;
 use App\Models\Transaction;
+use App\Models\Warehouse;
+use App\Models\WarehouseExpense;
+use App\Models\WarehouseStock;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -60,9 +64,31 @@ class ReportController extends Controller
             'margin' => $totalRevenue > 0 ? round($totalProfit / $totalRevenue * 100, 2) : 0,
         ];
 
+        // Operating expenses (warehouse overheads + staff salaries) are NOT tied to a
+        // single order — they reduce the gross order profit to a company Net Profit.
+        $warehouseExpenses = round((float) WarehouseExpense::query()
+            ->when($from, fn ($q) => $q->whereDate('expense_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
+            ->sum('amount'), 2);
+
+        $salaries = round((float) StaffSalaryPayment::query()
+            ->when($from, fn ($q) => $q->whereDate('payment_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('payment_date', '<=', $to))
+            ->sum('amount'), 2);
+
+        $operating = [
+            'warehouse_expenses' => $warehouseExpenses,
+            'salaries' => $salaries,
+            'total' => round($warehouseExpenses + $salaries, 2),
+        ];
+        $netProfit = round($totalProfit - $operating['total'], 2);
+
         return view('admin.backend.reports.profit_loss', [
             'rows' => $rows,
             'totals' => $totals,
+            'operating' => $operating,
+            'netProfit' => $netProfit,
+            'netMargin' => $totalRevenue > 0 ? round($netProfit / $totalRevenue * 100, 2) : 0,
             'customers' => Contact::customers()->orderBy('name')->get(),
             'from' => $from,
             'to' => $to,
@@ -170,6 +196,37 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'accountId' => $accountId,
+        ]);
+    }
+
+    /**
+     * Admin cross-warehouse overview: on-hand stock, staff, expenses & salaries per warehouse.
+     */
+    public function warehouseSummary()
+    {
+        $rows = Warehouse::withCount('staff')->orderBy('name')->get()->map(function (Warehouse $w) {
+            $lots = WarehouseStock::where('warehouse_id', $w->id)->get();
+            $expenses = round((float) WarehouseExpense::where('warehouse_id', $w->id)->sum('amount'), 2);
+            $salaries = round((float) StaffSalaryPayment::where('warehouse_id', $w->id)->sum('amount'), 2);
+
+            return (object) [
+                'warehouse' => $w,
+                'lots' => $lots->filter(fn (WarehouseStock $s) => $s->onHand() > 0)->count(),
+                'on_hand' => round($lots->sum(fn (WarehouseStock $s) => $s->onHand()), 2),
+                'staff' => $w->staff_count,
+                'expenses' => $expenses,
+                'salaries' => $salaries,
+                'operating' => round($expenses + $salaries, 2),
+            ];
+        });
+
+        return view('admin.backend.reports.warehouse_summary', [
+            'rows' => $rows,
+            'totals' => [
+                'expenses' => round($rows->sum('expenses'), 2),
+                'salaries' => round($rows->sum('salaries'), 2),
+                'operating' => round($rows->sum('operating'), 2),
+            ],
         ]);
     }
 

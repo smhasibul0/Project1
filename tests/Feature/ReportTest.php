@@ -28,10 +28,12 @@ test('profit & loss aggregates order financials and derives supplier cost', func
     $response = $this->actingAs($this->user)->get(route('reports.profit-loss'));
 
     $response->assertOk();
-    // revenue 3000, profit 800, cost = 3000 - 800 = 2200
+    // revenue 3000, gross profit 800; derived supplier cost = 500 + 1500 = 2000
     $response->assertSee('3,000.00');
     $response->assertSee('800.00');
-    $response->assertSee('2,200.00');
+    $response->assertSee('2,000.00');
+    // No operating expenses → Net Profit equals gross order profit.
+    expect($response->viewData('netProfit'))->toBe(800.0);
 });
 
 test('profit & loss respects the date filter', function () {
