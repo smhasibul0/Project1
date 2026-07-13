@@ -155,6 +155,9 @@ window.__adminSearch = [
     @can('accounts.manage')
     { l: 'Payment Accounts', i: 'ri-bank-line', u: '{{ route('payment.accounts') }}', k: 'cash bank account' },
     @endcan
+    @can('expenses.manage')
+    { l: 'Expense Categories', i: 'ri-price-tag-3-line', u: '{{ route('expense.categories') }}', k: 'warehouse expenses rent utilities' },
+    @endcan
     @can('reports.view')
     { l: 'Profit & Loss', i: 'ri-line-chart-line', u: '{{ route('reports.profit-loss') }}', k: 'report pnl profit' },
     { l: 'Receivables', i: 'ri-time-line', u: '{{ route('reports.receivables') }}', k: 'report dues aging' },

@@ -52,6 +52,15 @@
                     </a>
                 </li>
 
+                <li class="menu-title mt-2">Operations</li>
+
+                <li>
+                    <a href="{{ route('warehouse.expenses.index') }}" class="tp-link {{ request()->routeIs('warehouse.expenses.*') ? 'active' : '' }}">
+                        <i data-feather="credit-card"></i>
+                        <span> Expenses </span>
+                    </a>
+                </li>
+
             </ul>
         </div>
     </div>

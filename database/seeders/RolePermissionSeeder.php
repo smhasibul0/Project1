@@ -47,6 +47,9 @@ class RolePermissionSeeder extends Seeder
                 'payments.manage' => 'Manage payments',
                 'reports.view' => 'View reports',
             ],
+            'Warehouse' => [
+                'expenses.manage' => 'Manage warehouse expense categories',
+            ],
             'Settings' => [
                 'settings.manage' => 'Manage company & invoice settings',
             ],
@@ -83,7 +86,7 @@ class RolePermissionSeeder extends Seeder
         // Accountant: finance & costs.
         $accountant->permissions()->sync(
             Permission::whereIn('key', [
-                'costs.manage', 'accounts.manage', 'payments.manage', 'reports.view',
+                'costs.manage', 'accounts.manage', 'payments.manage', 'reports.view', 'expenses.manage',
             ])->pluck('id')
         );
 

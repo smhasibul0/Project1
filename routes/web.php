@@ -10,6 +10,7 @@ use App\Http\Controllers\Backend\ContainerController;
 use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\Backend\ExpenseCategoryController;
 use App\Http\Controllers\Backend\LcController;
 use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\Warehouse\DashboardController as WarehouseDashboardController;
+use App\Http\Controllers\Warehouse\ExpenseController as WarehouseExpenseController;
 use App\Http\Controllers\Warehouse\InventoryController as WarehouseInventoryController;
 use App\Http\Controllers\Warehouse\OrderController as WarehouseOrderController;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +79,10 @@ Route::middleware(['auth', 'warehouse'])->prefix('warehouse')->name('warehouse.'
 
     Route::get('/orders', [WarehouseOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [WarehouseOrderController::class, 'show'])->name('orders.show');
+
+    Route::get('/expenses', [WarehouseExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('/expenses', [WarehouseExpenseController::class, 'store'])->name('expenses.store');
+    Route::delete('/expenses/{id}', [WarehouseExpenseController::class, 'destroy'])->name('expenses.delete');
 });
 
 require __DIR__.'/auth.php';
@@ -220,6 +226,14 @@ Route::middleware(['auth', 'admin', 'can:costs.manage'])->group(function () {
     Route::post('/cost-categories', [CostCategoryController::class, 'store'])->name('cost.category.store');
     Route::put('/cost-categories/{id}', [CostCategoryController::class, 'update'])->name('cost.category.update');
     Route::delete('/cost-categories/{id}', [CostCategoryController::class, 'destroy'])->name('cost.category.delete');
+});
+
+// Warehouse expense categories (admin-managed, parent -> sub; warehouses pick from these)
+Route::middleware(['auth', 'admin', 'can:expenses.manage'])->group(function () {
+    Route::get('/expense-categories', [ExpenseCategoryController::class, 'index'])->name('expense.categories');
+    Route::post('/expense-categories', [ExpenseCategoryController::class, 'store'])->name('expense.category.store');
+    Route::put('/expense-categories/{id}', [ExpenseCategoryController::class, 'update'])->name('expense.category.update');
+    Route::delete('/expense-categories/{id}', [ExpenseCategoryController::class, 'destroy'])->name('expense.category.delete');
 });
 
 // LC — Letters of Credit (created from a supplier's purchase invoice against an order)

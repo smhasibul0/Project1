@@ -1,9 +1,13 @@
 <?php
 
+use App\Models\ExpenseCategory;
 use App\Models\Order;
+use App\Models\PaymentAccount;
 use App\Models\Role;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Models\WarehouseExpense;
 use App\Models\WarehouseStock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -109,4 +113,85 @@ test('a warehouse user is redirected out of the admin panel to their portal', fu
 
     $this->actingAs(warehouseUser($warehouse))->get(route('dashboard'))
         ->assertRedirect(route('warehouse.dashboard'));
+});
+
+/*
+|--------------------------------------------------------------------------
+| Phase 11B — Expenses
+|--------------------------------------------------------------------------
+*/
+
+test('admin can add an expense category and a sub-category', function () {
+    $admin = adminUser();
+
+    $this->actingAs($admin)->post(route('expense.category.store'), ['name' => 'Utilities'])->assertRedirect();
+    $parent = ExpenseCategory::whereNull('parent_id')->where('name', 'Utilities')->firstOrFail();
+
+    $this->actingAs($admin)->post(route('expense.category.store'), ['name' => 'Electricity', 'parent_id' => $parent->id])->assertRedirect();
+
+    expect(ExpenseCategory::where('name', 'Electricity')->first()->parent_id)->toBe($parent->id);
+});
+
+test('a warehouse expense paid from an account debits the ledger', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 10000]);
+    $category = ExpenseCategory::create(['name' => 'Electricity']);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.expenses.store'), [
+        'expense_category_id' => $category->id,
+        'amount' => 1500,
+        'expense_date' => '2026-07-14',
+        'payment_account_id' => $account->id,
+    ])->assertRedirect();
+
+    expect(WarehouseExpense::where('warehouse_id', $warehouse->id)->count())->toBe(1);
+    expect((float) $account->fresh()->balance)->toBe(8500.0);
+
+    $txn = Transaction::where('source', 'warehouse_expense')->first();
+    expect($txn)->not->toBeNull();
+    expect((float) $txn->debit)->toBe(1500.0);
+    expect($txn->transactionable_type)->toBe(WarehouseExpense::class);
+});
+
+test('deleting a warehouse expense reverses its ledger entry', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 5000]);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 1000, 'expense_date' => '2026-07-14', 'payment_account_id' => $account->id,
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+    expect((float) $account->fresh()->balance)->toBe(4000.0);
+
+    $this->actingAs($user)->delete(route('warehouse.expenses.delete', $expense->id))->assertRedirect();
+
+    expect((float) $account->fresh()->balance)->toBe(5000.0);
+    expect(Transaction::where('source', 'warehouse_expense')->count())->toBe(0);
+    expect(WarehouseExpense::count())->toBe(0);
+});
+
+test('an expense with no account records no ledger entry', function () {
+    $warehouse = Warehouse::factory()->create();
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.expenses.store'), [
+        'amount' => 300, 'expense_date' => '2026-07-14',
+    ])->assertRedirect();
+
+    expect(WarehouseExpense::count())->toBe(1);
+    expect(Transaction::where('source', 'warehouse_expense')->count())->toBe(0);
+});
+
+test('a warehouse user cannot delete another warehouse expense', function () {
+    $mine = Warehouse::factory()->create();
+    $other = Warehouse::factory()->create();
+    $expense = WarehouseExpense::create(['warehouse_id' => $other->id, 'amount' => 100, 'expense_date' => '2026-07-14']);
+
+    $this->actingAs(warehouseUser($mine))->delete(route('warehouse.expenses.delete', $expense->id))->assertNotFound();
+    expect(WarehouseExpense::count())->toBe(1);
+});
+
+test('the expense pages render', function () {
+    $this->actingAs(adminUser())->get(route('expense.categories'))->assertOk();
+    $this->actingAs(warehouseUser(Warehouse::factory()->create()))->get(route('warehouse.expenses.index'))->assertOk();
 });

@@ -146,6 +146,8 @@ class ReportController extends Controller
             'order_cost' => 'Order costs paid',
             'lc_cost' => 'LC charges paid',
             'container_cost' => 'Container costs paid',
+            'warehouse_expense' => 'Warehouse expenses paid',
+            'staff_salary' => 'Staff salaries paid',
         ];
 
         $rows = $transactions->groupBy('source')->map(function ($group, $source) use ($labels) {

@@ -213,6 +213,16 @@
                 </li>
                 @endcan
 
+                <!-- Warehouse expense categories -->
+                @can('expenses.manage')
+                <li>
+                    <a href="{{ route('expense.categories') }}" class="tp-link {{ request()->routeIs('expense.categories') ? 'active' : '' }}">
+                        <i data-feather="tag"></i>
+                        <span> Expense Categories </span>
+                    </a>
+                </li>
+                @endcan
+
                 <!-- Payment accounts -->
                 @can('accounts.manage')
                 <li>
