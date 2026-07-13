@@ -61,14 +61,16 @@ class RolePermissionSeeder extends Seeder
         // Roles (Admin & Customer are system roles that can't be deleted).
         $admin = Role::updateOrCreate(['slug' => 'admin'], ['name' => 'Admin', 'is_system' => true, 'description' => 'Full access to everything']);
         $customer = Role::updateOrCreate(['slug' => 'customer'], ['name' => 'Customer', 'is_system' => true, 'description' => 'Portal access only']);
+        $warehouse = Role::updateOrCreate(['slug' => 'warehouse'], ['name' => 'Warehouse', 'is_system' => true, 'description' => 'Warehouse portal access only']);
         $staff = Role::updateOrCreate(['slug' => 'staff'], ['name' => 'Staff / Agent', 'description' => 'Sourcing, orders & logistics']);
         $accountant = Role::updateOrCreate(['slug' => 'accountant'], ['name' => 'Accountant', 'description' => 'Finance, costs & reports']);
 
         // Admin gets everything (also bypasses gates, but sync for a complete matrix).
         $admin->permissions()->sync(Permission::pluck('id'));
 
-        // Customer: no admin-panel permissions.
+        // Customer & Warehouse: no admin-panel permissions (their own portals gate access by role).
         $customer->permissions()->sync([]);
+        $warehouse->permissions()->sync([]);
 
         // Staff / Agent: operational modules, no finance.
         $staff->permissions()->sync(

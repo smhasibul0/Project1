@@ -1,0 +1,112 @@
+<?php
+
+use App\Models\Order;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Models\WarehouseStock;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+function warehouseUser(Warehouse $warehouse): User
+{
+    $role = Role::firstOrCreate(['slug' => 'warehouse'], ['name' => 'Warehouse', 'is_system' => true]);
+
+    return User::factory()->create(['role_id' => $role->id, 'warehouse_id' => $warehouse->id]);
+}
+
+function orderWithItems(Warehouse $warehouse): Order
+{
+    $order = Order::factory()->create(['warehouse_id' => $warehouse->id, 'goods_status' => 'at_port']);
+    $order->items()->create(['item_description' => 'Toy Car', 'quantity' => 10]);
+    $order->items()->create(['item_description' => 'Lamp', 'quantity' => 5]);
+
+    return $order;
+}
+
+test('marking an order at BD warehouse receives its items into inventory', function () {
+    $warehouse = Warehouse::factory()->create();
+    $order = orderWithItems($warehouse);
+
+    $this->actingAs(adminUser())->post(route('order.status', $order->id), [
+        'goods_status' => 'at_bd_warehouse',
+        'warehouse_id' => $warehouse->id,
+    ])->assertRedirect();
+
+    $stocks = WarehouseStock::where('order_id', $order->id)->get();
+    expect($stocks)->toHaveCount(2);
+    expect($order->fresh()->warehouse_id)->toBe($warehouse->id);
+    expect((float) $stocks->firstWhere('item_description', 'Toy Car')->received_qty)->toBe(10.0);
+    expect($stocks->firstWhere('item_description', 'Toy Car')->movements()->where('type', 'received')->count())->toBe(1);
+});
+
+test('receiving an order into inventory is idempotent', function () {
+    $warehouse = Warehouse::factory()->create();
+    $order = orderWithItems($warehouse);
+
+    $payload = ['goods_status' => 'at_bd_warehouse', 'warehouse_id' => $warehouse->id];
+    $this->actingAs(adminUser())->post(route('order.status', $order->id), $payload);
+    $this->actingAs(adminUser())->post(route('order.status', $order->id), $payload);
+
+    expect(WarehouseStock::where('order_id', $order->id)->count())->toBe(2);
+});
+
+test('a warehouse user only sees their own warehouse inventory', function () {
+    $mine = Warehouse::factory()->create();
+    $other = Warehouse::factory()->create();
+    WarehouseStock::create(['warehouse_id' => $mine->id, 'item_description' => 'MyGoods', 'received_qty' => 3]);
+    $otherStock = WarehouseStock::create(['warehouse_id' => $other->id, 'item_description' => 'TheirGoods', 'received_qty' => 3]);
+
+    $response = $this->actingAs(warehouseUser($mine))->get(route('warehouse.inventory.index'));
+    $response->assertOk()->assertSee('MyGoods')->assertDontSee('TheirGoods');
+
+    $this->actingAs(warehouseUser($mine))->get(route('warehouse.inventory.show', $otherStock->id))->assertNotFound();
+});
+
+test('a warehouse user can dispatch stock, reducing on-hand and logging a movement', function () {
+    $warehouse = Warehouse::factory()->create();
+    $stock = WarehouseStock::create(['warehouse_id' => $warehouse->id, 'item_description' => 'Widget', 'received_qty' => 20]);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.inventory.dispatch', $stock->id), [
+        'quantity' => 8,
+        'reference' => 'Delivered to customer',
+    ])->assertRedirect();
+
+    $stock->refresh();
+    expect((float) $stock->dispatched_qty)->toBe(8.0);
+    expect($stock->onHand())->toBe(12.0);
+    expect($stock->movements()->where('type', 'dispatched')->count())->toBe(1);
+});
+
+test('you cannot dispatch more than the on-hand quantity', function () {
+    $warehouse = Warehouse::factory()->create();
+    $stock = WarehouseStock::create(['warehouse_id' => $warehouse->id, 'item_description' => 'Widget', 'received_qty' => 5]);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.inventory.dispatch', $stock->id), [
+        'quantity' => 9,
+    ])->assertSessionHasErrors('quantity');
+
+    expect((float) $stock->fresh()->dispatched_qty)->toBe(0.0);
+});
+
+test('warehouse portal pages render for a warehouse user', function () {
+    $warehouse = Warehouse::factory()->create();
+    $order = orderWithItems($warehouse);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->get(route('warehouse.dashboard'))->assertOk();
+    $this->actingAs($user)->get(route('warehouse.orders.index'))->assertOk()->assertSee($order->order_no);
+    $this->actingAs($user)->get(route('warehouse.orders.show', $order->id))->assertOk();
+});
+
+test('non-warehouse users are blocked from the warehouse portal', function () {
+    $this->actingAs(adminUser())->get(route('warehouse.dashboard'))->assertForbidden();
+});
+
+test('a warehouse user is redirected out of the admin panel to their portal', function () {
+    $warehouse = Warehouse::factory()->create();
+
+    $this->actingAs(warehouseUser($warehouse))->get(route('dashboard'))
+        ->assertRedirect(route('warehouse.dashboard'));
+});

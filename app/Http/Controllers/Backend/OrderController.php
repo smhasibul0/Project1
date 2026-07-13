@@ -16,6 +16,8 @@ use App\Models\Quotation;
 use App\Models\Transaction;
 use App\Models\TransportationMode;
 use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Models\WarehouseStock;
 use App\Support\NumberToWords;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -103,8 +105,9 @@ class OrderController extends Controller
             ->findOrFail($id);
         $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.backend.orders.show', compact('order', 'costCategories', 'accounts'));
+        return view('admin.backend.orders.show', compact('order', 'costCategories', 'accounts', 'warehouses'));
     }
 
     public function edit($id)
@@ -161,6 +164,7 @@ class OrderController extends Controller
 
         $data = $request->validate([
             'goods_status' => 'required|in:'.implode(',', array_keys(Order::goodsStatuses())),
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -172,8 +176,12 @@ class OrderController extends Controller
         if ($status === 'at_port' && ! $order->port_arrival_date) {
             $updates['port_arrival_date'] = $today;
         }
-        if ($status === 'at_bd_warehouse' && ! $order->bd_warehouse_date) {
-            $updates['bd_warehouse_date'] = $today;
+        if ($status === 'at_bd_warehouse') {
+            if (! $order->bd_warehouse_date) {
+                $updates['bd_warehouse_date'] = $today;
+            }
+            // Which warehouse the goods land in (defaults to the designated one).
+            $updates['warehouse_id'] = $data['warehouse_id'] ?? $order->warehouse_id;
         }
         if ($status === 'delivered') {
             $updates['delivery_status'] = 'delivered';
@@ -184,6 +192,11 @@ class OrderController extends Controller
 
         $order->update($updates);
 
+        // Receive the goods into the chosen warehouse's inventory (once).
+        if ($status === 'at_bd_warehouse' && $order->warehouse_id) {
+            $this->receiveIntoWarehouse($order->fresh('items'), (int) $order->warehouse_id);
+        }
+
         if ($status === 'delivered' && $order->goods_handover_date && $order->delivered_date) {
             $order->update([
                 'total_delivery_days' => Carbon::parse($order->goods_handover_date)->diffInDays(Carbon::parse($order->delivered_date)),
@@ -193,6 +206,48 @@ class OrderController extends Controller
         $order->logStatus($status, $data['note'] ?? null, Auth::id());
 
         return redirect()->back()->with('success', 'Status updated to '.$order->statusLabel().'.');
+    }
+
+    /**
+     * Turn an arrived order's items into stock lots in the given warehouse. Idempotent:
+     * an order that already has received stock is skipped so re-marking the status
+     * doesn't double-count inventory.
+     */
+    private function receiveIntoWarehouse(Order $order, int $warehouseId): void
+    {
+        if ($order->warehouseStocks()->exists()) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $warehouseId) {
+            foreach ($order->items as $item) {
+                $qty = (float) $item->quantity;
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $stock = WarehouseStock::create([
+                    'warehouse_id' => $warehouseId,
+                    'order_id' => $order->id,
+                    'order_item_id' => $item->id,
+                    'item_description' => $item->item_description ?: 'Goods',
+                    'category_id' => $item->category_id,
+                    'unit_id' => $item->unit_id,
+                    'received_qty' => $qty,
+                    'received_date' => now()->toDateString(),
+                    'added_by' => Auth::id(),
+                ]);
+
+                $stock->movements()->create([
+                    'warehouse_id' => $warehouseId,
+                    'type' => 'received',
+                    'quantity' => $qty,
+                    'reference' => $order->order_no,
+                    'moved_date' => now()->toDateString(),
+                    'moved_by' => Auth::id(),
+                ]);
+            }
+        });
     }
 
     /**
@@ -272,6 +327,7 @@ class OrderController extends Controller
             'order_date' => $data['order_date'] ?? null,
             'quotation_id' => $data['quotation_id'] ?? null,
             'customer_id' => $data['customer_id'] ?? null,
+            'warehouse_id' => $data['warehouse_id'] ?? null,
             'shipment_no' => $data['shipment_no'] ?? null,
             'shipping_mark' => $data['shipping_mark'] ?? null,
             'transportation_mode_id' => $data['transportation_mode_id'] ?? null,
@@ -447,6 +503,7 @@ class OrderController extends Controller
     {
         return [
             'customers' => Contact::customers()->orderBy('name')->get(),
+            'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
             'categories' => Category::orderBy('name')->get(),
             'units' => Unit::orderBy('name')->get(),
             'transportationModes' => TransportationMode::orderBy('name')->get(),
@@ -463,6 +520,7 @@ class OrderController extends Controller
             'order_date' => 'nullable|date',
             'quotation_id' => 'nullable|exists:quotations,id',
             'customer_id' => 'nullable|exists:contacts,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'shipment_no' => 'nullable|string|max:255',
             'shipping_mark' => 'nullable|string|max:255',
             'transportation_mode_id' => 'nullable|exists:transportation_modes,id',

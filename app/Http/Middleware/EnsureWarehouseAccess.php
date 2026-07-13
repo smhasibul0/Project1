@@ -6,10 +6,10 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureAdminAccess
+class EnsureWarehouseAccess
 {
     /**
-     * Handle an incoming request.
+     * Restrict the warehouse portal to warehouse logins linked to a warehouse.
      *
      * @param  Closure(Request): (Response)  $next
      */
@@ -21,12 +21,8 @@ class EnsureAdminAccess
             return redirect()->route('login');
         }
 
-        // Customers & warehouse staff belong in their own portals, not the admin panel.
-        if ($user->isCustomer()) {
-            return redirect()->route('portal.dashboard');
-        }
-        if ($user->isWarehouse()) {
-            return redirect()->route('warehouse.dashboard');
+        if (! $user->isWarehouse() || ! $user->warehouse_id) {
+            abort(403, 'This area is for warehouse accounts.');
         }
 
         return $next($request);

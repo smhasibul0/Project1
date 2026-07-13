@@ -30,6 +30,37 @@ class Warehouse extends Model
         return $this->hasMany(ProductStock::class);
     }
 
+    /**
+     * Goods lots received into this warehouse from orders.
+     */
+    public function receivedStocks(): HasMany
+    {
+        return $this->hasMany(WarehouseStock::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(WarehouseExpense::class);
+    }
+
+    public function staff(): HasMany
+    {
+        return $this->hasMany(WarehouseStaff::class);
+    }
+
+    public function salaryPayments(): HasMany
+    {
+        return $this->hasMany(StaffSalaryPayment::class);
+    }
+
+    /**
+     * Login accounts assigned to this warehouse (warehouse-portal users).
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');

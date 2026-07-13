@@ -58,6 +58,14 @@ class User extends Authenticatable
     }
 
     /**
+     * The warehouse this login is assigned to (warehouse-portal users only).
+     */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    /**
      * Slug of the user's role (or null).
      */
     public function roleSlug(): ?string
@@ -73,6 +81,11 @@ class User extends Authenticatable
     public function isCustomer(): bool
     {
         return $this->roleSlug() === 'customer';
+    }
+
+    public function isWarehouse(): bool
+    {
+        return $this->roleSlug() === 'warehouse';
     }
 
     /**

@@ -52,11 +52,28 @@
                         <form action="{{ route('order.status', $order->id) }}" method="POST">
                             @csrf
                             <label class="form-label">Goods Status</label>
-                            <select class="form-control mb-2" name="goods_status" required>
+                            <select class="form-control mb-2" name="goods_status" id="goodsStatusSelect" required>
                                 @foreach(\App\Models\Order::goodsStatuses() as $key => $label)
                                     <option value="{{ $key }}" @selected($order->goods_status === $key)>{{ $label }}</option>
                                 @endforeach
                             </select>
+
+                            {{-- Appears when marking "At BD Warehouse": pick where the goods land. --}}
+                            <div id="warehousePicker" style="display:none;">
+                                <label class="form-label">Receive into Warehouse</label>
+                                <select class="form-control mb-2" name="warehouse_id" id="warehouseSelect">
+                                    <option value="">-- Select Warehouse --</option>
+                                    @foreach($warehouses as $w)
+                                        <option value="{{ $w->id }}" @selected($order->warehouse_id == $w->id)>{{ $w->name }}</option>
+                                    @endforeach
+                                </select>
+                                @if($order->warehouseStocks()->exists())
+                                    <div class="text-success small mb-2"><i class="ri-checkbox-circle-line me-1"></i>Goods already received into inventory.</div>
+                                @else
+                                    <div class="text-muted small mb-2">Order items will be added to this warehouse's inventory.</div>
+                                @endif
+                            </div>
+
                             <label class="form-label">Note (optional)</label>
                             <textarea class="form-control mb-2" name="note" rows="2" placeholder="e.g. Received 12 cartons at BD warehouse"></textarea>
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-refresh-line me-1"></i> Update &amp; Log</button>
@@ -351,6 +368,15 @@ document.addEventListener('DOMContentLoaded', function () {
         Swal.fire({ title: 'Delete this cost?', text: 'Any linked account payment will be reversed.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
             .then(r => { if (r.isConfirmed) form.submit(); });
     }));
+
+    // Reveal the warehouse picker only when marking goods "At BD Warehouse".
+    const statusSel = document.getElementById('goodsStatusSelect');
+    const picker = document.getElementById('warehousePicker');
+    if (statusSel && picker) {
+        const toggle = () => { picker.style.display = statusSel.value === 'at_bd_warehouse' ? '' : 'none'; };
+        statusSel.addEventListener('change', toggle);
+        toggle();
+    }
 });
 </script>
 @endcan

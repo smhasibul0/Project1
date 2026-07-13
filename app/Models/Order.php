@@ -100,6 +100,19 @@ class Order extends Model
         return $this->belongsTo(Contact::class, 'customer_id');
     }
 
+    /**
+     * The designated BD warehouse the goods are received into.
+     */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function warehouseStocks(): HasMany
+    {
+        return $this->hasMany(WarehouseStock::class);
+    }
+
     public function transportationMode(): BelongsTo
     {
         return $this->belongsTo(TransportationMode::class);

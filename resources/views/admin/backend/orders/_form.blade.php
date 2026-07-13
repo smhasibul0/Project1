@@ -84,6 +84,14 @@
             <label class="form-label">Reached BD Warehouse</label>
             <input type="date" class="form-control" name="bd_warehouse_date" value="{{ old('bd_warehouse_date', optional($order?->bd_warehouse_date)->format('Y-m-d')) }}">
         </div>
+        <div class="col-md-3">
+            <label class="form-label">Designated Warehouse</label>
+            <select class="form-control" name="warehouse_id">
+                <option value="">-- Select Warehouse --</option>
+                @foreach($warehouses as $w)<option value="{{ $w->id }}" @selected(old('warehouse_id', $order?->warehouse_id) == $w->id)>{{ $w->name }}</option>@endforeach
+            </select>
+            <small class="text-muted">Goods land here when marked “At BD Warehouse”.</small>
+        </div>
     </div>
 </div>
 

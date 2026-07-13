@@ -59,7 +59,7 @@
                                     <div class="d-flex gap-1 justify-content-end">
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-user-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-user="{{ json_encode($user->only(['id','first_name','last_name','username','email','phone','role_id','contact_id','status'])) }}" title="Edit">
+                                                data-user="{{ json_encode($user->only(['id','first_name','last_name','username','email','phone','role_id','contact_id','warehouse_id','status'])) }}" title="Edit">
                                             <i class="ri-edit-line"></i>
                                         </button>
                                         <form action="{{ route('user.toggle', $user->id) }}" method="POST" class="m-0">
@@ -137,6 +137,16 @@
                         </select>
                         <small class="text-muted">The customer this login belongs to (portal access).</small>
                     </div>
+                    <div class="col-md-6 warehouse-field" style="display:none;">
+                        <label class="form-label">Warehouse <span class="text-danger">*</span></label>
+                        <select class="form-control" name="warehouse_id" data-field="warehouse_id">
+                            <option value="">-- Select Warehouse --</option>
+                            @foreach($warehouses as $w)
+                                <option value="{{ $w->id }}">{{ $w->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">The warehouse this login manages (warehouse portal).</small>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Password @if($mode === 'add')<span class="text-danger">*</span>@endif</label>
                         <input type="password" class="form-control" name="password" placeholder="{{ $mode === 'edit' ? 'Leave blank to keep current' : '' }}" {{ $mode === 'add' ? 'required' : '' }}>
@@ -160,14 +170,21 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Show the Customer selector only when the Customer role is chosen.
+    // Show the Customer / Warehouse selector only when the matching role is chosen.
     function toggleContactField(select) {
         const form = select.closest('form');
-        const field = form.querySelector('.customer-contact-field');
         const opt = select.options[select.selectedIndex];
-        const isCustomer = opt && opt.dataset.slug === 'customer';
-        field.style.display = isCustomer ? '' : 'none';
-        field.querySelector('[name="contact_id"]').required = isCustomer;
+        const slug = opt ? opt.dataset.slug : '';
+
+        const contactField = form.querySelector('.customer-contact-field');
+        const isCustomer = slug === 'customer';
+        contactField.style.display = isCustomer ? '' : 'none';
+        contactField.querySelector('[name="contact_id"]').required = isCustomer;
+
+        const whField = form.querySelector('.warehouse-field');
+        const isWarehouse = slug === 'warehouse';
+        whField.style.display = isWarehouse ? '' : 'none';
+        whField.querySelector('[name="warehouse_id"]').required = isWarehouse;
     }
     document.querySelectorAll('.role-select').forEach(function (sel) {
         sel.addEventListener('change', () => toggleContactField(sel));

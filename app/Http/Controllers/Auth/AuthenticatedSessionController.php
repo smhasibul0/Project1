@@ -28,10 +28,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Customers belong in the portal, not the admin panel. Ignore any "intended"
-        // admin URL they may have been bounced from before logging in.
+        // Customers & warehouse staff belong in their own portals, not the admin panel.
+        // Ignore any "intended" admin URL they may have been bounced from before login.
         if ($request->user()->isCustomer()) {
             return redirect()->route('portal.dashboard');
+        }
+        if ($request->user()->isWarehouse()) {
+            return redirect()->route('warehouse.dashboard');
         }
 
         return redirect()->intended(route('dashboard', absolute: false));

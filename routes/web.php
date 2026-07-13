@@ -25,6 +25,9 @@ use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrackController;
+use App\Http\Controllers\Warehouse\DashboardController as WarehouseDashboardController;
+use App\Http\Controllers\Warehouse\InventoryController as WarehouseInventoryController;
+use App\Http\Controllers\Warehouse\OrderController as WarehouseOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -58,6 +61,22 @@ Route::middleware(['auth', 'customer'])->prefix('portal')->name('portal.')->grou
     Route::get('/orders/{id}', [PortalController::class, 'orderShow'])->name('order.show');
 
     Route::get('/payments', [PortalController::class, 'payments'])->name('payments');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Warehouse portal (one login per warehouse, scoped to its own data)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'warehouse'])->prefix('warehouse')->name('warehouse.')->group(function () {
+    Route::get('/', [WarehouseDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/inventory', [WarehouseInventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/{id}', [WarehouseInventoryController::class, 'show'])->name('inventory.show');
+    Route::post('/inventory/{id}/dispatch', [WarehouseInventoryController::class, 'dispatch'])->name('inventory.dispatch');
+
+    Route::get('/orders', [WarehouseOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}', [WarehouseOrderController::class, 'show'])->name('orders.show');
 });
 
 require __DIR__.'/auth.php';

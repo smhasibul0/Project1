@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -14,18 +15,20 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['role', 'contact'])->latest()->get();
+        $users = User::with(['role', 'contact', 'warehouse'])->latest()->get();
         $roles = Role::orderBy('name')->get();
-        // Customer logins must be linked to a customer contact.
+        // Customer logins must be linked to a customer contact; warehouse logins to a warehouse.
         $customerContacts = Contact::customers()->orderBy('name')->get();
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.backend.users.users', compact('users', 'roles', 'customerContacts'));
+        return view('admin.backend.users.users', compact('users', 'roles', 'customerContacts', 'warehouses'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate($this->rules() + $this->contactRules($request));
+        $data = $request->validate($this->rules() + $this->contactRules($request) + $this->warehouseRules($request));
         $data['contact_id'] = $this->isCustomerRole($data['role_id']) ? (int) $request->contact_id : null;
+        $data['warehouse_id'] = $this->isWarehouseRole($data['role_id']) ? (int) $request->warehouse_id : null;
         $data['status'] = $request->has('is_active') ? 'active' : 'inactive';
         $data['password'] = Hash::make($request->password);
 
@@ -38,8 +41,9 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->validate($this->rules($user->id) + $this->contactRules($request, $user->id));
+        $data = $request->validate($this->rules($user->id) + $this->contactRules($request, $user->id) + $this->warehouseRules($request));
         $data['contact_id'] = $this->isCustomerRole($data['role_id']) ? (int) $request->contact_id : null;
+        $data['warehouse_id'] = $this->isWarehouseRole($data['role_id']) ? (int) $request->warehouse_id : null;
         $data['status'] = $request->has('is_active') ? 'active' : 'inactive';
 
         if ($request->filled('password')) {
@@ -77,6 +81,27 @@ class UserController extends Controller
     private function isCustomerRole(int|string|null $roleId): bool
     {
         return $roleId !== null && Role::whereKey($roleId)->where('slug', 'customer')->exists();
+    }
+
+    private function isWarehouseRole(int|string|null $roleId): bool
+    {
+        return $roleId !== null && Role::whereKey($roleId)->where('slug', 'warehouse')->exists();
+    }
+
+    /**
+     * When the chosen role is warehouse, a warehouse must be linked.
+     *
+     * @return array<string, mixed>
+     */
+    private function warehouseRules(Request $request): array
+    {
+        if (! $this->isWarehouseRole($request->input('role_id'))) {
+            return [];
+        }
+
+        return [
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+        ];
     }
 
     /**
