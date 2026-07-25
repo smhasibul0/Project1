@@ -167,10 +167,13 @@
 
 {{-- ===================== Product block template ===================== --}}
 <template id="itemTemplate">
-    <div class="border rounded p-3 mb-3 item-block position-relative">
-        <button type="button" class="btn btn-sm btn-outline-danger remove-item position-absolute" style="top:.5rem; right:.5rem;"><i class="ri-close-line"></i></button>
+    <div class="mb-3 item-block">
+        <div class="item-head">
+            <div class="item-title">Product</div>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Remove this product"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="item-body">
         <input type="hidden" data-name="product_id">
-        <div class="fw-semibold text-muted small mb-2 item-title">Product</div>
 
         <div class="row g-2">
             <div class="col-md-3">
@@ -262,8 +265,9 @@
         </div>
 
         {{-- Duty & tax projection (Bangladesh Customs cascade) --}}
-        <div class="row g-2 mt-1">
-            <div class="col-12"><div class="small fw-semibold text-muted border-top pt-2">Duty &amp; Tax Projection (BD Customs)</div></div>
+        <div class="duty-section">
+        <div class="section-caption mb-2">Duty &amp; Tax Projection (BD Customs)</div>
+        <div class="row g-2">
             <div class="col-md-2">
                 <label class="form-label small">Assessable Value</label>
                 <input type="number" step="0.01" min="0" class="form-control form-control-sm calc av-field" data-name="assessable_value" placeholder="auto">
@@ -297,6 +301,7 @@
                 <input type="text" class="form-control form-control-sm bg-light out-duty" readonly value="0.00">
             </div>
         </div>
+        </div>
 
         <div class="row g-2 mt-1 align-items-end">
             <div class="col-md-2">
@@ -319,6 +324,7 @@
                 <label class="form-label small">Remarks</label>
                 <input type="text" class="form-control form-control-sm" data-name="remarks">
             </div>
+        </div>
         </div>
     </div>
 </template>
@@ -496,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         avField.addEventListener('input', function () { this.dataset.touched = '1'; });
 
+        block.querySelector('[data-name="description"]').addEventListener('input', renumber);
         block.querySelectorAll('.calc, .dim').forEach(el => el.addEventListener('input', () => recalcBlock(block)));
         block.querySelectorAll('.dim').forEach(el => el.addEventListener('input', () => autoCbm(block)));
         block.querySelector('[data-name="cbm"]').addEventListener('input', function () {
@@ -512,7 +519,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renumber() {
-        wrap.querySelectorAll('.item-block .item-title').forEach((t, n) => t.textContent = 'Product #' + (n + 1));
+        wrap.querySelectorAll('.item-block').forEach(function (b, n) {
+            const desc = b.querySelector('[data-name="description"]')?.value || '';
+            b.querySelector('.item-title').textContent = 'Product #' + (n + 1) + (desc ? ' — ' + desc : '');
+        });
     }
 
     document.getElementById('addItemBtn').addEventListener('click', () => addItem());

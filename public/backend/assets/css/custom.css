@@ -1,0 +1,205 @@
+/* ============================================================================
+   Site-wide polish layer — loaded after app.min.css in the admin & warehouse
+   layouts. Aligns the back office with the customer portal's look: Inter type,
+   soft cards, quiet tables, roomier forms. Brand colour comes from --brand
+   (set inline per company settings).
+   ========================================================================== */
+
+:root {
+    --ink: #1e293b;
+    --muted: #64748b;
+    --line: #e9edf3;
+    --soft: #f8fafc;
+    --page-bg: #f4f6fb;
+}
+
+/* ---------- Base ---------- */
+body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background-color: var(--page-bg);
+    color: var(--ink);
+}
+
+h1, h2, h3, h4, h5, h6 { letter-spacing: -0.01em; color: var(--ink); }
+
+a { text-decoration: none; }
+
+/* Page header block (title + breadcrumb) */
+.content .fs-18 { font-weight: 700; }
+.breadcrumb { font-size: 0.78rem; }
+.breadcrumb .breadcrumb-item + .breadcrumb-item::before { color: #b6bfcc; }
+
+/* ---------- Cards ---------- */
+.card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    margin-bottom: 1.25rem;
+}
+
+.card .card-header {
+    background: transparent;
+    border-bottom: 1px solid #eef1f6;
+    padding: 0.85rem 1.2rem;
+}
+
+.card .card-header h6 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+}
+
+/* ---------- Tables ---------- */
+.table thead th {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: var(--soft);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+.table > :not(caption) > * > * { padding: 0.55rem 0.75rem; }
+
+.table-striped > tbody > tr:nth-of-type(odd) > * { --bs-table-accent-bg: #fbfcfe; }
+
+.table tbody tr:hover > * { background-color: #f6f8fc; }
+
+.table tfoot tr > * { background: var(--soft); }
+
+/* ---------- Forms ---------- */
+.form-label {
+    font-weight: 500;
+    color: #475569;
+    margin-bottom: 0.3rem;
+}
+
+.form-label.small { font-size: 0.74rem; }
+
+.form-control, .form-select {
+    border-color: #dbe1ea;
+    border-radius: 8px;
+    color: var(--ink);
+}
+
+.form-control-sm, .form-select-sm, .form-control-sm + .btn { border-radius: 7px; }
+
+.form-control[readonly], .form-control.bg-light {
+    background-color: var(--soft) !important;
+    border-style: dashed;
+    color: #475569;
+}
+
+.form-control::placeholder { color: #aab4c2; }
+
+textarea.form-control { min-height: 64px; }
+
+/* ---------- Buttons & badges ---------- */
+.btn { border-radius: 8px; font-weight: 500; }
+.btn-sm { border-radius: 7px; }
+.btn i[class^="ri-"] { vertical-align: -1px; }
+
+.badge { border-radius: 6px; font-weight: 500; letter-spacing: 0.01em; }
+
+/* ---------- Alerts ---------- */
+.alert { border-radius: 10px; border-width: 1px; }
+
+/* ---------- Sidebar & topbar ---------- */
+.topbar-custom { border-bottom: 1px solid var(--line); }
+
+#side-menu .menu-title {
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+}
+
+#side-menu .tp-link { border-radius: 8px; margin: 1px 8px; }
+
+#side-menu .tp-link:hover { background: rgba(var(--brand-rgb), 0.06); }
+
+#side-menu .menuitem-active > .tp-link,
+#side-menu .tp-link.active {
+    background: rgba(var(--brand-rgb), 0.09);
+    font-weight: 600;
+}
+
+/* ---------- DataTables toolbar ---------- */
+div.dataTables_wrapper div.dataTables_filter input { border-radius: 8px; }
+.dt-buttons .btn { border-radius: 7px !important; }
+
+/* ============================================================================
+   Quotation / repeatable-row forms
+   ========================================================================== */
+
+/* One product per block: header strip + grouped field rows */
+.item-block {
+    background: #fff;
+    border: 1px solid var(--line) !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.item-block .item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--soft);
+    border-bottom: 1px solid #eef1f6;
+    padding: 0.5rem 1rem;
+}
+
+.item-block .item-head .item-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin: 0;
+}
+
+.item-block .item-body { padding: 0.9rem 1rem 1rem; }
+
+/* Sub-section caption inside a block (e.g. the duty cascade) */
+.section-caption {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8a93a2;
+}
+
+.duty-section {
+    background: var(--soft);
+    border: 1px dashed #dbe1ea;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem 0.85rem;
+    margin-top: 0.9rem;
+}
+
+/* Repeatable expense rows breathe a little */
+.expense-row {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem 0.75rem;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.expense-wrap:empty::after {
+    content: "Nothing added yet — use the button above.";
+    display: block;
+    font-size: 0.78rem;
+    color: #aab4c2;
+    padding: 0.25rem 0;
+}
+
+/* Summary tables (projection, totals) */
+.card table.table-sm th { font-weight: 500; color: var(--muted); }
+.card table.table-sm .table-light th,
+.card table.table-sm .table-light td { background: var(--soft); }

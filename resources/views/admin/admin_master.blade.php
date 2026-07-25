@@ -34,6 +34,10 @@
         <link href="{{ asset('backend/assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
+        <!-- Inter (matches the customer portal) + site-wide polish layer -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <link href="{{ asset('backend/assets/css/custom.css') }}" rel="stylesheet" type="text/css" />
+
         <!-- Remix Icons (used via ri-* classes across the admin UI) -->
         <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" type="text/css">
 
