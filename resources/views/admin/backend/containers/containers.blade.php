@@ -38,6 +38,7 @@
                                 <th class="dt-noexport">Action</th>
                                 <th>Code</th>
                                 <th>Shipment No</th>
+                                <th data-filter="Type">Type</th>
                                 <th>Container No</th>
                                 <th>Transport</th>
                                 <th>Shipping Line</th>
@@ -72,6 +73,7 @@
                                 </td>
                                 <td><span class="badge bg-light text-dark">{{ $c->container_code }}</span></td>
                                 <td>{{ $c->shipment_no ?: '—' }}</td>
+                                <td><span class="badge bg-{{ $c->shipment_type === 'lcl' ? 'warning text-dark' : 'primary' }}">{{ strtoupper($c->shipment_type ?? 'fcl') }}</span></td>
                                 <td>{{ $c->container_number ?: '—' }}</td>
                                 <td>{{ $c->transport_mode ?: '—' }}</td>
                                 <td>{{ $c->shipping_line ?: '—' }}</td>

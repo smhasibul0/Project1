@@ -10,8 +10,31 @@
             <input type="text" class="form-control" name="shipment_no" value="{{ old('shipment_no', $container?->shipment_no) }}" placeholder="e.g. 25/2026 (CTG)">
         </div>
         <div class="col-md-3">
-            <label class="form-label">Container Number</label>
+            <label class="form-label">Shipment Type</label>
+            <select class="form-control" name="shipment_type" id="shipmentTypeSelect">
+                @foreach($shipmentTypes as $key => $label)
+                    <option value="{{ $key }}" @selected(old('shipment_type', $container?->shipment_type ?? 'fcl') === $key)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-3 fcl-only">
+            <label class="form-label">Container Number <span class="text-danger">*</span></label>
             <input type="text" class="form-control" name="container_number" value="{{ old('container_number', $container?->container_number) }}">
+            @error('container_number')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-3 fcl-only">
+            <label class="form-label">Container Size</label>
+            <select class="form-control" name="container_size">
+                <option value="">--</option>
+                @foreach($containerSizes as $size)
+                    <option value="{{ $size }}" @selected(old('container_size', $container?->container_size) === $size)>{{ $size }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-3 lcl-only">
+            <label class="form-label">LCL Rate (per CBM)</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="lcl_rate" value="{{ old('lcl_rate', $container?->lcl_rate) }}" placeholder="e.g. 55.00">
+            <small class="text-muted">Freight = rate &times; loaded CBM of assigned orders.</small>
         </div>
 
         <div class="col-md-3">
@@ -80,3 +103,18 @@
     <button type="submit" class="btn btn-primary px-4">{{ $container ? 'Update Container' : 'Save Container' }}</button>
     <a href="{{ route('container.index') }}" class="btn btn-secondary">Cancel</a>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const typeSelect = document.getElementById('shipmentTypeSelect');
+
+    function toggleShipmentFields() {
+        const isLcl = typeSelect.value === 'lcl';
+        document.querySelectorAll('.fcl-only').forEach(el => el.classList.toggle('d-none', isLcl));
+        document.querySelectorAll('.lcl-only').forEach(el => el.classList.toggle('d-none', !isLcl));
+    }
+
+    typeSelect.addEventListener('change', toggleShipmentFields);
+    toggleShipmentFields();
+});
+</script>

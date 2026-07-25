@@ -58,7 +58,7 @@ class QuotationController extends Controller
                 'remarks' => $data['remarks'] ?? null,
                 'packing_list_path' => $packingList,
                 'added_by' => Auth::id(),
-            ]);
+            ] + $this->freightAttributes($data));
 
             $this->syncItems($quotation, $data['items']);
             $this->syncExpenses($quotation, $data['expenses'] ?? []);
@@ -117,7 +117,7 @@ class QuotationController extends Controller
                 'status' => $send ? 'quoted' : $quotation->status,
                 'remarks' => $data['remarks'] ?? null,
                 'packing_list_path' => $packingList ?? $quotation->packing_list_path,
-            ]);
+            ] + $this->freightAttributes($data));
 
             $quotation->items()->delete();
             $this->syncItems($quotation, $data['items']);
@@ -241,7 +241,47 @@ class QuotationController extends Controller
     }
 
     /**
-     * Roll duties + predicted expenses into the quotation's projected cost & profit.
+     * Predicted freight for the projection: LCL is priced per CBM of the quoted
+     * items, FCL is a flat container price entered by the user.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function freightAttributes(array $data): array
+    {
+        $type = $data['freight_type'] ?? null;
+
+        if ($type === 'lcl') {
+            $rate = (float) ($data['freight_rate'] ?? 0);
+            $cbm = array_sum(array_map(fn (array $row) => (float) ($row['cbm'] ?? 0), $data['items']));
+
+            return [
+                'freight_type' => 'lcl',
+                'freight_rate' => $rate,
+                'freight_container_size' => null,
+                'freight_amount' => round($rate * $cbm, 2),
+            ];
+        }
+
+        if ($type === 'fcl') {
+            return [
+                'freight_type' => 'fcl',
+                'freight_rate' => null,
+                'freight_container_size' => $data['freight_container_size'] ?? null,
+                'freight_amount' => round((float) ($data['freight_amount'] ?? 0), 2),
+            ];
+        }
+
+        return [
+            'freight_type' => null,
+            'freight_rate' => null,
+            'freight_container_size' => null,
+            'freight_amount' => 0,
+        ];
+    }
+
+    /**
+     * Roll duties, freight + predicted expenses into the quotation's projected cost & profit.
      */
     private function updateProjection(Quotation $quotation): void
     {
@@ -251,7 +291,7 @@ class QuotationController extends Controller
         $totalDuty = (float) $quotation->items()->sum('duty_amount');
         $expenseTotal = (float) $quotation->expenses()->sum('amount');
 
-        $projectedCost = round($goodsCost + $totalDuty + $expenseTotal, 2);
+        $projectedCost = round($goodsCost + $totalDuty + $expenseTotal + (float) $quotation->freight_amount, 2);
 
         $quotation->update([
             'total_duty' => round($totalDuty, 2),
@@ -305,6 +345,10 @@ class QuotationController extends Controller
             'customer_id' => 'nullable|exists:contacts,id',
             'remarks' => 'nullable|string',
             'packing_list' => ($requirePackingList ? 'required' : 'nullable').'|file|mimes:xlsx,xls|max:8192',
+            'freight_type' => 'nullable|in:lcl,fcl',
+            'freight_rate' => 'nullable|numeric|min:0',
+            'freight_container_size' => 'nullable|string|max:20',
+            'freight_amount' => 'nullable|numeric|min:0',
             'expenses' => 'nullable|array',
             'expenses.*.expense_group' => 'required|in:lc,custom',
             'expenses.*.cost_category_id' => 'nullable|exists:cost_categories,id',

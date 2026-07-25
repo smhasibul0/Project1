@@ -31,8 +31,12 @@
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Container {{ $container->container_code }} @if($container->shipment_no)<small class="text-muted">/ {{ $container->shipment_no }}</small>@endif</h4>
-                <small class="text-muted">{{ $container->container_number ?: '—' }}</small>
+                <h4 class="fs-18 fw-semibold m-0">
+                    Container {{ $container->container_code }}
+                    @if($container->shipment_no)<small class="text-muted">/ {{ $container->shipment_no }}</small>@endif
+                    <span class="badge bg-{{ $container->shipment_type === 'lcl' ? 'warning text-dark' : 'primary' }} align-middle ms-1">{{ strtoupper($container->shipment_type ?? 'fcl') }}</span>
+                </h4>
+                <small class="text-muted">{{ $container->container_number ?: ($container->shipment_type === 'lcl' ? 'Consolidator container (LCL)' : '—') }}{{ $container->container_size ? ' · '.$container->container_size : '' }}</small>
             </div>
             <div class="text-end">
                 <a href="{{ route('container.packing.list', $container->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-list-3-line me-1"></i> Packing List</a>
@@ -61,6 +65,15 @@
                 <div class="col-md-3"><small class="text-muted d-block">Total Weight (KG)</small><strong>{{ rtrim(rtrim(number_format($totalWeight, 2), '0'), '.') }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">Volume (CBM)</small><strong>{{ rtrim(rtrim(number_format($totalCbm, 4), '0'), '.') }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">Allocation Basis</small>{{ $allocationBases[$container->allocation_basis] ?? $container->allocation_basis }}</div>
+
+                @if($container->shipment_type === 'lcl')
+                <div class="col-md-3"><small class="text-muted d-block">LCL Rate (per CBM)</small><strong>{{ $container->lcl_rate !== null ? number_format($container->lcl_rate, 2) : '—' }}</strong></div>
+                <div class="col-md-3">
+                    <small class="text-muted d-block">Estimated LCL Freight</small>
+                    <strong>{{ number_format($container->lcl_rate * $totalCbm, 2) }}</strong>
+                    <small class="text-muted">({{ number_format((float) $container->lcl_rate, 2) }} &times; {{ rtrim(rtrim(number_format($totalCbm, 4), '0'), '.') }} CBM)</small>
+                </div>
+                @endif
 
                 <div class="col-md-3"><small class="text-muted d-block">Port of Loading</small>{{ $container->port_of_loading ?: '—' }}</div>
                 <div class="col-md-3"><small class="text-muted d-block">Port of Discharge</small>{{ $container->port_of_discharge ?: '—' }}</div>

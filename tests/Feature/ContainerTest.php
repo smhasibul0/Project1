@@ -160,3 +160,41 @@ test('the container pages and generated lists load', function () {
     $this->actingAs($this->user)->get(route('container.packing.list', $container->id))->assertOk()->assertSee('PACKING LIST');
     $this->actingAs($this->user)->get(route('container.loading.list', $container->id))->assertOk()->assertSee('LOADING LIST');
 });
+
+test('an LCL shipment computes freight from rate x loaded CBM and skips the container number', function () {
+    $this->actingAs($this->user)->post(route('container.store'), [
+        'shipment_type' => 'lcl',
+        'lcl_rate' => 55,
+        'allocation_basis' => 'cbm',
+    ])->assertRedirect();
+
+    $container = Container::firstOrFail();
+    expect($container->shipment_type)->toBe('lcl');
+    expect($container->container_number)->toBeNull();
+
+    $orderA = Order::factory()->create();
+    $orderB = Order::factory()->create();
+    $container->orders()->attach($orderA->id, ['cbm' => 6]);
+    $container->orders()->attach($orderB->id, ['cbm' => 4]);
+
+    expect($container->cbmTotal())->toEqual(10.0);
+    expect($container->lclFreightEstimate())->toEqual(550.0); // 55 x 10 CBM
+});
+
+test('an FCL shipment requires a container number and stores its size', function () {
+    $this->actingAs($this->user)->post(route('container.store'), [
+        'shipment_type' => 'fcl',
+        'container_size' => '40HQ',
+    ])->assertSessionHasErrors('container_number');
+
+    $this->actingAs($this->user)->post(route('container.store'), [
+        'shipment_type' => 'fcl',
+        'container_number' => 'MSKU7654321',
+        'container_size' => '40HQ',
+    ])->assertRedirect();
+
+    $container = Container::firstOrFail();
+    expect($container->shipment_type)->toBe('fcl');
+    expect($container->container_size)->toBe('40HQ');
+    expect($container->lclFreightEstimate())->toEqual(0.0); // LCL-only estimate
+});

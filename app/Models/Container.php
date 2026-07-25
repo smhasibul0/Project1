@@ -47,6 +47,34 @@ class Container extends Model
         ];
     }
 
+    /**
+     * How the shipment is booked (key => label).
+     *
+     * @return array<string, string>
+     */
+    public static function shipmentTypes(): array
+    {
+        return [
+            'fcl' => 'FCL (full container)',
+            'lcl' => 'LCL (shared / per CBM)',
+        ];
+    }
+
+    /**
+     * Standard container sizes for FCL bookings.
+     *
+     * @return array<int, string>
+     */
+    public static function containerSizes(): array
+    {
+        return ['20GP', '40GP', '40HQ', '45HQ'];
+    }
+
+    public function shipmentTypeLabel(): string
+    {
+        return static::shipmentTypes()[$this->shipment_type] ?? strtoupper((string) $this->shipment_type);
+    }
+
     public function statusLabel(): string
     {
         return static::statuses()[$this->status] ?? ucfirst(str_replace('_', ' ', (string) $this->status));
@@ -60,6 +88,7 @@ class Container extends Model
         return [
             'etd' => 'date',
             'eta' => 'date',
+            'lcl_rate' => 'decimal:2',
         ];
     }
 
@@ -118,5 +147,25 @@ class Container extends Model
             'equal' => (float) $this->orders()->count(),
             default => (float) $this->orders()->sum('container_order.cbm'),
         };
+    }
+
+    /**
+     * Total loaded CBM across member orders (chargeable volume for LCL).
+     */
+    public function cbmTotal(): float
+    {
+        return round((float) $this->orders()->sum('container_order.cbm'), 4);
+    }
+
+    /**
+     * Estimated LCL freight: consolidator's per-CBM rate x loaded CBM.
+     */
+    public function lclFreightEstimate(): float
+    {
+        if ($this->shipment_type !== 'lcl' || $this->lcl_rate === null) {
+            return 0.0;
+        }
+
+        return round((float) $this->lcl_rate * $this->cbmTotal(), 2);
     }
 }

@@ -305,6 +305,8 @@ class ContainerController extends Controller
             'transportationModes' => TransportationMode::orderBy('name')->get(),
             'statuses' => Container::statuses(),
             'allocationBases' => Container::allocationBases(),
+            'shipmentTypes' => Container::shipmentTypes(),
+            'containerSizes' => Container::containerSizes(),
         ];
     }
 
@@ -315,7 +317,12 @@ class ContainerController extends Controller
     {
         return $request->validate([
             'shipment_no' => 'nullable|string|max:255',
-            'container_number' => 'nullable|string|max:255',
+            'shipment_type' => 'nullable|in:'.implode(',', array_keys(Container::shipmentTypes())),
+            // FCL owns the box, so the container number is required; LCL rides on the
+            // consolidator's container and is billed per CBM instead.
+            'container_number' => 'required_if:shipment_type,fcl|nullable|string|max:255',
+            'container_size' => 'nullable|in:'.implode(',', Container::containerSizes()),
+            'lcl_rate' => 'nullable|numeric|min:0',
             'transport_mode' => 'nullable|string|max:255',
             'shipping_line' => 'nullable|string|max:255',
             'booking_ref' => 'nullable|string|max:255',

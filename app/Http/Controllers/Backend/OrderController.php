@@ -83,6 +83,20 @@ class OrderController extends Controller
                 ]);
             }
 
+            if ((float) $quotation->freight_amount > 0) {
+                $freightTitle = $quotation->freight_type === 'lcl'
+                    ? 'LCL freight (projected @ '.number_format((float) $quotation->freight_rate, 2).'/CBM)'
+                    : 'FCL freight (projected'.($quotation->freight_container_size ? ', '.$quotation->freight_container_size : '').')';
+
+                $order->costs()->create([
+                    'title' => $freightTitle,
+                    'amount' => $quotation->freight_amount,
+                    'cost_date' => now()->toDateString(),
+                    'note' => 'Projected from quotation '.$quotation->quotation_no,
+                    'added_by' => Auth::id(),
+                ]);
+            }
+
             foreach ($quotation->expenses as $expense) {
                 $order->costs()->create([
                     'cost_category_id' => $expense->cost_category_id,

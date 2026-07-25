@@ -195,6 +195,14 @@
                     <table class="table table-sm mb-0">
                         <tr><th class="text-end">Goods Cost (supplier):</th><td class="text-end" style="width:35%">৳ {{ number_format($goodsCost, 2) }}</td></tr>
                         <tr><th class="text-end">Duty &amp; Taxes (TTI):</th><td class="text-end">৳ {{ number_format($quotation->total_duty, 2) }}</td></tr>
+                        <tr>
+                            <th class="text-end">Predicted Freight
+                                @if($quotation->freight_type === 'lcl')<small class="text-muted fw-normal">(LCL @ {{ number_format((float) $quotation->freight_rate, 2) }}/CBM)</small>
+                                @elseif($quotation->freight_type === 'fcl')<small class="text-muted fw-normal">(FCL{{ $quotation->freight_container_size ? ' '.$quotation->freight_container_size : '' }})</small>
+                                @endif:
+                            </th>
+                            <td class="text-end">৳ {{ number_format($quotation->freight_amount, 2) }}</td>
+                        </tr>
                         <tr><th class="text-end">Predicted LC Costs:</th><td class="text-end">৳ {{ number_format($lcTotal, 2) }}</td></tr>
                         <tr><th class="text-end">Custom Expenses:</th><td class="text-end">৳ {{ number_format($customTotal, 2) }}</td></tr>
                         <tr class="table-light"><th class="text-end">Projected Total Cost:</th><td class="text-end">৳ {{ number_format($quotation->projected_cost_total, 2) }}</td></tr>

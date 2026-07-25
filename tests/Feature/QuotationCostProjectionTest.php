@@ -201,3 +201,67 @@ test('converting a quotation seeds the order costs with projections', function (
 
     @unlink(public_path('upload/quotation/'.$quotation->packing_list_path));
 });
+
+test('LCL predicted freight is computed from rate x total item CBM', function () {
+    $this->actingAs($this->user)->post(route('quotation.store'), [
+        'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
+        'freight_type' => 'lcl',
+        'freight_rate' => 55,
+        'items' => [
+            ['package_quantity' => 100, 'supplier_asking_price' => 10, 'our_asking_price' => 20, 'cbm' => 6],
+            ['package_quantity' => 50, 'supplier_asking_price' => 10, 'our_asking_price' => 20, 'cbm' => 4],
+        ],
+    ]);
+
+    $q = Quotation::firstOrFail();
+    expect($q->freight_type)->toBe('lcl');
+    expect($q->freight_amount)->toEqual('550.00'); // 55 x 10 CBM
+
+    // Projection: goods 1500 + freight 550 = 2050 (no duty rates given)
+    expect($q->projected_cost_total)->toEqual('2050.00');
+    expect($q->projected_profit)->toEqual('950.00'); // asking 3000 - 2050
+
+    @unlink(public_path('upload/quotation/'.$q->packing_list_path));
+});
+
+test('FCL predicted freight stores the flat container price and size', function () {
+    $this->actingAs($this->user)->post(route('quotation.store'), [
+        'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
+        'freight_type' => 'fcl',
+        'freight_container_size' => '40HQ',
+        'freight_amount' => 3200,
+        'items' => [['package_quantity' => 10, 'supplier_asking_price' => 100, 'our_asking_price' => 600, 'cbm' => 20]],
+    ]);
+
+    $q = Quotation::firstOrFail();
+    expect($q->freight_type)->toBe('fcl');
+    expect($q->freight_container_size)->toBe('40HQ');
+    expect($q->freight_amount)->toEqual('3200.00');
+    expect($q->projected_cost_total)->toEqual('4200.00'); // goods 1000 + freight 3200
+    expect($q->projected_profit)->toEqual('1800.00');     // asking 6000 - 4200
+
+    @unlink(public_path('upload/quotation/'.$q->packing_list_path));
+});
+
+test('converting a quotation carries the predicted freight into the order costs', function () {
+    $this->actingAs($this->user)->post(route('quotation.store'), [
+        'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
+        'freight_type' => 'lcl',
+        'freight_rate' => 50,
+        'items' => [['package_quantity' => 10, 'supplier_asking_price' => 100, 'our_asking_price' => 200, 'cbm' => 8]],
+    ]);
+    $quotation = Quotation::firstOrFail();
+    $quotation->update(['status' => 'accepted']);
+
+    $this->actingAs($this->user)->post(route('order.from.quotation', $quotation->id))->assertRedirect();
+
+    $freightCost = Order::firstOrFail()->costs()->where('title', 'like', 'LCL freight%')->first();
+    expect($freightCost)->not->toBeNull();
+    expect((float) $freightCost->amount)->toEqual(400.0); // 50 x 8 CBM
+    expect($freightCost->note)->toContain($quotation->quotation_no);
+
+    @unlink(public_path('upload/quotation/'.$quotation->packing_list_path));
+});

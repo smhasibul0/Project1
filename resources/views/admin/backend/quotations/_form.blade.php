@@ -69,6 +69,46 @@
     </div>
 </div>
 
+{{-- ===================== Predicted freight (LCL / FCL) ===================== --}}
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">Predicted Freight</h6></div>
+    <div class="card-body row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Shipment Type</label>
+            <select class="form-control" name="freight_type" id="freightType">
+                <option value="">— none —</option>
+                <option value="lcl" @selected(old('freight_type', $quotation?->freight_type) === 'lcl')>LCL (shared, per CBM)</option>
+                <option value="fcl" @selected(old('freight_type', $quotation?->freight_type) === 'fcl')>FCL (full container)</option>
+            </select>
+        </div>
+        <div class="col-md-2 freight-lcl d-none">
+            <label class="form-label">Rate per CBM</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="freight_rate" id="freightRate" value="{{ old('freight_rate', $quotation?->freight_rate) }}" placeholder="e.g. 55.00">
+        </div>
+        <div class="col-md-2 freight-lcl d-none">
+            <label class="form-label text-muted">Total CBM (items)</label>
+            <input type="text" class="form-control bg-light" id="freightCbm" readonly value="0.0000">
+        </div>
+        <div class="col-md-2 freight-fcl d-none">
+            <label class="form-label">Container Size</label>
+            <select class="form-control" name="freight_container_size">
+                <option value="">--</option>
+                @foreach(\App\Models\Container::containerSizes() as $size)
+                    <option value="{{ $size }}" @selected(old('freight_container_size', $quotation?->freight_container_size) === $size)>{{ $size }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-2 freight-fcl d-none">
+            <label class="form-label">Container Price</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="freight_amount" id="freightFclAmount" value="{{ old('freight_amount', $quotation?->freight_type === 'fcl' ? $quotation?->freight_amount : null) }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted">Predicted Freight</label>
+            <input type="text" class="form-control bg-light" id="freightOut" readonly value="0.00">
+        </div>
+    </div>
+</div>
+
 {{-- ===================== Predicted LC costs ===================== --}}
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
@@ -101,6 +141,7 @@
             <table class="table table-sm mb-0">
                 <tr><th class="text-end">Goods Cost (supplier):</th><td class="text-end" style="width:35%">৳ <span id="projGoods">0.00</span></td></tr>
                 <tr><th class="text-end">Duty &amp; Taxes (TTI):</th><td class="text-end">৳ <span id="projDuty">0.00</span></td></tr>
+                <tr><th class="text-end">Predicted Freight:</th><td class="text-end">৳ <span id="projFreight">0.00</span></td></tr>
                 <tr><th class="text-end">Predicted LC Costs:</th><td class="text-end">৳ <span id="projLc">0.00</span></td></tr>
                 <tr><th class="text-end">Custom Expenses:</th><td class="text-end">৳ <span id="projCustom">0.00</span></td></tr>
                 <tr class="table-light"><th class="text-end">Projected Total Cost:</th><td class="text-end">৳ <span id="projCost">0.00</span></td></tr>
@@ -369,6 +410,22 @@ document.addEventListener('DOMContentLoaded', function () {
         return sum;
     }
 
+    // Predicted freight: LCL = rate x total item CBM; FCL = flat container price.
+    function freightAmount() {
+        const type = document.getElementById('freightType').value;
+        let cbm = 0;
+        wrap.querySelectorAll('.item-block [data-name="cbm"]').forEach(el => cbm += parseFloat(el.value) || 0);
+        document.getElementById('freightCbm').value = cbm.toFixed(4);
+
+        if (type === 'lcl') {
+            return (parseFloat(document.getElementById('freightRate').value) || 0) * cbm;
+        }
+        if (type === 'fcl') {
+            return parseFloat(document.getElementById('freightFclAmount').value) || 0;
+        }
+        return 0;
+    }
+
     function recalcProjection() {
         let goods = 0, duty = 0, asking = 0;
         wrap.querySelectorAll('.item-block').forEach(function (b) {
@@ -377,13 +434,16 @@ document.addEventListener('DOMContentLoaded', function () {
             duty += parseFloat(b.querySelector('.out-duty').value) || 0;
             asking += parseFloat(b.querySelector('.out-line-total').value) || 0;
         });
+        const freight = freightAmount();
         const lc = expenseGroupTotal('lc'), custom = expenseGroupTotal('custom');
-        const cost = goods + duty + lc + custom;
+        const cost = goods + duty + freight + lc + custom;
         const profit = asking - cost;
+        document.getElementById('freightOut').value = money(freight);
         document.getElementById('lcTotal').textContent = money(lc);
         document.getElementById('customTotal').textContent = money(custom);
         document.getElementById('projGoods').textContent = money(goods);
         document.getElementById('projDuty').textContent = money(duty);
+        document.getElementById('projFreight').textContent = money(freight);
         document.getElementById('projLc').textContent = money(lc);
         document.getElementById('projCustom').textContent = money(custom);
         document.getElementById('projCost').textContent = money(cost);
@@ -391,6 +451,20 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('projProfit').textContent = money(profit);
         document.getElementById('projMargin').textContent = money(asking > 0 ? (profit / asking) * 100 : 0);
     }
+
+    // ---------------- Freight controls ----------------
+    const freightType = document.getElementById('freightType');
+
+    function toggleFreightFields() {
+        const type = freightType.value;
+        document.querySelectorAll('.freight-lcl').forEach(el => el.classList.toggle('d-none', type !== 'lcl'));
+        document.querySelectorAll('.freight-fcl').forEach(el => el.classList.toggle('d-none', type !== 'fcl'));
+        recalcProjection();
+    }
+
+    freightType.addEventListener('change', toggleFreightFields);
+    document.getElementById('freightRate').addEventListener('input', recalcProjection);
+    document.getElementById('freightFclAmount').addEventListener('input', recalcProjection);
 
     function autoCbm(block) {
         const l = parseFloat(block.querySelector('[data-name="length"]').value) || 0;
@@ -424,7 +498,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         block.querySelectorAll('.calc, .dim').forEach(el => el.addEventListener('input', () => recalcBlock(block)));
         block.querySelectorAll('.dim').forEach(el => el.addEventListener('input', () => autoCbm(block)));
-        block.querySelector('[data-name="cbm"]').addEventListener('input', function () { this.dataset.touched = '1'; });
+        block.querySelector('[data-name="cbm"]').addEventListener('input', function () {
+            this.dataset.touched = '1';
+            recalcProjection(); // CBM feeds the LCL freight estimate
+        });
         block.querySelector('.remove-item').addEventListener('click', function () {
             if (wrap.querySelectorAll('.item-block').length > 1) { block.remove(); renumber(); recalcGrand(); }
         });
@@ -532,6 +609,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const existingExpenses = @json($quotation?->expenses ?? []);
     existingExpenses.forEach(e => addExpense(e.expense_group, e));
-    recalcProjection();
+    toggleFreightFields();
 });
 </script>

@@ -50,6 +50,8 @@ class Quotation extends Model
             'total_profit' => 'decimal:2',
             'profit_margin' => 'decimal:2',
             'total_duty' => 'decimal:2',
+            'freight_rate' => 'decimal:2',
+            'freight_amount' => 'decimal:2',
             'projected_cost_total' => 'decimal:2',
             'projected_profit' => 'decimal:2',
         ];
