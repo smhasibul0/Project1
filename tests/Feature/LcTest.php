@@ -54,13 +54,50 @@ test('bank charges are zero when no net amount received is entered', function ()
     expect(Lc::firstOrFail()->bank_charges)->toEqual('0.00');
 });
 
-test('an LC requires an order', function () {
+test('an LC can be created standalone without an order', function () {
     $response = $this->actingAs($this->user)->post(route('lc.store'), [
+        'supplier_id' => $this->supplier->id,
         'invoice_amount' => 5000,
+        'net_amount_received' => 4900,
     ]);
 
-    $response->assertSessionHasErrors('order_id');
-    expect(Lc::count())->toBe(0);
+    $response->assertRedirect(route('lc.index'));
+
+    $lc = Lc::firstOrFail();
+    expect($lc->order_id)->toBeNull();
+    expect($lc->bank_charges)->toEqual('100.00');
+});
+
+test('deleting an order releases its LCs instead of deleting them', function () {
+    $lc = Lc::factory()->create(['order_id' => $this->order->id]);
+
+    $this->order->delete();
+
+    expect($lc->fresh())->not->toBeNull();
+    expect($lc->fresh()->order_id)->toBeNull();
+});
+
+test('linking a standalone LC to an order folds its charges into that order', function () {
+    $lc = Lc::factory()->create(['order_id' => null, 'invoice_amount' => 1000, 'net_amount_received' => 900, 'bank_charges' => 100]);
+
+    $this->actingAs($this->user)->put(route('lc.update', $lc->id), [
+        'order_id' => $this->order->id,
+        'invoice_amount' => 1000,
+        'net_amount_received' => 900,
+    ]);
+
+    expect($lc->fresh()->order_id)->toBe($this->order->id);
+    expect((float) $this->order->fresh()->lc_cost)->toEqual(100.0);
+
+    // Unlinking pulls the charges back out of the order.
+    $this->actingAs($this->user)->put(route('lc.update', $lc->id), [
+        'order_id' => null,
+        'invoice_amount' => 1000,
+        'net_amount_received' => 900,
+    ]);
+
+    expect($lc->fresh()->order_id)->toBeNull();
+    expect((float) $this->order->fresh()->lc_cost)->toEqual(0.0);
 });
 
 test('a PI document can be attached to an LC', function () {
@@ -155,4 +192,22 @@ test('the LC list and create pages load', function () {
     $this->actingAs($this->user)->get(route('lc.index'))->assertOk();
     $this->actingAs($this->user)->get(route('lc.create'))->assertOk()->assertSee('Add LC');
     $this->actingAs($this->user)->get(route('lc.create', ['order_id' => $this->order->id]))->assertOk();
+});
+
+test('standalone LC charges reduce the P&L net profit as an operating expense', function () {
+    $lc = Lc::factory()->create([
+        'order_id' => null,
+        'invoice_amount' => 2000,
+        'net_amount_received' => 1850,
+        'bank_charges' => 150,
+    ]);
+    $lc->costs()->create(['title' => 'Swift charge', 'amount' => 50, 'cost_date' => now()->toDateString()]);
+
+    $response = $this->actingAs($this->user)->get(route('reports.profit-loss'));
+    $response->assertOk();
+
+    $operating = $response->viewData('operating');
+    expect($operating['standalone_lc'])->toEqual(200.0); // 150 bank charges + 50 charge line
+    expect($operating['total'])->toEqual(200.0);
+    expect($response->viewData('netProfit'))->toEqual(-200.0);
 });

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Models\Lc;
+use App\Models\LcCost;
 use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\StaffSalaryPayment;
@@ -76,10 +78,24 @@ class ReportController extends Controller
             ->when($to, fn ($q) => $q->whereDate('payment_date', '<=', $to))
             ->sum('amount'), 2);
 
+        // Standalone LCs (no linked order) don't flow through any order rollup, so
+        // their bank charges + charge lines join the company-level expenses here.
+        $standaloneLcCharges = round(
+            (float) LcCost::whereHas('lc', fn ($q) => $q->whereNull('order_id'))
+                ->when($from, fn ($q) => $q->whereDate('cost_date', '>=', $from))
+                ->when($to, fn ($q) => $q->whereDate('cost_date', '<=', $to))
+                ->sum('amount')
+            + (float) Lc::whereNull('order_id')
+                ->when($from, fn ($q) => $q->whereDate('created_at', '>=', $from))
+                ->when($to, fn ($q) => $q->whereDate('created_at', '<=', $to))
+                ->sum('bank_charges'),
+            2);
+
         $operating = [
             'warehouse_expenses' => $warehouseExpenses,
             'salaries' => $salaries,
-            'total' => round($warehouseExpenses + $salaries, 2),
+            'standalone_lc' => $standaloneLcCharges,
+            'total' => round($warehouseExpenses + $salaries + $standaloneLcCharges, 2),
         ];
         $netProfit = round($totalProfit - $operating['total'], 2);
 

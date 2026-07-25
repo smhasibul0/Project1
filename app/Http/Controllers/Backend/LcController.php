@@ -39,7 +39,7 @@ class LcController extends Controller
         $data['added_by'] = Auth::id();
 
         $lc = Lc::create($data);
-        $lc->order->recomputeFinancials();
+        $lc->order?->recomputeFinancials();
 
         return redirect()->route('lc.index')->with('success', 'LC created successfully.');
     }
@@ -74,8 +74,14 @@ class LcController extends Controller
             $data['pi_document'] = $document;
         }
 
+        $previousOrderId = $lc->order_id;
         $lc->update($data);
-        $lc->order->recomputeFinancials();
+
+        // Recompute both sides when the LC moves between orders (or is unlinked).
+        if ($previousOrderId && (int) $previousOrderId !== (int) $lc->order_id) {
+            Order::find($previousOrderId)?->recomputeFinancials();
+        }
+        $lc->order?->recomputeFinancials();
 
         return redirect()->route('lc.index')->with('success', 'LC updated successfully.');
     }
@@ -178,7 +184,7 @@ class LcController extends Controller
                 ]);
             }
 
-            $lc->order->recomputeFinancials();
+            $lc->order?->recomputeFinancials();
         });
 
         return redirect()->back()->with('success', 'LC charge of '.number_format((float) $data['amount'], 2).' recorded.');
@@ -204,7 +210,7 @@ class LcController extends Controller
             }
 
             $cost->delete();
-            $lc->order->recomputeFinancials();
+            $lc->order?->recomputeFinancials();
         });
 
         return redirect()->back()->with('success', 'LC charge deleted.');
@@ -262,7 +268,7 @@ class LcController extends Controller
     private function validated(Request $request): array
     {
         return $request->validate([
-            'order_id' => 'required|exists:orders,id',
+            'order_id' => 'nullable|exists:orders,id',
             'supplier_id' => 'nullable|exists:contacts,id',
             'pi_date' => 'nullable|date',
             'pi_no' => 'nullable|string|max:255',

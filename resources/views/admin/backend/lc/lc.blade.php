@@ -86,7 +86,13 @@
                                     @endif
                                 </td>
                                 <td>{{ $lc->lc_number ?: '—' }}</td>
-                                <td><a href="{{ route('order.show', $lc->order_id) }}"><span class="badge bg-light text-dark">{{ $lc->order->order_no ?? '—' }}</span></a></td>
+                                <td>
+                                    @if($lc->order_id)
+                                        <a href="{{ route('order.show', $lc->order_id) }}"><span class="badge bg-light text-dark">{{ $lc->order->order_no ?? '—' }}</span></a>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary">Standalone</span>
+                                    @endif
+                                </td>
                                 <td>{{ $lc->opening_bank ?: '—' }}</td>
                                 <td>{{ $lc->container_no ?: '—' }}</td>
                                 <td>{{ $lc->commodity ?: '—' }}</td>

@@ -88,6 +88,12 @@ class Order extends Model
                 $order->order_no = 'OR'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
             }
         });
+
+        // LCs are maintained independently — deleting an order releases its LCs
+        // (clears the link) instead of deleting them.
+        static::deleting(function (Order $order) {
+            $order->lcs()->update(['order_id' => null]);
+        });
     }
 
     public function quotation(): BelongsTo

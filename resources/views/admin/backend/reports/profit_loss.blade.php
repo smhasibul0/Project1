@@ -118,6 +118,7 @@
                                 <tr><td class="ps-3">Gross profit from orders</td><td class="text-end pe-3">৳ {{ number_format($totals['profit'], 2) }}</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Warehouse expenses</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['warehouse_expenses'], 2) }})</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Staff salaries</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['salaries'], 2) }})</td></tr>
+                                <tr><td class="ps-3 text-muted">Less: Standalone LC charges</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['standalone_lc'], 2) }})</td></tr>
                             </tbody>
                             <tfoot>
                                 <tr class="table-light fw-semibold">

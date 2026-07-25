@@ -8,19 +8,14 @@
     <div class="card-header"><h6 class="mb-0">LC &amp; Purchase Invoice</h6></div>
     <div class="card-body row g-3">
         <div class="col-md-4">
-            <label class="form-label">Order <span class="text-danger">*</span></label>
-            @if($order && $lc)
-                {{-- Keep an existing LC bound to its order --}}
-                <input type="text" class="form-control" value="{{ $order->order_no }} — {{ $order->customer->name ?? '—' }}" readonly>
-                <input type="hidden" name="order_id" value="{{ $order->id }}">
-            @else
-                <select class="form-control" name="order_id" required>
-                    <option value="">-- Select Order --</option>
-                    @foreach($orders as $o)
-                        <option value="{{ $o->id }}" @selected(old('order_id', $order?->id) == $o->id)>{{ $o->order_no }} — {{ $o->customer->name ?? '—' }}</option>
-                    @endforeach
-                </select>
-            @endif
+            <label class="form-label">Linked Order <small class="text-muted">(optional)</small></label>
+            <select class="form-control" name="order_id">
+                <option value="">— Standalone LC (no order) —</option>
+                @foreach($orders as $o)
+                    <option value="{{ $o->id }}" @selected(old('order_id', $order?->id) == $o->id)>{{ $o->order_no }} — {{ $o->customer->name ?? '—' }}</option>
+                @endforeach
+            </select>
+            <small class="text-muted">Linking an order folds this LC's charges into that order's cost &amp; profit.</small>
         </div>
         <div class="col-md-4">
             <label class="form-label">Supplier (PI issuer)</label>
