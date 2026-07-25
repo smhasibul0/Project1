@@ -189,6 +189,7 @@ Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function ()
     Route::get('/quotations/requests', [QuotationController::class, 'requests'])->name('quotation.requests');
     Route::get('/quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
     Route::post('/quotations', [QuotationController::class, 'store'])->name('quotation.store');
+    Route::post('/quotations/parse-packing-list', [QuotationController::class, 'parsePackingList'])->name('quotation.parse.packing');
     Route::get('/quotations/{id}', [QuotationController::class, 'show'])->name('quotation.show');
     Route::get('/quotations/{id}/edit', [QuotationController::class, 'edit'])->name('quotation.edit');
     Route::put('/quotations/{id}', [QuotationController::class, 'update'])->name('quotation.update');

@@ -59,6 +59,7 @@ test('an order can be created from an accepted quotation', function () {
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
         'status' => 'accepted',
+        'packing_list' => fakePackingList(),
         'items' => [
             ['package_quantity' => 4, 'supplier_asking_price' => 50, 'our_asking_price' => 80, 'hs_code' => '9503009'],
             ['package_quantity' => 2, 'supplier_asking_price' => 100, 'our_asking_price' => 160],

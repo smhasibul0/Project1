@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <form action="{{ route('quotation.store') }}" method="POST">
+        <form action="{{ route('quotation.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @include('admin.backend.quotations._form', ['quotation' => null])
         </form>

@@ -24,6 +24,7 @@ test('a quotation is created with items and computed totals & profit', function 
         'query_received_date' => '2026-07-05',
         'customer_id' => $this->customer->id,
         'action' => 'send',
+        'packing_list' => fakePackingList(),
         'items' => [
             [
                 'category_id' => $this->category->id,
@@ -70,6 +71,7 @@ test('a quotation is created with items and computed totals & profit', function 
 test('quotation numbers increment sequentially', function () {
     $payload = fn () => [
         'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
         'items' => [['package_quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
     ];
 
@@ -91,6 +93,7 @@ test('a quotation requires at least one item', function () {
 test('updating a quotation replaces items and recomputes totals', function () {
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
         'items' => [['package_quantity' => 2, 'our_asking_price' => 100, 'supplier_asking_price' => 60]],
     ]);
     $q = Quotation::firstOrFail();
@@ -111,6 +114,7 @@ test('updating a quotation replaces items and recomputes totals', function () {
 test('a quotation can be deleted with its items', function () {
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
         'items' => [['package_quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
     ]);
     $q = Quotation::firstOrFail();

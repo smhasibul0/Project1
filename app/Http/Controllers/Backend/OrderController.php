@@ -44,7 +44,7 @@ class OrderController extends Controller
      */
     public function fromQuotation($quotationId)
     {
-        $quotation = Quotation::with('items.category')->findOrFail($quotationId);
+        $quotation = Quotation::with(['items.category', 'items.product', 'expenses'])->findOrFail($quotationId);
 
         $order = DB::transaction(function () use ($quotation) {
             $order = Order::create([
@@ -58,7 +58,7 @@ class OrderController extends Controller
 
             foreach ($quotation->items as $qi) {
                 $order->items()->create([
-                    'item_description' => $qi->category->name ?? null,
+                    'item_description' => $qi->product->name ?? ($qi->description ?: ($qi->category->name ?? null)),
                     'category_id' => $qi->category_id,
                     'hs_code' => $qi->hs_code,
                     'quantity' => $qi->package_quantity,
@@ -68,6 +68,29 @@ class OrderController extends Controller
                     'supplier_asking_price' => $qi->supplier_asking_price,
                     'our_asking_price' => $qi->our_asking_price,
                     'line_total' => round((float) $qi->our_asking_price * (float) $qi->package_quantity, 2),
+                ]);
+            }
+
+            // Seed the order's cost ledger with the quotation's projections so they
+            // can be adjusted or replaced with actuals during the order phase.
+            if ((float) $quotation->total_duty > 0) {
+                $order->costs()->create([
+                    'title' => 'Duty & taxes (projected)',
+                    'amount' => $quotation->total_duty,
+                    'cost_date' => now()->toDateString(),
+                    'note' => 'Projected from quotation '.$quotation->quotation_no,
+                    'added_by' => Auth::id(),
+                ]);
+            }
+
+            foreach ($quotation->expenses as $expense) {
+                $order->costs()->create([
+                    'cost_category_id' => $expense->cost_category_id,
+                    'title' => $expense->title,
+                    'amount' => $expense->amount,
+                    'cost_date' => now()->toDateString(),
+                    'note' => trim(($expense->note ? $expense->note.' — ' : '').'Projected from quotation '.$quotation->quotation_no),
+                    'added_by' => Auth::id(),
                 ]);
             }
 

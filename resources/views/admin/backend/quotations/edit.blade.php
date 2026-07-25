@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <form action="{{ route('quotation.update', $quotation->id) }}" method="POST">
+        <form action="{{ route('quotation.update', $quotation->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             @include('admin.backend.quotations._form')

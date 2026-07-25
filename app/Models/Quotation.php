@@ -49,6 +49,9 @@ class Quotation extends Model
             'grand_total' => 'decimal:2',
             'total_profit' => 'decimal:2',
             'profit_margin' => 'decimal:2',
+            'total_duty' => 'decimal:2',
+            'projected_cost_total' => 'decimal:2',
+            'projected_profit' => 'decimal:2',
         ];
     }
 
@@ -71,6 +74,21 @@ class Quotation extends Model
     public function items(): HasMany
     {
         return $this->hasMany(QuotationItem::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(QuotationExpense::class);
+    }
+
+    public function lcExpenses(): HasMany
+    {
+        return $this->expenses()->where('expense_group', 'lc');
+    }
+
+    public function customExpenses(): HasMany
+    {
+        return $this->expenses()->where('expense_group', 'custom');
     }
 
     public function addedBy(): BelongsTo
