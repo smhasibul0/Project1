@@ -1,59 +1,281 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# 🚢 Import Sourcing & Freight ERP
 
-## About Laravel
+**An order-centric ERP for customer-driven import sourcing and freight forwarding —
+from a customer's first enquiry in Dhaka to goods landing in the warehouse, with every
+taka of cost and profit tracked along the way.**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white)](https://php.net)
+[![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
+[![Pest](https://img.shields.io/badge/Pest-3-8A2BE2?logo=pest&logoColor=white)](https://pestphp.com)
+[![Tests](https://img.shields.io/badge/tests-240%20passing-3fb950)](#-testing)
+[![Code Style](https://img.shields.io/badge/code%20style-Pint-FF2D20)](https://laravel.com/docs/pint)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+</div>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## What this is
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+This is **not** a point-of-sale or a stock-selling shop. It models a real
+**import sourcing and freight-forwarding business**: a customer asks for a product,
+you source it from Chinese suppliers, consolidate it into a container, open a letter of
+credit, ship it, clear it at port, receive it into a Bangladesh warehouse, and deliver it.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The **Order is the hub**. Everything — items, supplier costs, freight, customs, LC bank
+charges, container costs, payments, tracking history — hangs off the order, so the
+profit on any shipment is always one page away.
 
-## Laravel Sponsors
+```mermaid
+flowchart LR
+    A["📝 Quotation<br/>request"] --> B["💬 Quote<br/>sent & accepted"]
+    B --> C["📦 Order<br/>created"]
+    C --> D["🏭 Sourcing"]
+    D --> E["🇨🇳 China<br/>warehouse"]
+    E --> F["🚢 Shipped<br/>container + LC"]
+    F --> G["⚓ At port"]
+    G --> H["🏬 BD warehouse<br/>received into stock"]
+    H --> I["✅ Delivered"]
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+    style A fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    style C fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    style H fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    style I fill:#ecfdf5,stroke:#10b981,color:#064e3b
+```
 
-### Premium Partners
+Every status change is written to a tracking timeline, and reaching **At BD Warehouse**
+automatically receives the order's items into warehouse inventory as stock lots.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## ✨ Four surfaces, one system
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Surface | Route | Who | What they get |
+|---|---|---|---|
+| **Admin panel** | `/dashboard` | Admin, Staff, Accountant | The full pipeline — contacts, products, quotations, orders, costs, LC, containers, finance, reports |
+| **Customer portal** | `/portal` | Customers | Submit requests, accept or reject quotes, follow orders, view payments and dues |
+| **Warehouse portal** | `/warehouse` | Warehouse managers | Inventory, incoming orders, expenses, staff and payroll — scoped to their own warehouse |
+| **Public tracking** | `/track` | Anyone | Enter an order number for status and timeline — no financials, no login |
 
-## Code of Conduct
+Admins can step into any warehouse's portal via **Warehouse → Warehouse List → Manage**,
+without needing a separate warehouse login.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 🧩 Modules
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+<table>
+<tr><td width="50%" valign="top">
 
-## License
+**Sourcing & sales**
+- Contacts — suppliers, customers, customer groups
+- Products with categories, brands, units, HS codes
+- Quotations with per-item profit and margin
+- Excel packing-list import (PhpSpreadsheet)
+- Landed-cost projection before quoting
+- One-click convert quotation → order
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+</td><td width="50%" valign="top">
+
+**Logistics**
+- Orders with a 9-stage status pipeline
+- Tracking timeline with who changed what
+- Letters of Credit — PI, bank charges, USD rates
+- Containers with LCL/FCL, POL/POD, ETD/ETA
+- Orders split across containers
+- Generated packing and loading lists
+- Printable, brandable invoices
+
+</td></tr>
+<tr><td valign="top">
+
+**Finance**
+- Payment accounts with a full transaction ledger
+- Fund transfers, deposits, no-overdraft guard
+- Three cost buckets feeding order profit
+- Multiple payments per order
+- Profit & Loss, Receivables, Balance Sheet, Cash Flow
+
+</td><td valign="top">
+
+**Warehouse operations**
+- Order-driven inventory lots and movements
+- Expenses with multi-payment settlement
+- Staff records, documents, salaries
+- Month-by-month payroll board
+- Per-staff salary summary by year
+
+</td></tr>
+</table>
+
+---
+
+## 💰 How the money model works
+
+This is the heart of the system. Costs live in the place they belong, and all of them
+roll up into one number.
+
+```
+Order revenue
+  − supplier goods cost              (from order items)
+  − order costs                      (freight, customs, local transport, service…)
+  − LC cost                          (bank charges + LC charge lines)
+  − allocated container cost         (shared cost split by CBM, weight, cartons or equally)
+  ─────────────────────────────────
+  = Gross profit per order
+
+Gross profit (all orders)
+  − warehouse expenses               (rent, utilities, maintenance…)
+  − staff salaries
+  ─────────────────────────────────
+  = Net profit                       (Reports → Profit & Loss)
+```
+
+A container's cost is shared across every order inside it using the basis you pick per
+container, so a consolidated shipment attributes its freight fairly. Whenever container
+membership or costs change, every affected order's profit is recomputed automatically.
+
+Any cost or payment can be **paid from a payment account**. When it is, the system debits
+that account, writes a polymorphic ledger transaction, and updates the running balance —
+and deleting the record reverses all of it.
+
+---
+
+## 🔐 Roles & permissions
+
+Permissions are database-driven and editable in the admin roles matrix. `Gate::before`
+resolves every ability against the user's role, with Admin bypassing all checks.
+
+| Role | Scope |
+|---|---|
+| **Admin** | Everything, including account balances and settings |
+| **Staff / Agent** | Contacts, products, quotations, orders, LC, containers — no finance |
+| **Accountant** | Costs, payment accounts, payments, reports, expense categories |
+| **Customer** | Customer portal only, scoped to their own contact record |
+| **Warehouse** | Warehouse portal only, scoped to their assigned warehouse |
+
+> **Account balances are admin-only.** Other roles can pay from an account without ever
+> seeing what it holds — every selector renders through the `<x-account-options>`
+> component, which is gated on `accounts.view-balance`.
+
+---
+
+## 🛠 Tech stack
+
+| Layer | Choice |
+|---|---|
+| Backend | PHP 8.2, Laravel 12 (streamlined structure — no `Http/Kernel.php`) |
+| Database | MySQL 8 |
+| Views | Blade + a Bootstrap 5 admin theme; Vite, Tailwind and Alpine for the Breeze auth scaffolding |
+| Tables | A custom, dependency-free `<x-data-table>` — search, sort, filters, column toggles, CSV/print export, no jQuery |
+| Spreadsheets | PhpSpreadsheet (packing-list import) |
+| Images | Intervention Image |
+| Tests | Pest 3 on SQLite in-memory |
+| Style | Laravel Pint |
+
+---
+
+## 🚀 Getting started
+
+**Requirements:** PHP 8.2+ with the `zip` extension, Composer, MySQL, Node 18+.
+
+```bash
+git clone https://github.com/smhasibul0/Project1.git
+cd Project1
+
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Point `.env` at your database, then create it and load the starter data:
+
+```bash
+# .env
+DB_DATABASE=export
+DB_USERNAME=root
+DB_PASSWORD=
+
+php artisan migrate --seed
+npm install && npm run build
+php artisan serve
+```
+
+Seeding creates the roles and permission catalog, account types, customer groups, units,
+categories, a Main Warehouse, transportation modes, packing types, cost categories,
+expense categories, company invoice settings, and one **admin** user:
+
+```
+email:    test@example.com     (or username: testuser)
+password: password
+```
+
+The login field accepts an email **or** a username. Change this password before putting
+anything real in the database.
+
+**Creating the other logins:**
+- **Customer** — Contacts → Customers → row actions → *Create Login*
+- **Warehouse** — Users → Add User → role `Warehouse`, then pick the warehouse
+
+---
+
+## 🧪 Testing
+
+```bash
+composer test                      # full suite (240 tests)
+php artisan test --compact --filter=WarehousePortalTest
+```
+
+> [!WARNING]
+> **Always clear the config cache before running tests.** If `bootstrap/cache/config.php`
+> exists, `phpunit.xml`'s SQLite settings are ignored and `RefreshDatabase` will run
+> `migrate:fresh` against your **live MySQL database**, dropping all development data.
+> The `composer test` script clears it for you; calling `php artisan test` directly does not.
+
+Before finalising any PHP change:
+
+```bash
+vendor/bin/pint --dirty
+```
+
+---
+
+## 📁 Project structure
+
+```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── Backend/        Admin panel (orders, LC, containers, reports, finance…)
+│   │   └── Warehouse/      Warehouse portal (inventory, expenses, staff, payroll)
+│   └── Middleware/         EnsureAdminAccess · EnsureCustomerAccess · EnsureWarehouseAccess
+├── Models/                 Order is the hub; costs, payments and stock hang off it
+├── Providers/              Gate definitions (orders.view, accounts.view-balance)
+└── Support/                CurrentWarehouse · PackingListParser · DutyCalculator · NumberToWords
+
+resources/views/
+├── admin/backend/          Admin screens
+├── portal/                 Customer portal
+├── warehouse/              Warehouse portal
+└── components/             x-data-table · x-account-options · x-customer-select
+
+tests/Feature/              Pest feature tests, one file per module
+```
+
+---
+
+## 🤝 Conventions
+
+- Follow the structure and naming of neighbouring files — check a sibling before inventing a pattern.
+- Every change ships with a test; run the affected suite before committing.
+- Action columns come **first** in every table, as a dropdown.
+- Never render `$account->balance` directly — always use `<x-account-options>`.
+- Money is BDT (৳) throughout; multi-currency is not yet implemented.
+- Run `vendor/bin/pint --dirty` before finalising.
+
+---
+
+<div align="center">
+<sub>Built with Laravel · Company details, logo, invoice colours and terms are configurable under <b>Settings → Company</b></sub>
+</div>
