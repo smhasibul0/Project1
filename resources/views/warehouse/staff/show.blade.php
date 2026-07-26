@@ -22,6 +22,86 @@
             </div>
         </div>
 
+        {{-- Monthly salary summary --}}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0">Salary Summary — {{ $year }}</h6>
+                <form method="GET" class="d-flex align-items-center gap-2 m-0">
+                    <label class="form-label m-0 text-muted">Year</label>
+                    <select class="form-control form-control-sm" name="year" onchange="this.form.submit()">
+                        @foreach($years as $y)<option value="{{ $y }}" {{ $y === $year ? 'selected' : '' }}>{{ $y }}</option>@endforeach
+                    </select>
+                </form>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead class="text-muted">
+                            <tr>
+                                <th class="ps-3">Month</th>
+                                <th class="text-end">Salary</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Due</th>
+                                <th>Status</th>
+                                <th>Payments</th>
+                                <th class="text-end pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($summary as $row)
+                            <tr>
+                                <td class="ps-3 fw-semibold">{{ $row['label'] }}</td>
+                                <td class="text-end">৳ {{ number_format($row['salary'], 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($row['paid'], 2) }}</td>
+                                <td class="text-end {{ $row['due'] > 0 ? 'text-danger fw-semibold' : '' }}">৳ {{ number_format($row['due'], 2) }}</td>
+                                <td>
+                                    @if($row['salary'] <= 0 && $row['paid'] <= 0)
+                                        <span class="badge bg-secondary-subtle text-secondary">No salary set</span>
+                                    @elseif($row['status'] === 'paid')
+                                        <span class="badge bg-success-subtle text-success">Paid</span>
+                                    @elseif($row['status'] === 'partial')
+                                        <span class="badge bg-warning-subtle text-warning">Partial</span>
+                                    @else
+                                        <span class="badge bg-danger-subtle text-danger">Due</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @forelse($row['payments'] as $p)
+                                        <div><small>{{ $p->payment_date?->format('d M') }} — ৳ {{ number_format($p->amount, 2) }}{{ $p->paymentAccount ? ' · '.$p->paymentAccount->name : '' }}</small></div>
+                                    @empty
+                                        <small class="text-muted">—</small>
+                                    @endforelse
+                                </td>
+                                <td class="text-end pe-3">
+                                    @if($row['due'] > 0 || ($row['salary'] <= 0))
+                                    <button type="button" class="btn btn-sm btn-outline-primary pay-month-btn"
+                                            data-month="{{ $row['month'] }}" data-amount="{{ $row['due'] > 0 ? $row['due'] : '' }}"
+                                            data-bs-toggle="modal" data-bs-target="#salaryModal">
+                                        Pay
+                                    </button>
+                                    @endif
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="7" class="text-center text-muted py-4">No months to show for {{ $year }}.</td></tr>
+                            @endforelse
+                        </tbody>
+                        @if(count($summary))
+                        <tfoot class="fw-semibold">
+                            <tr>
+                                <td class="ps-3">Total</td>
+                                <td class="text-end">৳ {{ number_format(collect($summary)->sum('salary'), 2) }}</td>
+                                <td class="text-end">৳ {{ number_format(collect($summary)->sum('paid'), 2) }}</td>
+                                <td class="text-end">৳ {{ number_format(collect($summary)->sum('due'), 2) }}</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                        @endif
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-3">
             {{-- Documents --}}
             <div class="col-lg-5">
@@ -154,6 +234,13 @@
 @section('warehouse_scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Prefill the Pay Salary modal when paying a specific month from the summary.
+    const salaryForm = document.querySelector('#salaryModal form');
+    document.querySelectorAll('.pay-month-btn').forEach(btn => btn.addEventListener('click', function () {
+        salaryForm.querySelector('[name="salary_month"]').value = btn.dataset.month;
+        if (btn.dataset.amount) { salaryForm.querySelector('[name="amount"]').value = btn.dataset.amount; }
+    }));
+
     document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })

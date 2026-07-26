@@ -30,6 +30,7 @@ use App\Http\Controllers\Warehouse\DashboardController as WarehouseDashboardCont
 use App\Http\Controllers\Warehouse\ExpenseController as WarehouseExpenseController;
 use App\Http\Controllers\Warehouse\InventoryController as WarehouseInventoryController;
 use App\Http\Controllers\Warehouse\OrderController as WarehouseOrderController;
+use App\Http\Controllers\Warehouse\PayrollController as WarehousePayrollController;
 use App\Http\Controllers\Warehouse\StaffController as WarehouseStaffController;
 use Illuminate\Support\Facades\Route;
 
@@ -86,6 +87,8 @@ Route::middleware(['auth', 'warehouse'])->prefix('warehouse')->name('warehouse.'
     Route::delete('/expenses/{id}', [WarehouseExpenseController::class, 'destroy'])->name('expenses.delete');
     Route::post('/expenses/{id}/payments', [WarehouseExpenseController::class, 'storePayment'])->name('expenses.payments.store');
     Route::delete('/expenses/{id}/payments/{paymentId}', [WarehouseExpenseController::class, 'destroyPayment'])->name('expenses.payments.delete');
+
+    Route::get('/payroll', [WarehousePayrollController::class, 'index'])->name('payroll.index');
 
     Route::get('/staff', [WarehouseStaffController::class, 'index'])->name('staff.index');
     Route::post('/staff', [WarehouseStaffController::class, 'store'])->name('staff.store');

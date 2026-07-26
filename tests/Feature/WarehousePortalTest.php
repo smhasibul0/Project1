@@ -388,6 +388,83 @@ test('the staff pages render', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Payroll — month-by-month salary management
+|--------------------------------------------------------------------------
+*/
+
+test('the payroll page shows paid, due and status per staff for a month', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim', 'monthly_salary' => 5000]);
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 2000, 'payment_date' => '2026-07-10',
+    ])->assertRedirect();
+
+    $this->actingAs($user)->get(route('warehouse.payroll.index', ['month' => '2026-07']))
+        ->assertOk()->assertSee('Karim')->assertSee('Partial');
+
+    expect($staff->fresh()->load('salaryPayments')->dueForMonth('2026-07'))->toBe(3000.0);
+});
+
+test('a salary payment cannot exceed the remaining due for the month', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim', 'monthly_salary' => 5000]);
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 3000, 'payment_date' => '2026-07-10',
+    ])->assertRedirect();
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 3000, 'payment_date' => '2026-07-20',
+    ])->assertSessionHasErrors('amount');
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 2000, 'payment_date' => '2026-07-20',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $staff = $staff->fresh()->load('salaryPayments');
+    expect($staff->salaryStatusForMonth('2026-07'))->toBe('paid');
+    // A different month starts fresh.
+    expect($staff->dueForMonth('2026-08'))->toBe(5000.0);
+});
+
+test('the staff page shows a monthly salary summary filtered by year', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim', 'monthly_salary' => 5000, 'join_date' => '2025-11-05']);
+
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2025-12', 'amount' => 5000, 'payment_date' => '2025-12-28',
+    ]);
+    $this->actingAs($user)->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 2000, 'payment_date' => '2026-07-10',
+    ]);
+
+    // Current year: months run January through the current month (July), which
+    // shows the partial payment; future months aren't listed.
+    $this->actingAs($user)->get(route('warehouse.staff.show', $staff->id))
+        ->assertOk()->assertSee('Jan 2026')->assertSee('Jul 2026')->assertSee('Partial')->assertDontSee('Aug 2026');
+
+    // Past year: months run from the November joining date; December is fully paid.
+    $this->actingAs($user)->get(route('warehouse.staff.show', ['id' => $staff->id, 'year' => 2025]))
+        ->assertOk()->assertSee('Nov 2025')->assertSee('Dec 2025')->assertDontSee('Oct 2025')->assertDontSee('Feb 2026');
+});
+
+test('staff without a set monthly salary can be paid any amount', function () {
+    $warehouse = Warehouse::factory()->create();
+    $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Day Labourer']);
+
+    $this->actingAs(warehouseUser($warehouse))->post(route('warehouse.staff.salary.store', $staff->id), [
+        'salary_month' => '2026-07', 'amount' => 750, 'payment_date' => '2026-07-10',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(StaffSalaryPayment::count())->toBe(1);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Phase 11D — P&L / Net Profit integration
 |--------------------------------------------------------------------------
 */

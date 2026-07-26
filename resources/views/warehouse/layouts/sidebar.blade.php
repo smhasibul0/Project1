@@ -64,7 +64,14 @@
                 <li>
                     <a href="{{ route('warehouse.staff.index') }}" class="tp-link {{ request()->routeIs('warehouse.staff.*') ? 'active' : '' }}">
                         <i data-feather="users"></i>
-                        <span> Staff &amp; Salary </span>
+                        <span> Staff </span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ route('warehouse.payroll.index') }}" class="tp-link {{ request()->routeIs('warehouse.payroll.*') ? 'active' : '' }}">
+                        <i data-feather="dollar-sign"></i>
+                        <span> Payroll </span>
                     </a>
                 </li>
 

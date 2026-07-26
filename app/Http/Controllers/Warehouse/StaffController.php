@@ -8,9 +8,12 @@ use App\Models\StaffSalaryPayment;
 use App\Models\Transaction;
 use App\Models\WarehouseStaff;
 use App\Support\CurrentWarehouse;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
 {
@@ -51,16 +54,87 @@ class StaffController extends Controller
         return redirect()->back()->with('success', 'Staff member updated.');
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $staff = $this->findStaff($id);
         $staff->load(['documents.uploadedBy', 'salaryPayments.paymentAccount']);
+
+        $year = (int) $request->input('year', now()->year);
+        if ($year < 2000 || $year > 2100) {
+            $year = now()->year;
+        }
 
         return view('warehouse.staff.show', [
             'staff' => $staff,
             'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
             'salaryTotal' => round($staff->salaryPayments->sum(fn ($p) => (float) $p->amount), 2),
+            'year' => $year,
+            'years' => $this->salaryYears($staff),
+            'summary' => $this->monthlySummary($staff, $year),
         ]);
+    }
+
+    /**
+     * Years selectable in the salary summary: joining year through the current
+     * year, plus any year that has a payment.
+     *
+     * @return list<int>
+     */
+    private function salaryYears(WarehouseStaff $staff): array
+    {
+        $years = $staff->salaryPayments->map(fn ($p) => (int) substr($p->salary_month, 0, 4))->all();
+        $years[] = now()->year;
+        if ($staff->join_date) {
+            $years[] = $staff->join_date->year;
+        }
+
+        $years = array_unique($years);
+        rsort($years);
+
+        return array_values($years);
+    }
+
+    /**
+     * One row per month of the year — salary, paid, due, status and that
+     * month's payments. Months run from joining (or January) up to the current
+     * month, plus any month that has a payment.
+     *
+     * @return list<array{month: string, label: string, salary: float, paid: float, due: float, status: string, payments: Collection<int, StaffSalaryPayment>}>
+     */
+    private function monthlySummary(WarehouseStaff $staff, int $year): array
+    {
+        $start = 1;
+        if ($staff->join_date && (int) $staff->join_date->year === $year) {
+            $start = (int) $staff->join_date->month;
+        } elseif ($staff->join_date && (int) $staff->join_date->year > $year) {
+            $start = 13;
+        }
+        $end = match (true) {
+            $year === (int) now()->year => (int) now()->month,
+            $year > (int) now()->year => 0,
+            default => 12,
+        };
+
+        $months = [];
+        for ($m = $start; $m <= $end; $m++) {
+            $months[] = sprintf('%04d-%02d', $year, $m);
+        }
+        foreach ($staff->salaryPayments as $payment) {
+            if (str_starts_with($payment->salary_month, $year.'-') && ! in_array($payment->salary_month, $months, true)) {
+                $months[] = $payment->salary_month;
+            }
+        }
+        sort($months);
+
+        return array_map(fn (string $month) => [
+            'month' => $month,
+            'label' => Carbon::createFromFormat('Y-m', $month)->format('M Y'),
+            'salary' => (float) $staff->monthly_salary,
+            'paid' => $staff->paidForMonth($month),
+            'due' => $staff->dueForMonth($month),
+            'status' => $staff->salaryStatusForMonth($month),
+            'payments' => $staff->salaryPayments->where('salary_month', $month)->values(),
+        ], $months);
     }
 
     public function destroy($id)
@@ -115,13 +189,21 @@ class StaffController extends Controller
         $staff = $this->findStaff($id);
 
         $data = $request->validate([
-            'salary_month' => 'required|string|max:7',
+            'salary_month' => 'required|date_format:Y-m',
             'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,jpeg,jpg,png,doc,docx|max:4096',
         ]);
+
+        // Staff with a set salary can't be overpaid for a month; ad-hoc staff
+        // (no monthly salary) can receive any amount.
+        if ((float) $staff->monthly_salary > 0 && (float) $data['amount'] > $staff->dueForMonth($data['salary_month']) + 0.005) {
+            throw ValidationException::withMessages([
+                'amount' => 'Payment exceeds the remaining due of '.number_format($staff->dueForMonth($data['salary_month']), 2).' for '.$data['salary_month'].'.',
+            ]);
+        }
 
         DB::transaction(function () use ($staff, $data, $request) {
             $attachment = null;
