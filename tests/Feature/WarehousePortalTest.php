@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseExpense;
+use App\Models\WarehouseExpensePayment;
 use App\Models\WarehouseStaff;
 use App\Models\WarehouseStock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -135,7 +136,7 @@ test('admin can add an expense category and a sub-category', function () {
     expect(ExpenseCategory::where('name', 'Electricity')->first()->parent_id)->toBe($parent->id);
 });
 
-test('a warehouse expense paid from an account debits the ledger', function () {
+test('an expense with an initial payment from an account debits the ledger', function () {
     $warehouse = Warehouse::factory()->create();
     $account = PaymentAccount::factory()->create(['balance' => 10000]);
     $category = ExpenseCategory::create(['name' => 'Electricity']);
@@ -144,27 +145,97 @@ test('a warehouse expense paid from an account debits the ledger', function () {
         'expense_category_id' => $category->id,
         'amount' => 1500,
         'expense_date' => '2026-07-14',
+        'payment_amount' => 1500,
+        'paid_on' => '2026-07-14',
+        'payment_method' => 'Cash',
         'payment_account_id' => $account->id,
     ])->assertRedirect();
 
-    expect(WarehouseExpense::where('warehouse_id', $warehouse->id)->count())->toBe(1);
+    $expense = WarehouseExpense::where('warehouse_id', $warehouse->id)->firstOrFail();
+    expect($expense->payments)->toHaveCount(1);
+    expect($expense->paymentStatus())->toBe('paid');
     expect((float) $account->fresh()->balance)->toBe(8500.0);
 
     $txn = Transaction::where('source', 'warehouse_expense')->first();
     expect($txn)->not->toBeNull();
     expect((float) $txn->debit)->toBe(1500.0);
-    expect($txn->transactionable_type)->toBe(WarehouseExpense::class);
+    expect($txn->transactionable_type)->toBe(WarehouseExpensePayment::class);
 });
 
-test('deleting a warehouse expense reverses its ledger entry', function () {
+test('an expense can be settled with multiple partial payments', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 10000]);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 1000, 'expense_date' => '2026-07-14',
+        'payment_amount' => 400, 'paid_on' => '2026-07-14', 'payment_account_id' => $account->id,
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+    expect($expense->paymentStatus())->toBe('partial');
+    expect($expense->dueTotal())->toBe(600.0);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.payments.store', $expense->id), [
+        'amount' => 600, 'paid_on' => '2026-07-20', 'method' => 'Bank Transfer', 'payment_account_id' => $account->id,
+    ])->assertRedirect();
+
+    $expense = $expense->fresh()->load('payments');
+    expect($expense->payments)->toHaveCount(2);
+    expect($expense->paymentStatus())->toBe('paid');
+    expect($expense->dueTotal())->toBe(0.0);
+    expect((float) $account->fresh()->balance)->toBe(9000.0);
+    expect(Transaction::where('source', 'warehouse_expense')->count())->toBe(2);
+});
+
+test('a payment cannot exceed the outstanding due', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 500, 'expense_date' => '2026-07-14', 'payment_amount' => 300, 'paid_on' => '2026-07-14',
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+
+    $this->actingAs($user)->post(route('warehouse.expenses.payments.store', $expense->id), [
+        'amount' => 300, 'paid_on' => '2026-07-15',
+    ])->assertSessionHasErrors('amount');
+
+    expect($expense->fresh()->load('payments')->payments)->toHaveCount(1);
+});
+
+test('deleting a payment credits the account back', function () {
     $warehouse = Warehouse::factory()->create();
     $account = PaymentAccount::factory()->create(['balance' => 5000]);
     $user = warehouseUser($warehouse);
 
     $this->actingAs($user)->post(route('warehouse.expenses.store'), [
-        'amount' => 1000, 'expense_date' => '2026-07-14', 'payment_account_id' => $account->id,
+        'amount' => 1000, 'expense_date' => '2026-07-14',
+        'payment_amount' => 1000, 'paid_on' => '2026-07-14', 'payment_account_id' => $account->id,
     ]);
     $expense = WarehouseExpense::firstOrFail();
+    $payment = $expense->payments()->firstOrFail();
+    expect((float) $account->fresh()->balance)->toBe(4000.0);
+
+    $this->actingAs($user)->delete(route('warehouse.expenses.payments.delete', [$expense->id, $payment->id]))->assertRedirect();
+
+    expect((float) $account->fresh()->balance)->toBe(5000.0);
+    expect(Transaction::where('source', 'warehouse_expense')->count())->toBe(0);
+    expect($expense->fresh()->load('payments')->paymentStatus())->toBe('due');
+});
+
+test('deleting a warehouse expense reverses all of its payments', function () {
+    $warehouse = Warehouse::factory()->create();
+    $account = PaymentAccount::factory()->create(['balance' => 5000]);
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 1000, 'expense_date' => '2026-07-14',
+        'payment_amount' => 400, 'paid_on' => '2026-07-14', 'payment_account_id' => $account->id,
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+    $this->actingAs($user)->post(route('warehouse.expenses.payments.store', $expense->id), [
+        'amount' => 600, 'paid_on' => '2026-07-20', 'payment_account_id' => $account->id,
+    ]);
     expect((float) $account->fresh()->balance)->toBe(4000.0);
 
     $this->actingAs($user)->delete(route('warehouse.expenses.delete', $expense->id))->assertRedirect();
@@ -172,6 +243,17 @@ test('deleting a warehouse expense reverses its ledger entry', function () {
     expect((float) $account->fresh()->balance)->toBe(5000.0);
     expect(Transaction::where('source', 'warehouse_expense')->count())->toBe(0);
     expect(WarehouseExpense::count())->toBe(0);
+    expect(WarehouseExpensePayment::count())->toBe(0);
+});
+
+test('a warehouse user cannot pay another warehouse expense', function () {
+    $mine = Warehouse::factory()->create();
+    $other = Warehouse::factory()->create();
+    $expense = WarehouseExpense::create(['warehouse_id' => $other->id, 'amount' => 100, 'expense_date' => '2026-07-14']);
+
+    $this->actingAs(warehouseUser($mine))->post(route('warehouse.expenses.payments.store', $expense->id), [
+        'amount' => 100, 'paid_on' => '2026-07-14',
+    ])->assertNotFound();
 });
 
 test('an expense with no account records no ledger entry', function () {

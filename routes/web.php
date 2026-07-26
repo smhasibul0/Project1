@@ -84,6 +84,8 @@ Route::middleware(['auth', 'warehouse'])->prefix('warehouse')->name('warehouse.'
     Route::get('/expenses', [WarehouseExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [WarehouseExpenseController::class, 'store'])->name('expenses.store');
     Route::delete('/expenses/{id}', [WarehouseExpenseController::class, 'destroy'])->name('expenses.delete');
+    Route::post('/expenses/{id}/payments', [WarehouseExpenseController::class, 'storePayment'])->name('expenses.payments.store');
+    Route::delete('/expenses/{id}/payments/{paymentId}', [WarehouseExpenseController::class, 'destroyPayment'])->name('expenses.payments.delete');
 
     Route::get('/staff', [WarehouseStaffController::class, 'index'])->name('staff.index');
     Route::post('/staff', [WarehouseStaffController::class, 'store'])->name('staff.store');

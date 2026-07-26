@@ -7,17 +7,22 @@ use App\Models\ExpenseCategory;
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
 use App\Models\WarehouseExpense;
+use App\Models\WarehouseExpensePayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ExpenseController extends Controller
 {
+    /** @var list<string> */
+    public const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking', 'Other'];
+
     public function index()
     {
         $warehouseId = Auth::user()->warehouse_id;
 
-        $expenses = WarehouseExpense::with(['category.parent', 'paymentAccount'])
+        $expenses = WarehouseExpense::with(['category.parent', 'payments.paymentAccount'])
             ->where('warehouse_id', $warehouseId)
             ->latest('expense_date')->latest('id')->get();
 
@@ -25,13 +30,16 @@ class ExpenseController extends Controller
             'warehouse' => Auth::user()->warehouse,
             'expenses' => $expenses,
             'total' => round($expenses->sum(fn ($e) => (float) $e->amount), 2),
+            'totalDue' => round($expenses->sum(fn ($e) => $e->dueTotal()), 2),
             'categories' => ExpenseCategory::with('children')->whereNull('parent_id')->where('is_active', true)->orderBy('name')->get(),
             'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
+            'paymentMethods' => self::PAYMENT_METHODS,
         ]);
     }
 
     /**
-     * Record a warehouse expense. When paid from an account, it debits that account's ledger.
+     * Record a warehouse expense, optionally with an initial payment. The
+     * expense keeps its full accrued amount; payments can settle it over time.
      */
     public function store(Request $request)
     {
@@ -39,9 +47,13 @@ class ExpenseController extends Controller
             'expense_category_id' => 'nullable|exists:expense_categories,id',
             'amount' => 'required|numeric|min:0.01',
             'expense_date' => 'required|date',
-            'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
+            'payment_amount' => 'nullable|required_with:payment_account_id|numeric|min:0.01|lte:amount',
+            'paid_on' => 'nullable|date',
+            'payment_method' => 'nullable|string|max:50',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'payment_note' => 'nullable|string|max:255',
         ]);
 
         $warehouse = Auth::user()->warehouse;
@@ -63,29 +75,18 @@ class ExpenseController extends Controller
                 'expense_category_id' => $data['expense_category_id'] ?? null,
                 'amount' => $data['amount'],
                 'expense_date' => $data['expense_date'],
-                'payment_account_id' => $data['payment_account_id'] ?? null,
                 'note' => $data['note'] ?? null,
                 'attachment' => $attachment,
                 'added_by' => Auth::id(),
             ]);
 
-            if (! empty($data['payment_account_id'])) {
-                $account = PaymentAccount::findOrFail($data['payment_account_id']);
-                $account->decrement('balance', (float) $data['amount']);
-                $account->transactions()->create([
-                    'type' => 'debit',
-                    'source' => 'warehouse_expense',
-                    'amount' => $data['amount'],
-                    'credit' => 0,
-                    'debit' => $data['amount'],
-                    'running_balance' => $account->fresh()->balance,
-                    'description' => ($expense->category->name ?? 'Expense').' — '.$warehouse->name,
-                    'reference' => $warehouse->name,
-                    'note' => $data['note'] ?? null,
-                    'transactionable_type' => WarehouseExpense::class,
-                    'transactionable_id' => $expense->id,
-                    'added_by' => Auth::id(),
-                    'created_at' => $expense->expense_date,
+            if (! empty($data['payment_amount'])) {
+                $this->recordPayment($expense, [
+                    'amount' => $data['payment_amount'],
+                    'paid_on' => $data['paid_on'] ?? $data['expense_date'],
+                    'method' => $data['payment_method'] ?? null,
+                    'payment_account_id' => $data['payment_account_id'] ?? null,
+                    'note' => $data['payment_note'] ?? null,
                 ]);
             }
         });
@@ -94,27 +95,128 @@ class ExpenseController extends Controller
     }
 
     /**
-     * Delete an expense, reversing its ledger entry (crediting the account back) when paid
-     * from a payment account.
+     * Add a payment against an existing expense (partial payments allowed,
+     * never more than the outstanding due).
+     */
+    public function storePayment(Request $request, $id)
+    {
+        $expense = WarehouseExpense::with('payments')
+            ->where('warehouse_id', Auth::user()->warehouse_id)
+            ->findOrFail($id);
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'paid_on' => 'required|date',
+            'method' => 'nullable|string|max:50',
+            'payment_account_id' => 'nullable|exists:payment_accounts,id',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        if ((float) $data['amount'] > $expense->dueTotal() + 0.005) {
+            throw ValidationException::withMessages([
+                'amount' => 'Payment exceeds the outstanding due of '.number_format($expense->dueTotal(), 2).'.',
+            ]);
+        }
+
+        DB::transaction(function () use ($expense, $data) {
+            $this->recordPayment($expense, $data);
+        });
+
+        return redirect()->back()->with('success', 'Payment of '.number_format((float) $data['amount'], 2).' recorded.');
+    }
+
+    /**
+     * Delete a single payment, crediting its account back.
+     */
+    public function destroyPayment($id, $paymentId)
+    {
+        $expense = WarehouseExpense::where('warehouse_id', Auth::user()->warehouse_id)->findOrFail($id);
+        $payment = $expense->payments()->findOrFail($paymentId);
+
+        DB::transaction(function () use ($payment) {
+            $this->reversePayment($payment);
+            $payment->delete();
+        });
+
+        return redirect()->back()->with('success', 'Payment deleted.');
+    }
+
+    /**
+     * Delete an expense, reversing every payment's ledger entry (crediting the
+     * accounts back).
      */
     public function destroy($id)
     {
-        $expense = WarehouseExpense::where('warehouse_id', Auth::user()->warehouse_id)->findOrFail($id);
+        $expense = WarehouseExpense::with('payments')
+            ->where('warehouse_id', Auth::user()->warehouse_id)
+            ->findOrFail($id);
 
         DB::transaction(function () use ($expense) {
-            if ($expense->payment_account_id) {
-                $account = PaymentAccount::find($expense->payment_account_id);
-                if ($account) {
-                    $account->increment('balance', (float) $expense->amount);
-                }
-                Transaction::where('transactionable_type', WarehouseExpense::class)
-                    ->where('transactionable_id', $expense->id)
-                    ->delete();
+            foreach ($expense->payments as $payment) {
+                $this->reversePayment($payment);
             }
 
             $expense->delete();
         });
 
         return redirect()->back()->with('success', 'Expense deleted.');
+    }
+
+    /**
+     * Create a payment row and, when paid from an account, debit that
+     * account's ledger.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function recordPayment(WarehouseExpense $expense, array $data): void
+    {
+        $payment = $expense->payments()->create([
+            'amount' => $data['amount'],
+            'paid_on' => $data['paid_on'],
+            'method' => $data['method'] ?? null,
+            'payment_account_id' => $data['payment_account_id'] ?? null,
+            'note' => $data['note'] ?? null,
+            'added_by' => Auth::id(),
+        ]);
+
+        if (! empty($data['payment_account_id'])) {
+            $account = PaymentAccount::findOrFail($data['payment_account_id']);
+            $account->decrement('balance', (float) $data['amount']);
+            $account->transactions()->create([
+                'type' => 'debit',
+                'source' => 'warehouse_expense',
+                'amount' => $data['amount'],
+                'credit' => 0,
+                'debit' => $data['amount'],
+                'running_balance' => $account->fresh()->balance,
+                'description' => ($expense->category->name ?? 'Expense').' — '.$expense->warehouse->name,
+                'payment_method' => $data['method'] ?? null,
+                'reference' => $expense->warehouse->name,
+                'note' => $data['note'] ?? null,
+                'transactionable_type' => WarehouseExpensePayment::class,
+                'transactionable_id' => $payment->id,
+                'added_by' => Auth::id(),
+                'created_at' => $data['paid_on'],
+            ]);
+        }
+    }
+
+    /**
+     * Credit a payment's account back and remove its ledger entry.
+     */
+    private function reversePayment(WarehouseExpensePayment $payment): void
+    {
+        if (! $payment->payment_account_id) {
+            return;
+        }
+
+        $account = PaymentAccount::find($payment->payment_account_id);
+        if ($account) {
+            $account->increment('balance', (float) $payment->amount);
+        }
+
+        Transaction::where('transactionable_type', WarehouseExpensePayment::class)
+            ->where('transactionable_id', $payment->id)
+            ->delete();
     }
 }
