@@ -94,6 +94,45 @@ class ExpenseController extends Controller
     }
 
     /**
+     * Edit an expense's own details. Payments are managed separately, so the
+     * total can never drop below what has already been paid.
+     */
+    public function update(Request $request, $id)
+    {
+        $expense = WarehouseExpense::with('payments')
+            ->where('warehouse_id', CurrentWarehouse::id())
+            ->findOrFail($id);
+
+        $data = $request->validate([
+            'expense_category_id' => 'nullable|exists:expense_categories,id',
+            'amount' => 'required|numeric|min:0.01',
+            'expense_date' => 'required|date',
+            'note' => 'nullable|string|max:1000',
+            'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
+        ]);
+
+        if ((float) $data['amount'] + 0.005 < $expense->paidTotal()) {
+            throw ValidationException::withMessages([
+                'amount' => 'Total cannot be less than the '.number_format($expense->paidTotal(), 2).' already paid. Delete a payment first.',
+            ]);
+        }
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $data['attachment'] = hexdec(uniqid()).'.'.$file->getClientOriginalExtension();
+            $dir = public_path('upload/expenses');
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $file->move($dir, $data['attachment']);
+        }
+
+        $expense->update($data);
+
+        return redirect()->back()->with('success', 'Expense updated.');
+    }
+
+    /**
      * Add a payment against an existing expense (partial payments allowed,
      * never more than the outstanding due).
      */

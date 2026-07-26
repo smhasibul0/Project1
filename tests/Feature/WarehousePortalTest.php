@@ -253,6 +253,59 @@ test('deleting a warehouse expense reverses all of its payments', function () {
     expect(WarehouseExpensePayment::count())->toBe(0);
 });
 
+test('an expense can be edited without touching its payments', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+    $category = ExpenseCategory::create(['name' => 'Utilities']);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 1000, 'expense_date' => '2026-07-14', 'payment_amount' => 400, 'paid_on' => '2026-07-14',
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+
+    $this->actingAs($user)->put(route('warehouse.expenses.update', $expense->id), [
+        'expense_category_id' => $category->id,
+        'amount' => 1200,
+        'expense_date' => '2026-07-15',
+        'note' => 'Revised invoice',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $expense = $expense->fresh()->load('payments');
+    expect((float) $expense->amount)->toBe(1200.0);
+    expect($expense->expense_category_id)->toBe($category->id);
+    expect($expense->note)->toBe('Revised invoice');
+    expect($expense->payments)->toHaveCount(1);
+    expect($expense->dueTotal())->toBe(800.0);
+});
+
+test('an expense total cannot be edited below what is already paid', function () {
+    $warehouse = Warehouse::factory()->create();
+    $user = warehouseUser($warehouse);
+
+    $this->actingAs($user)->post(route('warehouse.expenses.store'), [
+        'amount' => 1000, 'expense_date' => '2026-07-14', 'payment_amount' => 600, 'paid_on' => '2026-07-14',
+    ]);
+    $expense = WarehouseExpense::firstOrFail();
+
+    $this->actingAs($user)->put(route('warehouse.expenses.update', $expense->id), [
+        'amount' => 500, 'expense_date' => '2026-07-14',
+    ])->assertSessionHasErrors('amount');
+
+    expect((float) $expense->fresh()->amount)->toBe(1000.0);
+});
+
+test('a warehouse user cannot edit another warehouse expense', function () {
+    $mine = Warehouse::factory()->create();
+    $other = Warehouse::factory()->create();
+    $expense = WarehouseExpense::create(['warehouse_id' => $other->id, 'amount' => 100, 'expense_date' => '2026-07-14']);
+
+    $this->actingAs(warehouseUser($mine))->put(route('warehouse.expenses.update', $expense->id), [
+        'amount' => 999, 'expense_date' => '2026-07-14',
+    ])->assertNotFound();
+
+    expect((float) $expense->fresh()->amount)->toBe(100.0);
+});
+
 test('a warehouse user cannot pay another warehouse expense', function () {
     $mine = Warehouse::factory()->create();
     $other = Warehouse::factory()->create();
