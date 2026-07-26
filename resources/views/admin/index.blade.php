@@ -159,7 +159,9 @@
                     <div class="p-3">
                         <div class="mini"><span class="mi ic-indigo"><i class="ri-file-list-3-line"></i></span><div><div class="mv">{{ $side['quotationsPending'] }}</div><div class="ml">Pending quotation requests</div></div></div>
                         <div class="mini"><span class="mi ic-amber"><i class="ri-truck-line"></i></span><div><div class="mv">{{ $side['containersActive'] }}</div><div class="ml">Containers in transit</div></div></div>
+                        @can('accounts.view-balance')
                         <div class="mini"><span class="mi ic-blue"><i class="ri-bank-line"></i></span><div><div class="mv">৳{{ number_format($side['cashBank'], 0) }}</div><div class="ml">Cash &amp; bank balance</div></div></div>
+                        @endcan
                         <div class="mini"><span class="mi ic-accent"><i class="ri-user-3-line"></i></span><div><div class="mv">{{ $side['customers'] }}</div><div class="ml">Total customers</div></div></div>
                     </div>
                 </div>

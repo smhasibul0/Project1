@@ -168,7 +168,7 @@
                             <label class="form-label">Payment account</label>
                             <select class="form-control" name="payment_account_id">
                                 <option value="">-- None --</option>
-                                @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->name }} (৳ {{ number_format($a->balance, 2) }})</option>@endforeach
+                                <x-account-options :accounts="$accounts" />
                             </select>
                             <small class="text-muted">Choosing an account deducts the paid amount from its balance.</small>
                         </div>
@@ -345,7 +345,7 @@
                             <label class="form-label">Payment account</label>
                             <select class="form-control" name="payment_account_id">
                                 <option value="">-- None --</option>
-                                @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->name }} (৳ {{ number_format($a->balance, 2) }})</option>@endforeach
+                                <x-account-options :accounts="$accounts" />
                             </select>
                         </div>
                         <div class="col-md-6">

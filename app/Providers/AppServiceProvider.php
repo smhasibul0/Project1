@@ -39,5 +39,13 @@ class AppServiceProvider extends ServiceProvider
                 || $user->hasPermission('orders.update-status')
                 || $user->hasPermission('costs.manage');
         });
+
+        // Payment account balances are admin-only. Warehouse managers and other
+        // staff pick an account to pay from without seeing what it holds; the
+        // Gate::before hook above grants admins every ability, so this closure
+        // only ever runs for non-admins.
+        Gate::define('accounts.view-balance', function (User $user) {
+            return false;
+        });
     }
 }

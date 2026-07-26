@@ -212,7 +212,7 @@
                         <label class="form-label">Paid From (account)</label>
                         <select class="form-control" name="payment_account_id">
                             <option value="">-- Not from an account --</option>
-                            @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->name }} (৳ {{ number_format($a->balance, 2) }})</option>@endforeach
+                            <x-account-options :accounts="$accounts" />
                         </select>
                     </div>
                     <div class="col-md-6">

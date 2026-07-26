@@ -181,7 +181,7 @@
                         <label class="form-label">Pay from Account <small class="text-muted">(debits the account ledger)</small></label>
                         <select class="form-control" name="payment_account_id">
                             <option value="">-- None (no ledger entry) --</option>
-                            @foreach($accounts as $acc)<option value="{{ $acc->id }}">{{ $acc->name }} (Balance: {{ number_format($acc->balance, 2) }})</option>@endforeach
+                            <x-account-options :accounts="$accounts" />
                         </select>
                     </div>
                     <div class="col-md-6">
