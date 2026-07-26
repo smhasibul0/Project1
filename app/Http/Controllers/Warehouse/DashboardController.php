@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Warehouse;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\WarehouseStock;
-use Illuminate\Support\Facades\Auth;
+use App\Support\CurrentWarehouse;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $warehouse = Auth::user()->warehouse;
+        $warehouse = CurrentWarehouse::get();
         $warehouseId = $warehouse->id;
 
         $lots = WarehouseStock::where('warehouse_id', $warehouseId)->get();

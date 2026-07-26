@@ -91,13 +91,40 @@
                             <li>
                                 <a href="{{ route('units.index') }}" class="tp-link">Units</a>
                             </li>
-                            <li>
-                                <a href="{{ route('warehouses.index') }}" class="tp-link">Warehouses</a>
-                            </li>
                         </ul>
                     </div>
                 </li>
                 @endcan
+
+                <!-- Warehouse -->
+                @canany(['products.manage', 'expenses.manage'])
+                <li>
+                    <a href="#sidebarWarehouse" data-bs-toggle="collapse">
+                        <i data-feather="archive"></i>
+                        <span> Warehouse </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarWarehouse">
+                        <ul class="nav-second-level">
+                            @can('products.manage')
+                            <li>
+                                <a href="{{ route('warehouses.index') }}" class="tp-link">Warehouse List</a>
+                            </li>
+                            @endcan
+                            @can('expenses.manage')
+                            <li>
+                                <a href="{{ route('expense.categories') }}" class="tp-link">Expense Categories</a>
+                            </li>
+                            @endcan
+                            @can('reports.view')
+                            <li>
+                                <a href="{{ route('reports.warehouse-summary') }}" class="tp-link">Operations Report</a>
+                            </li>
+                            @endcan
+                        </ul>
+                    </div>
+                </li>
+                @endcanany
 
                 
                 <!-- Quotations -->
@@ -210,16 +237,6 @@
                             </li>
                         </ul>
                     </div>
-                </li>
-                @endcan
-
-                <!-- Warehouse expense categories -->
-                @can('expenses.manage')
-                <li>
-                    <a href="{{ route('expense.categories') }}" class="tp-link {{ request()->routeIs('expense.categories') ? 'active' : '' }}">
-                        <i data-feather="tag"></i>
-                        <span> Expense Categories </span>
-                    </a>
                 </li>
                 @endcan
 

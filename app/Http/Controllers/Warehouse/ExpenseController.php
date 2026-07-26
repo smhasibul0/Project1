@@ -8,6 +8,7 @@ use App\Models\PaymentAccount;
 use App\Models\Transaction;
 use App\Models\WarehouseExpense;
 use App\Models\WarehouseExpensePayment;
+use App\Support\CurrentWarehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,12 @@ class ExpenseController extends Controller
 
     public function index()
     {
-        $warehouseId = Auth::user()->warehouse_id;
-
         $expenses = WarehouseExpense::with(['category.parent', 'payments.paymentAccount'])
-            ->where('warehouse_id', $warehouseId)
+            ->where('warehouse_id', CurrentWarehouse::id())
             ->latest('expense_date')->latest('id')->get();
 
         return view('warehouse.expenses.index', [
-            'warehouse' => Auth::user()->warehouse,
+            'warehouse' => CurrentWarehouse::get(),
             'expenses' => $expenses,
             'total' => round($expenses->sum(fn ($e) => (float) $e->amount), 2),
             'totalDue' => round($expenses->sum(fn ($e) => $e->dueTotal()), 2),
@@ -56,7 +55,7 @@ class ExpenseController extends Controller
             'payment_note' => 'nullable|string|max:255',
         ]);
 
-        $warehouse = Auth::user()->warehouse;
+        $warehouse = CurrentWarehouse::get();
 
         DB::transaction(function () use ($data, $request, $warehouse) {
             $attachment = null;
@@ -101,7 +100,7 @@ class ExpenseController extends Controller
     public function storePayment(Request $request, $id)
     {
         $expense = WarehouseExpense::with('payments')
-            ->where('warehouse_id', Auth::user()->warehouse_id)
+            ->where('warehouse_id', CurrentWarehouse::id())
             ->findOrFail($id);
 
         $data = $request->validate([
@@ -130,7 +129,7 @@ class ExpenseController extends Controller
      */
     public function destroyPayment($id, $paymentId)
     {
-        $expense = WarehouseExpense::where('warehouse_id', Auth::user()->warehouse_id)->findOrFail($id);
+        $expense = WarehouseExpense::where('warehouse_id', CurrentWarehouse::id())->findOrFail($id);
         $payment = $expense->payments()->findOrFail($paymentId);
 
         DB::transaction(function () use ($payment) {
@@ -148,7 +147,7 @@ class ExpenseController extends Controller
     public function destroy($id)
     {
         $expense = WarehouseExpense::with('payments')
-            ->where('warehouse_id', Auth::user()->warehouse_id)
+            ->where('warehouse_id', CurrentWarehouse::id())
             ->findOrFail($id);
 
         DB::transaction(function () use ($expense) {

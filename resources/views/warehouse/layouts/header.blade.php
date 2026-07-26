@@ -1,4 +1,8 @@
-@php $whUser = auth()->user(); @endphp
+@php
+    $whUser = auth()->user();
+    $activeWarehouse = \App\Support\CurrentWarehouse::get();
+    $isManaging = \App\Support\CurrentWarehouse::isManaging();
+@endphp
 <div class="topbar-custom">
     <div class="container-xxl">
         <div class="d-flex justify-content-between">
@@ -9,8 +13,15 @@
                     </button>
                 </li>
                 <li class="d-none d-lg-flex align-items-center">
-                    <span class="badge bg-primary-subtle text-primary fs-13"><i class="ri-store-2-line me-1"></i>{{ $whUser->warehouse->name ?? 'Warehouse' }}</span>
+                    <span class="badge bg-primary-subtle text-primary fs-13"><i class="ri-store-2-line me-1"></i>{{ $activeWarehouse->name ?? 'Warehouse' }}</span>
                 </li>
+                @if($isManaging)
+                <li class="d-flex align-items-center ms-2">
+                    <a href="{{ route('warehouse.manage.exit') }}" class="btn btn-sm btn-outline-danger">
+                        <i class="ri-logout-box-line me-1"></i> Exit to Admin
+                    </a>
+                </li>
+                @endif
             </ul>
 
             <ul class="list-unstyled topnav-menu mb-0 d-flex align-items-center">
@@ -24,7 +35,7 @@
                     <div class="dropdown-menu dropdown-menu-end profile-dropdown">
                         <div class="dropdown-header noti-title">
                             <h6 class="text-overflow m-0">{{ trim($whUser->name) ?: $whUser->first_name }}</h6>
-                            <small class="text-muted">{{ $whUser->warehouse->name ?? 'Warehouse' }}</small>
+                            <small class="text-muted">{{ $activeWarehouse->name ?? 'Warehouse' }}</small>
                         </div>
                         <div class="dropdown-divider"></div>
                         <a href="{{ route('admin.profile') }}" class="dropdown-item notify-item">

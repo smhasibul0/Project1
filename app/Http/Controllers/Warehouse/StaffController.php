@@ -7,6 +7,7 @@ use App\Models\PaymentAccount;
 use App\Models\StaffSalaryPayment;
 use App\Models\Transaction;
 use App\Models\WarehouseStaff;
+use App\Support\CurrentWarehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +16,12 @@ class StaffController extends Controller
 {
     public function index()
     {
-        $warehouseId = Auth::user()->warehouse_id;
-
         $staff = WarehouseStaff::withCount('documents')
-            ->where('warehouse_id', $warehouseId)
+            ->where('warehouse_id', CurrentWarehouse::id())
             ->orderBy('name')->get();
 
         return view('warehouse.staff.index', [
-            'warehouse' => Auth::user()->warehouse,
+            'warehouse' => CurrentWarehouse::get(),
             'staff' => $staff,
             'monthlyPayroll' => round($staff->where('is_active', true)->sum(fn ($s) => (float) $s->monthly_salary), 2),
         ]);
@@ -31,7 +30,7 @@ class StaffController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        $data['warehouse_id'] = Auth::user()->warehouse_id;
+        $data['warehouse_id'] = CurrentWarehouse::id();
         $data['is_active'] = $request->boolean('is_active', true);
         $data['added_by'] = Auth::id();
 
@@ -210,10 +209,10 @@ class StaffController extends Controller
     }
 
     /**
-     * Fetch a staff member scoped to the logged-in user's warehouse.
+     * Fetch a staff member scoped to the active warehouse.
      */
     private function findStaff($id): WarehouseStaff
     {
-        return WarehouseStaff::where('warehouse_id', Auth::user()->warehouse_id)->findOrFail($id);
+        return WarehouseStaff::where('warehouse_id', CurrentWarehouse::id())->findOrFail($id);
     }
 }

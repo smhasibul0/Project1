@@ -109,7 +109,14 @@ test('warehouse portal pages render for a warehouse user', function () {
 });
 
 test('non-warehouse users are blocked from the warehouse portal', function () {
-    $this->actingAs(adminUser())->get(route('warehouse.dashboard'))->assertForbidden();
+    $role = Role::firstOrCreate(['slug' => 'customer'], ['name' => 'Customer', 'is_system' => true]);
+    $customer = User::factory()->create(['role_id' => $role->id]);
+
+    $this->actingAs($customer)->get(route('warehouse.dashboard'))->assertForbidden();
+
+    // Admins aren't 403'd — they're sent to the warehouse list to pick one to manage.
+    $this->actingAs(adminUser())->get(route('warehouse.dashboard'))
+        ->assertRedirect(route('warehouses.index'));
 });
 
 test('a warehouse user is redirected out of the admin panel to their portal', function () {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Models\WarehouseStock;
+use App\Support\CurrentWarehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,14 +12,12 @@ class InventoryController extends Controller
 {
     public function index()
     {
-        $warehouseId = Auth::user()->warehouse_id;
-
         $stocks = WarehouseStock::with(['order', 'category', 'unit'])
-            ->where('warehouse_id', $warehouseId)
+            ->where('warehouse_id', CurrentWarehouse::id())
             ->latest('id')->get();
 
         return view('warehouse.inventory.index', [
-            'warehouse' => Auth::user()->warehouse,
+            'warehouse' => CurrentWarehouse::get(),
             'stocks' => $stocks,
         ]);
     }
@@ -59,10 +58,10 @@ class InventoryController extends Controller
     }
 
     /**
-     * Fetch a stock lot, scoped to the logged-in user's warehouse.
+     * Fetch a stock lot, scoped to the active warehouse.
      */
     private function findStock($id): WarehouseStock
     {
-        return WarehouseStock::where('warehouse_id', Auth::user()->warehouse_id)->findOrFail($id);
+        return WarehouseStock::where('warehouse_id', CurrentWarehouse::id())->findOrFail($id);
     }
 }

@@ -29,18 +29,50 @@
                     <table class="ct-table">
                         <thead>
                             <tr>
+                                <th class="dt-noexport">Action</th>
                                 <th class="dt-noexport">#</th>
                                 <th>Name</th>
                                 <th>Code</th>
                                 <th>Phone</th>
                                 <th>Address</th>
                                 <th data-filter="Status">Status</th>
-                                <th class="text-end dt-noexport">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($warehouses as $index => $warehouse)
                             <tr>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            @if(auth()->user()->isAdmin())
+                                            <li>
+                                                <a href="{{ route('warehouse.manage', $warehouse->id) }}" class="dropdown-item">
+                                                    <i class="ri-settings-3-line me-1"></i> Manage
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            @endif
+                                            <li>
+                                                <button type="button" class="dropdown-item edit-btn"
+                                                        data-bs-toggle="modal" data-bs-target="#editModal"
+                                                        data-row="{{ json_encode($warehouse) }}">
+                                                    <i class="ri-edit-line me-1"></i> Edit
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <form action="{{ route('warehouse.delete', $warehouse->id) }}" method="POST" class="m-0">
+                                                    @csrf @method('DELETE')
+                                                    <button type="button" class="dropdown-item text-danger delete-btn">
+                                                        <i class="ri-delete-bin-line me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
                                 <td>{{ $index + 1 }}</td>
                                 <td>{{ $warehouse->name }}</td>
                                 <td>{{ $warehouse->code ?: '—' }}</td>
@@ -52,21 +84,6 @@
                                     @else
                                         <span class="badge bg-secondary">Inactive</span>
                                     @endif
-                                </td>
-                                <td class="text-end">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
-                                                data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-row="{{ json_encode($warehouse) }}" title="Edit">
-                                            <i class="ri-edit-line"></i>
-                                        </button>
-                                        <form action="{{ route('warehouse.delete', $warehouse->id) }}" method="POST" class="m-0">
-                                            @csrf @method('DELETE')
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete">
-                                                <i class="ri-delete-bin-line"></i>
-                                            </button>
-                                        </form>
-                                    </div>
                                 </td>
                             </tr>
                             @endforeach
@@ -129,6 +146,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Fixed Popper strategy so the responsive-table overflow doesn't clip the open menu.
+    document.querySelectorAll('#warehousesTable [data-bs-toggle="dropdown"]').forEach(function (el) {
+        new bootstrap.Dropdown(el, {
+            popperConfig: function (defaultConfig) {
+                return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+            },
+        });
+    });
+
     document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
         const r = JSON.parse(e.relatedTarget.dataset.row);
         const form = document.getElementById('editForm');

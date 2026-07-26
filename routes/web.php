@@ -175,6 +175,8 @@ Route::middleware(['auth', 'admin', 'can:products.manage'])->group(function () {
     Route::post('/warehouses', [WarehouseController::class, 'store'])->name('warehouse.store');
     Route::put('/warehouses/{id}', [WarehouseController::class, 'update'])->name('warehouse.update');
     Route::delete('/warehouses/{id}', [WarehouseController::class, 'destroy'])->name('warehouse.delete');
+    Route::get('/warehouses/{id}/manage', [WarehouseController::class, 'manage'])->name('warehouse.manage');
+    Route::get('/warehouses/manage/exit', [WarehouseController::class, 'exitManage'])->name('warehouse.manage.exit');
 
     // Products
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
