@@ -47,7 +47,7 @@
                         <span class="badge bg-secondary-subtle text-secondary">Standalone</span>
                     @endif
                 </div>
-                <div class="col-md-3"><small class="text-muted d-block">Supplier</small>{{ $lc->supplier->name ?? '—' }}</div>
+                <div class="col-md-3"><small class="text-muted d-block">Shipper</small>{{ $lc->shipper ?: '—' }}</div>
                 <div class="col-md-3"><small class="text-muted d-block">Opening Bank</small>{{ $lc->opening_bank ?: '—' }}</div>
                 <div class="col-md-3"><small class="text-muted d-block">Container No</small>{{ $lc->container_no ?: '—' }}</div>
 

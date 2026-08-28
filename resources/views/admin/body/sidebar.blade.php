@@ -41,21 +41,18 @@
 
                 <li class="menu-title mt-2">General</li>
 
-                <!-- Contacts -->
-                @can('contacts.manage')
+                <!-- Customers -->
+                @can('customers.manage')
                 <li>
-                    <a href="#contacts" data-bs-toggle="collapse">
+                    <a href="#customers" data-bs-toggle="collapse">
                         <i data-feather="users"></i>
-                        <span> Contacts </span>
+                        <span> Customers </span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <div class="collapse" id="contacts">
+                    <div class="collapse" id="customers">
                         <ul class="nav-second-level">
                             <li>
-                                <a href="{{ route('suppliers.index') }}" class="tp-link">Suppliers</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('customers.index') }}" class="tp-link">Customers</a>
+                                <a href="{{ route('customers.index') }}" class="tp-link">Customer List</a>
                             </li>
                             <li>
                                 <a href="{{ route('customer.groups') }}" class="tp-link">Customer Groups</a>
@@ -66,38 +63,18 @@
                 @endcan
 
 
-                <!-- Products -->
-                @can('products.manage')
+                <!-- HS Codes / customs tariff -->
+                @can('hs.manage')
                 <li>
-                    <a href="#sidebarProducts" data-bs-toggle="collapse">
+                    <a href="{{ route('hs.codes') }}">
                         <i data-feather="package"></i>
-                        <span> Products </span>
-                        <span class="menu-arrow"></span>
+                        <span> HS Codes </span>
                     </a>
-                    <div class="collapse" id="sidebarProducts">
-                        <ul class="nav-second-level">
-                            <li>
-                                <a href="{{ route('products.index') }}" class="tp-link">List Products</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('products.create') }}" class="tp-link">Add Products</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('categories.index') }}" class="tp-link">Categories</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('brands.index') }}" class="tp-link">Brands</a>
-                            </li>
-                            <li>
-                                <a href="{{ route('units.index') }}" class="tp-link">Units</a>
-                            </li>
-                        </ul>
-                    </div>
                 </li>
                 @endcan
 
                 <!-- Warehouse -->
-                @canany(['products.manage', 'expenses.manage'])
+                @canany(['warehouses.manage', 'expenses.manage'])
                 <li>
                     <a href="#sidebarWarehouse" data-bs-toggle="collapse">
                         <i data-feather="archive"></i>
@@ -106,7 +83,7 @@
                     </a>
                     <div class="collapse" id="sidebarWarehouse">
                         <ul class="nav-second-level">
-                            @can('products.manage')
+                            @can('warehouses.manage')
                             <li>
                                 <a href="{{ route('warehouses.index') }}" class="tp-link">Warehouse List</a>
                             </li>

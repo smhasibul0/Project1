@@ -23,7 +23,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'items.category', 'items.unit', 'tracking.changedBy', 'warehouseStocks'])
+        $order = Order::with(['customer', 'items', 'tracking.changedBy', 'warehouseStocks'])
             ->where('warehouse_id', CurrentWarehouse::id())
             ->findOrFail($id);
 

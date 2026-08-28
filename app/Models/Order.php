@@ -75,6 +75,11 @@ class Order extends Model
             'total_expense' => 'decimal:2',
             'lc_cost' => 'decimal:2',
             'container_cost' => 'decimal:2',
+            'cost_rate_per_cbm' => 'decimal:2',
+            'sell_rate_per_cbm' => 'decimal:2',
+            'total_cbm' => 'decimal:4',
+            'freight_cost' => 'decimal:2',
+            'duty_total' => 'decimal:2',
             'profit' => 'decimal:2',
         ];
     }
@@ -178,44 +183,75 @@ class Order extends Model
     }
 
     /**
-     * This order's share of every container it rides in, split by the container's basis.
+     * This order's share of one container's costs, split by that container's basis.
+     *
+     * The split needs this order's ctn / weight / cbm inside that container, which
+     * rides on the pivot. A container handed over outside the relation carries no
+     * pivot, so it is looked up; an order that isn't in the container pays nothing.
+     */
+    public function shareOfContainerCost(Container $container): float
+    {
+        $pivot = $container->pivot ?? $this->containers->firstWhere('id', $container->id)?->pivot;
+
+        if ($pivot === null) {
+            return 0.0;
+        }
+
+        $total = $container->costsTotal();
+        $basisTotal = $container->basisTotal();
+
+        if ($total <= 0 || $basisTotal <= 0) {
+            return 0.0;
+        }
+
+        $value = match ($container->allocation_basis) {
+            'weight' => (float) $pivot->weight,
+            'ctn' => (float) $pivot->ctn,
+            'equal' => 1.0,
+            default => (float) $pivot->cbm,
+        };
+
+        return round($total * $value / $basisTotal, 2);
+    }
+
+    /**
+     * This order's share of every container it rides in.
      */
     public function allocatedContainerCost(): float
     {
-        $sum = 0.0;
+        return round($this->containers->sum(fn (Container $container) => $this->shareOfContainerCost($container)), 2);
+    }
 
-        foreach ($this->containers as $container) {
-            $total = $container->costsTotal();
-            $basisTotal = $container->basisTotal();
-            if ($total <= 0 || $basisTotal <= 0) {
-                continue;
-            }
-
-            $value = match ($container->allocation_basis) {
-                'weight' => (float) $container->pivot->weight,
-                'ctn' => (float) $container->pivot->ctn,
-                'equal' => 1.0,
-                default => (float) $container->pivot->cbm,
-            };
-
-            $sum += $total * $value / $basisTotal;
-        }
-
-        return round($sum, 2);
+    /**
+     * The container number(s) this order is loaded into, taken straight from the
+     * containers it belongs to — an order split across two containers shows both.
+     * A container that hasn't been given its number yet shows its code instead.
+     */
+    public function containerNumbers(): string
+    {
+        return $this->containers
+            ->map(fn (Container $container) => $container->container_number ?: $container->container_code)
+            ->filter()
+            ->implode(', ');
     }
 
     /**
      * Recompute every financial rollup + delivery days from the saved items, order costs,
      * payments, LC charges and allocated container costs. This is the single source of the
      * profit formula:
-     *   profit = total - supplier goods cost - order costs - LC cost - container cost.
+     *   profit = total - freight - duty & taxes - order costs - LC cost - container cost.
+     *
+     * The goods themselves are the customer's, so nothing is bought — revenue is the
+     * shipment's cubic metres at the agreed rate, and freight is what those metres cost us.
      */
     public function recomputeFinancials(): void
     {
         $this->load('items', 'costs', 'payments', 'lcs.costs', 'containers');
 
+        $totalCbm = round((float) $this->items->sum('cbm'), 4);
         $subtotal = round((float) $this->items->sum('line_total'), 2);
-        $supplierCost = round((float) $this->items->sum(fn ($i) => (float) $i->supplier_asking_price * (float) $i->quantity), 2);
+        $freightCost = round((float) $this->cost_rate_per_cbm * $totalCbm, 2);
+        $dutyTotal = round((float) $this->items->sum('duty_amount'), 2);
         $orderCosts = round((float) $this->costs->sum('amount'), 2);
         $lcCost = $this->lcCost();
         $containerCost = $this->allocatedContainerCost();
@@ -237,8 +273,11 @@ class Order extends Model
             : null;
 
         $this->update([
+            'total_cbm' => $totalCbm,
             'subtotal' => $subtotal,
             'total_amount' => $totalAmount,
+            'freight_cost' => $freightCost,
+            'duty_total' => $dutyTotal,
             'total_expense' => $orderCosts,
             'lc_cost' => $lcCost,
             'container_cost' => $containerCost,
@@ -246,7 +285,7 @@ class Order extends Model
             'amount_received_date' => $lastPaymentDate,
             'due_amount' => $due,
             'payment_status' => $paymentStatus,
-            'profit' => round($totalAmount - $supplierCost - $orderCosts - $lcCost - $containerCost, 2),
+            'profit' => round($totalAmount - $freightCost - $dutyTotal - $orderCosts - $lcCost - $containerCost, 2),
             'total_delivery_days' => $days,
         ]);
     }

@@ -10,48 +10,36 @@ beforeEach(function () {
     $this->user = adminUser();
 });
 
-test('a supplier can be created', function () {
-    $response = $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'supplier',
-        'name' => 'John Supplier',
-        'business_name' => 'Acme Imports',
-        'mobile' => '01710000000',
-        'opening_balance' => 500,
-        'country' => 'China',
-    ]);
-
-    $response->assertRedirect();
-    $response->assertSessionHas('success');
-
-    $contact = Contact::firstOrFail();
-    expect($contact->type)->toBe('supplier');
-    expect($contact->name)->toBe('John Supplier');
-    expect($contact->opening_balance)->toEqual('500.00');
-    expect($contact->added_by)->toBe($this->user->id);
-    expect($contact->is_active)->toBeFalse(); // checkbox not sent
-});
-
 test('a customer can be created with a customer group', function () {
     $group = CustomerGroup::factory()->create();
 
-    $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'customer',
+    $response = $this->actingAs($this->user)->post(route('contact.store'), [
         'name' => 'Jane Customer',
         'customer_group_id' => $group->id,
         'credit_limit' => 10000,
+        'opening_balance' => 500,
         'is_active' => '1',
     ]);
 
+    $response->assertRedirect()->assertSessionHas('success');
+
     $contact = Contact::firstOrFail();
-    expect($contact->type)->toBe('customer');
+    expect($contact->name)->toBe('Jane Customer');
     expect($contact->customer_group_id)->toBe($group->id);
     expect($contact->credit_limit)->toEqual('10000.00');
+    expect($contact->opening_balance)->toEqual('500.00');
+    expect($contact->added_by)->toBe($this->user->id);
     expect($contact->is_active)->toBeTrue();
+});
+
+test('a customer without the active checkbox is stored inactive', function () {
+    $this->actingAs($this->user)->post(route('contact.store'), ['name' => 'Dormant Customer']);
+
+    expect(Contact::firstOrFail()->is_active)->toBeFalse();
 });
 
 test('a customer gets an auto-generated CO code and stores lead_by', function () {
     $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'customer',
         'name' => 'Coded Customer',
         'lead_by' => 'Trade Show Referral',
     ]);
@@ -59,36 +47,6 @@ test('a customer gets an auto-generated CO code and stores lead_by', function ()
     $contact = Contact::firstOrFail();
     expect($contact->contact_code)->toBe('CO0001');
     expect($contact->lead_by)->toBe('Trade Show Referral');
-});
-
-test('a supplier gets an auto-generated CU code', function () {
-    $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'supplier',
-        'name' => 'Coded Supplier',
-    ]);
-
-    expect(Contact::firstOrFail()->contact_code)->toBe('CU0001');
-});
-
-test('a supplier stores import fields and falls back to business name for the contact name', function () {
-    $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'supplier',
-        'business_name' => 'Guangzhou Trading Co',
-        'bank_details' => 'Bank of China, A/C 123456',
-        'warehouse_address' => 'Shed 4, Port Area',
-        'shipping_mark' => 'GZ-EXP-2026',
-        'more_information' => 'Preferred supplier',
-        'country' => 'China',
-    ]);
-
-    $contact = Contact::firstOrFail();
-    expect($contact->contact_code)->toBe('CU0001');
-    expect($contact->business_name)->toBe('Guangzhou Trading Co');
-    expect($contact->name)->toBe('Guangzhou Trading Co'); // fell back from business name
-    expect($contact->bank_details)->toBe('Bank of China, A/C 123456');
-    expect($contact->warehouse_address)->toBe('Shed 4, Port Area');
-    expect($contact->shipping_mark)->toBe('GZ-EXP-2026');
-    expect($contact->more_information)->toBe('Preferred supplier');
 });
 
 test('customer codes increment sequentially', function () {
@@ -99,9 +57,21 @@ test('customer codes increment sequentially', function () {
         ->toBe(['CO0001', 'CO0002']);
 });
 
+test('the contact name falls back to the business name', function () {
+    $this->actingAs($this->user)->post(route('contact.store'), [
+        'business_name' => 'Guangzhou Trading Co',
+        'more_information' => 'Ships every month',
+        'country' => 'China',
+    ]);
+
+    $contact = Contact::firstOrFail();
+    expect($contact->business_name)->toBe('Guangzhou Trading Co');
+    expect($contact->name)->toBe('Guangzhou Trading Co');
+    expect($contact->more_information)->toBe('Ships every month');
+});
+
 test('a customer stores pay term, credit limit and defaults advance balance to zero', function () {
     $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'customer',
         'name' => 'Termed Customer',
         'credit_limit' => 5000,
         'pay_term_number' => 30,
@@ -115,44 +85,25 @@ test('a customer stores pay term, credit limit and defaults advance balance to z
     expect($contact->advance_balance)->toEqual('0.00');
 });
 
-test('creating a contact requires a name', function () {
-    $response = $this->actingAs($this->user)->post(route('contact.store'), [
-        'type' => 'supplier',
-    ]);
+test('creating a customer requires a name or a business name', function () {
+    $this->actingAs($this->user)->post(route('contact.store'), [])
+        ->assertSessionHasErrors('name');
 
-    $response->assertSessionHasErrors('name');
     expect(Contact::count())->toBe(0);
 });
 
-test('the suppliers scope returns suppliers and both, but not customers', function () {
-    Contact::factory()->supplier()->create();
-    Contact::factory()->customer()->create();
-    Contact::factory()->create(['type' => 'both']);
-
-    expect(Contact::suppliers()->count())->toBe(2);
-    expect(Contact::customers()->count())->toBe(2);
-});
-
-test('the suppliers and customers pages load', function () {
-    Contact::factory()->supplier()->create(['business_name' => 'Supplier Co']);
-    Contact::factory()->customer()->create(['business_name' => 'Customer Co']);
-
-    $this->actingAs($this->user)->get(route('suppliers.index'))
-        ->assertOk()
-        ->assertSee('Supplier Co')
-        ->assertDontSee('Customer Co');
+test('the customers page loads', function () {
+    Contact::factory()->customer()->create(['business_name' => 'Customer Co', 'name' => 'Customer Co']);
 
     $this->actingAs($this->user)->get(route('customers.index'))
         ->assertOk()
-        ->assertSee('Customer Co')
-        ->assertDontSee('Supplier Co');
+        ->assertSee('Customer Co');
 });
 
-test('a contact can be updated', function () {
-    $contact = Contact::factory()->supplier()->create(['name' => 'Old Name']);
+test('a customer can be updated', function () {
+    $contact = Contact::factory()->customer()->create(['name' => 'Old Name']);
 
     $this->actingAs($this->user)->put(route('contact.update', $contact->id), [
-        'type' => 'supplier',
         'name' => 'New Name',
         'mobile' => '01999999999',
     ]);
@@ -162,7 +113,7 @@ test('a contact can be updated', function () {
     expect($contact->mobile)->toBe('01999999999');
 });
 
-test('a contact can be deleted', function () {
+test('a customer can be deleted', function () {
     $contact = Contact::factory()->create();
 
     $this->actingAs($this->user)->delete(route('contact.delete', $contact->id))
@@ -172,7 +123,7 @@ test('a contact can be deleted', function () {
     expect(Contact::count())->toBe(0);
 });
 
-test('a contact can be deactivated and reactivated', function () {
+test('a customer can be deactivated and reactivated', function () {
     $contact = Contact::factory()->create(['is_active' => true]);
 
     $this->actingAs($this->user)->patch(route('contact.toggle', $contact->id))

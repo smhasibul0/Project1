@@ -15,23 +15,26 @@ beforeEach(function () {
     $this->user = adminUser();
 });
 
-test('profit & loss aggregates order financials and derives supplier cost', function () {
+test('profit & loss aggregates order financials including freight and duty', function () {
     Order::factory()->create([
         'order_date' => '2026-07-01', 'total_amount' => 1000, 'profit' => 300,
+        'freight_cost' => 400, 'duty_total' => 100,
         'total_expense' => 100, 'lc_cost' => 50, 'container_cost' => 50,
     ]);
     Order::factory()->create([
         'order_date' => '2026-07-02', 'total_amount' => 2000, 'profit' => 500,
+        'freight_cost' => 1200, 'duty_total' => 300,
         'total_expense' => 0, 'lc_cost' => 0, 'container_cost' => 0,
     ]);
 
     $response = $this->actingAs($this->user)->get(route('reports.profit-loss'));
 
     $response->assertOk();
-    // revenue 3000, gross profit 800; derived supplier cost = 500 + 1500 = 2000
+    // revenue 3000, gross profit 800, freight 1600, duty 400
     $response->assertSee('3,000.00');
     $response->assertSee('800.00');
-    $response->assertSee('2,000.00');
+    $response->assertSee('1,600.00');
+    $response->assertSee('400.00');
     // No operating expenses → Net Profit equals gross order profit.
     expect($response->viewData('netProfit'))->toBe(800.0);
 });

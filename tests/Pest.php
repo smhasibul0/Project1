@@ -66,6 +66,57 @@ function adminUser(array $attributes = []): User
 }
 
 /**
+ * Build a workbook shaped like the published Bangladesh customs tariff: a heading
+ * row naming the block, dash-indented lines beneath it, duty written as a fraction,
+ * a page header repeated part-way down, and one merged cell holding two lines.
+ */
+function fakeTariffSheet(): UploadedFile
+{
+    $header = ['Heading', '', '', '', 'H.S. Code', '', 'Description', '', 'Statistical Unit', 'Statutory Rate of Customs Duty on Import'];
+
+    $spreadsheet = new Spreadsheet;
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setCellValue('A1', 'Section I');
+    $sheet->fromArray($header, null, 'A3');
+    $sheet->fromArray([
+        ['39.11', '', '', '', '', '', "Petroleum resins, coumarone-indene resins,\npolyterpenes and other products, in primary forms.", '', '', ''],
+        ['', '', '', '', '3911.10.00', '', '- Petroleum resins', '', 'kg', 0.15],
+        ['', '', '', '', '3911.90.00', '', '- Other', '', 'kg', 0.05],
+        // A page break repeats the column headings mid-book.
+        $header,
+        ['85.44', '', '', '', '', '', 'Insulated wire, cable and other insulated electric conductors.', '', '', ''],
+        ['', '', '', '', '', '', '- Winding wire :', '', '', ''],
+        // The code sits in the first column on this page, as the conversion often puts it.
+        ['8544.11.00', '', '', '', '', '', '-- Of copper', '', 'kg', 0.25],
+        // One cell, two tariff lines stacked.
+        ['', '', '', '', "8544.19.00\n8544.20.00", '', "-- Other\n- Coaxial cable", '', "kg\nkg", "10%\n10%"],
+    ], null, 'A4');
+
+    $path = tempnam(sys_get_temp_dir(), 'bct').'.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, 'tariff.xlsx', null, null, true);
+}
+
+/**
+ * A rates-only sheet: HS codes with the taxes the tariff book doesn't carry.
+ *
+ * @param  array<int, array{0: string, 1: float, 2: float, 3: float, 4: float, 5: float}>  $rows  [code, sd, vat, ait, rd, at]
+ */
+function fakeRatesSheet(array $rows): UploadedFile
+{
+    $spreadsheet = new Spreadsheet;
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->fromArray(['HS Code', 'SD', 'VAT', 'AIT', 'RD', 'AT'], null, 'A1');
+    $sheet->fromArray($rows, null, 'A2');
+
+    $path = tempnam(sys_get_temp_dir(), 'rates').'.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, 'rates.xlsx', null, null, true);
+}
+
+/**
  * Build a real packing-list workbook mimicking the supplier layout (bilingual
  * header block, one row per carton, TOTAL row) and wrap it as an upload.
  *

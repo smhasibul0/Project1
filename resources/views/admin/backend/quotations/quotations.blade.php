@@ -50,17 +50,28 @@
                                         <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('quotation.show', $q->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('quotation.print', $q->id) }}" target="_blank"><i class="ri-file-pdf-2-line me-2"></i>Export PDF</a></li>
                                             <li><a class="dropdown-item" href="{{ route('quotation.edit', $q->id) }}"><i class="ri-edit-line me-2"></i>{{ $q->status === 'requested' ? 'Respond' : 'Edit' }}</a></li>
                                             @can('orders.manage')
-                                            @if($q->status === 'accepted')
+                                            @if($q->status !== 'converted')
                                             <li>
                                                 <form action="{{ route('order.from.quotation', $q->id) }}" method="POST" class="m-0">
                                                     @csrf
-                                                    <button type="submit" class="dropdown-item text-success"><i class="ri-arrow-right-line me-2"></i>Convert to Order</button>
+                                                    <button type="button" class="dropdown-item text-success convert-btn"
+                                                            data-quotation="{{ $q->quotation_no }}"
+                                                            data-status="{{ $q->statusLabel() }}">
+                                                        <i class="ri-arrow-right-line me-2"></i>Convert to Order
+                                                    </button>
                                                 </form>
                                             </li>
+                                            @else
+                                            <li>
+                                                <a class="dropdown-item text-success" href="{{ route('orders.index') }}">
+                                                    <i class="ri-check-line me-2"></i>Already converted
+                                                </a>
+                                            </li>
                                             @endif
-                                            @endif
+                                            @endcan
                                             @if($q->status === 'negotiating')
                                             <li>
                                                 <form action="{{ route('quotation.deny', $q->id) }}" method="POST" class="m-0">
@@ -113,6 +124,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this quotation?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })
             .then(r => { if (r.isConfirmed) form.submit(); });
+    }));
+
+    // Converting is a one-way step — confirm, and say so when the customer hasn't accepted yet.
+    document.querySelectorAll('.convert-btn').forEach(btn => btn.addEventListener('click', function () {
+        const form = btn.closest('form');
+        const accepted = btn.dataset.status === 'Accepted';
+        Swal.fire({
+            title: 'Convert ' + btn.dataset.quotation + ' to an order?',
+            text: accepted
+                ? 'Its items, rates and costs carry over to a new order.'
+                : 'This quotation is ' + btn.dataset.status.toLowerCase() + ' — the customer has not accepted it yet.',
+            icon: accepted ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, convert',
+            confirmButtonColor: '#16a34a',
+        }).then(r => { if (r.isConfirmed) form.submit(); });
     }));
 });
 </script>

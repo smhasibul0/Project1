@@ -45,16 +45,6 @@ class WarehouseStock extends Model
         return $this->belongsTo(OrderItem::class);
     }
 
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function unit(): BelongsTo
-    {
-        return $this->belongsTo(Unit::class);
-    }
-
     public function movements(): HasMany
     {
         return $this->hasMany(WarehouseStockMovement::class)->latest('id');

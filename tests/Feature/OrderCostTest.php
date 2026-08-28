@@ -15,13 +15,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = adminUser();
-    $this->order = Order::factory()->create();
-    // One item: line total 500, supplier cost 60*5 = 300 -> profit before costs 200.
+    $this->order = Order::factory()->create(['cost_rate_per_cbm' => 60, 'sell_rate_per_cbm' => 100]);
+    // One item: 5 CBM charged at 100 = 500, freight 5 x 60 = 300 -> profit before costs 200.
     $this->order->items()->create([
         'item_description' => 'Toys',
         'quantity' => 5,
-        'our_asking_price' => 100,
-        'supplier_asking_price' => 60,
+        'cbm' => 5,
+        'declared_value' => 300,
         'line_total' => 500,
     ]);
 });

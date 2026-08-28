@@ -34,7 +34,7 @@ function makeOrder(array $overrides = []): Order
 test('creating an order via the controller logs an initial tracking entry', function () {
     $this->actingAs($this->user)->post(route('order.store'), [
         'customer_id' => $this->customer->id,
-        'items' => [['quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
+        'items' => [['quantity' => 1, 'cbm' => 1, 'declared_value' => 5]],
     ]);
 
     $order = Order::with('tracking')->firstOrFail();
@@ -87,7 +87,7 @@ test('warehouse staff can update status but cannot create or edit orders', funct
     $this->actingAs($staff)->get(route('orders.create'))->assertForbidden();
     $this->actingAs($staff)->post(route('order.store'), [
         'customer_id' => $this->customer->id,
-        'items' => [['quantity' => 1, 'our_asking_price' => 10]],
+        'items' => [['quantity' => 1, 'cbm' => 1]],
     ])->assertForbidden();
 
     expect($order->fresh()->goods_status)->toBe('shipped');

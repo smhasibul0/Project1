@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Contact;
+use App\Models\HsCode;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Quotation;
 use App\Models\Role;
 use App\Models\User;
@@ -91,15 +91,15 @@ test('a non-customer cannot reach the portal', function () {
     $this->actingAs(adminUser())->get(route('portal.dashboard'))->assertForbidden();
 });
 
-test('a customer can submit a request with catalogue and custom items', function () {
+test('a customer can submit a request with a tariff line and a free-text item', function () {
     $contact = Contact::factory()->customer()->create();
     $user = customerUser($contact);
-    $product = Product::factory()->create();
+    $hsCode = HsCode::factory()->create(['code' => '3911.90.00', 'description' => 'Polysulphides, in primary forms']);
 
     $this->actingAs($user)->post(route('portal.quotation.store'), [
         'items' => [
-            ['product_id' => $product->id, 'description' => $product->name, 'package_quantity' => 100],
-            ['description' => 'Custom widget', 'package_quantity' => 10],
+            ['hs_code_id' => $hsCode->id, 'hs_code' => $hsCode->code, 'description' => $hsCode->description, 'package_quantity' => 100, 'cbm' => 4, 'declared_value' => 5000],
+            ['description' => 'Custom widget', 'package_quantity' => 10, 'cbm' => 1],
         ],
     ])->assertRedirect(route('portal.quotations'));
 
@@ -108,7 +108,11 @@ test('a customer can submit a request with catalogue and custom items', function
     expect($q->status)->toBe('requested');
     expect($q->source)->toBe('customer');
     expect($q->items)->toHaveCount(2);
-    expect($q->items->firstWhere('product_id', $product->id))->not->toBeNull();
+
+    $tariffLine = $q->items->firstWhere('hs_code_id', $hsCode->id);
+    expect($tariffLine)->not->toBeNull();
+    expect($tariffLine->hs_code)->toBe('3911.90.00');
+    expect($tariffLine->declared_value)->toEqual('5000.00');
 });
 
 test('portal requests appear on the admin quotation requests page (admin quotes do not)', function () {
@@ -160,7 +164,7 @@ test('portal pages load', function () {
     $contact = Contact::factory()->customer()->create();
     $user = customerUser($contact);
     $order = Order::factory()->create(['customer_id' => $contact->id]);
-    $order->items()->create(['item_description' => 'Toys', 'quantity' => 2, 'our_asking_price' => 100, 'supplier_asking_price' => 60, 'line_total' => 200]);
+    $order->items()->create(['item_description' => 'Toys', 'quantity' => 2, 'cbm' => 2, 'declared_value' => 120, 'line_total' => 200]);
     $quotation = Quotation::factory()->create(['customer_id' => $contact->id]);
 
     foreach (['portal.dashboard', 'portal.quotations', 'portal.quotation.create', 'portal.orders', 'portal.payments'] as $route) {

@@ -29,8 +29,9 @@ test('the invoice page renders order data, company info and amount in words', fu
         'customer_id' => $customer->id,
         'shipment_no' => 'RTC 2345/20',
         'shipping_mark' => 'RTC/REZA/SHA',
+        'sell_rate_per_cbm' => 200,
         'items' => [
-            ['item_description' => 'Toy', 'package_quantity' => 10, 'quantity' => 220, 'our_asking_price' => 200, 'supplier_asking_price' => 100],
+            ['item_description' => 'Toy', 'package_quantity' => 10, 'quantity' => 220, 'cbm' => 220, 'declared_value' => 100],
         ],
     ]);
     $order = Order::firstOrFail();

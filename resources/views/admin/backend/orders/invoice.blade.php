@@ -69,6 +69,10 @@ Email: {{ $company->email }}@endif</div>
             <tr><td>{{ $order->order_no }}</td><td>{{ $order->order_date?->format('d/m/Y') ?: '' }}</td></tr>
             <tr><th>Client ID</th><th>TERMS</th></tr>
             <tr><td>{{ $order->customer->contact_code ?? '—' }}</td><td>{{ $company->default_terms ?: '—' }}</td></tr>
+            @if($order->containerNumbers())
+            <tr><th colspan="2">CONTAINER NO.</th></tr>
+            <tr><td colspan="2">{{ $order->containerNumbers() }}</td></tr>
+            @endif
         </table>
 
         <div class="bill-to">
@@ -87,8 +91,8 @@ Email: {{ $company->email }}@endif</div>
                     <th>Shipping Mark</th>
                     <th>Item Description</th>
                     <th style="width:60px">Pkg/Ctn</th>
-                    <th style="width:60px">Qty/KG</th>
-                    <th style="width:60px">Rate/KG</th>
+                    <th style="width:60px">CBM</th>
+                    <th style="width:60px">Rate/CBM</th>
                     <th style="width:100px">Total Amount</th>
                 </tr>
             </thead>
@@ -100,8 +104,8 @@ Email: {{ $company->email }}@endif</div>
                     <td>{{ $i === 0 ? $order->shipping_mark : '' }}</td>
                     <td>{{ $item->item_description }}</td>
                     <td class="num">{{ rtrim(rtrim(number_format($item->package_quantity, 2), '0'), '.') }}</td>
-                    <td class="num">{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') }}</td>
-                    <td class="num">{{ number_format($item->our_asking_price, 2) }}</td>
+                    <td class="num">{{ rtrim(rtrim(number_format($item->cbm, 4), '0'), '.') }}</td>
+                    <td class="num">{{ number_format($order->sell_rate_per_cbm, 2) }}</td>
                     <td class="num">{{ number_format($item->line_total, 2) }}</td>
                 </tr>
                 @endforeach

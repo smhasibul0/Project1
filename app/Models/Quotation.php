@@ -52,6 +52,9 @@ class Quotation extends Model
             'total_duty' => 'decimal:2',
             'freight_rate' => 'decimal:2',
             'freight_amount' => 'decimal:2',
+            'sell_rate_per_cbm' => 'decimal:2',
+            'total_cbm' => 'decimal:4',
+            'customer_charge' => 'decimal:2',
             'projected_cost_total' => 'decimal:2',
             'projected_profit' => 'decimal:2',
         ];
@@ -73,6 +76,11 @@ class Quotation extends Model
         return $this->belongsTo(Contact::class, 'customer_id');
     }
 
+    public function transportationMode(): BelongsTo
+    {
+        return $this->belongsTo(TransportationMode::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(QuotationItem::class);
@@ -81,16 +89,6 @@ class Quotation extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(QuotationExpense::class);
-    }
-
-    public function lcExpenses(): HasMany
-    {
-        return $this->expenses()->where('expense_group', 'lc');
-    }
-
-    public function customExpenses(): HasMany
-    {
-        return $this->expenses()->where('expense_group', 'custom');
     }
 
     public function addedBy(): BelongsTo

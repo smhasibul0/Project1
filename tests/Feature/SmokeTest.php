@@ -5,7 +5,6 @@ use App\Models\Container;
 use App\Models\Lc;
 use App\Models\Order;
 use App\Models\PaymentAccount;
-use App\Models\Product;
 use App\Models\Quotation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -19,9 +18,8 @@ beforeEach(function () {
  * Every no-parameter admin page should render without a runtime error.
  */
 dataset('pages', [
-    'suppliers.index', 'customers.index', 'customer.groups',
-    'categories.index', 'brands.index', 'units.index', 'warehouses.index',
-    'products.index', 'products.create',
+    'customers.index', 'customer.groups',
+    'hs.codes', 'warehouses.index',
     'quotations.index', 'quotations.create', 'transportation.modes', 'packing.types',
     'orders.index', 'orders.create',
     'lc.index', 'lc.create',
@@ -42,7 +40,6 @@ test('the public track page renders', function () {
 });
 
 test('detail, edit and print pages render for a seeded record', function () {
-    $product = Product::factory()->create();
     $quotation = Quotation::factory()->create();
     $order = Order::factory()->create();
     $lc = Lc::factory()->create(['order_id' => $order->id]);
@@ -52,7 +49,6 @@ test('detail, edit and print pages render for a seeded record', function () {
 
     $get = fn (string $url) => $this->actingAs($this->user)->get($url)->assertOk();
 
-    $get(route('product.edit', $product->id));
     $get(route('quotation.show', $quotation->id));
     $get(route('quotation.edit', $quotation->id));
     $get(route('order.show', $order->id));

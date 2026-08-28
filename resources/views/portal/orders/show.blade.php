@@ -56,15 +56,16 @@
     <div class="bd flush">
         <div class="pt-scroll">
             <table class="pt-table">
-                <thead><tr><th>#</th><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Total</th></tr></thead>
+                <thead><tr><th>#</th><th>HS Code</th><th>Item</th><th class="num">Qty</th><th class="num">CBM</th><th class="num">Rate/CBM</th><th class="num">Total</th></tr></thead>
                 <tbody>
                     @foreach($order->items as $i => $item)
                     <tr>
                         <td>{{ $i + 1 }}</td>
+                        <td>{{ $item->hs_code ?: '—' }}</td>
                         <td><strong>{{ $item->item_description ?: '—' }}</strong></td>
                         <td class="num">{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') }}</td>
-                        <td>{{ $item->unit->short_name ?? $item->unit->name ?? '—' }}</td>
-                        <td class="num money">৳{{ number_format($item->our_asking_price, 2) }}</td>
+                        <td class="num">{{ $item->cbm ? rtrim(rtrim(number_format($item->cbm, 4), '0'), '.') : '—' }}</td>
+                        <td class="num money">৳{{ number_format($order->sell_rate_per_cbm, 2) }}</td>
                         <td class="num money">৳{{ number_format($item->line_total, 2) }}</td>
                     </tr>
                     @endforeach

@@ -20,11 +20,11 @@ class RolePermissionSeeder extends Seeder
                 'users.manage' => 'Manage users',
                 'roles.manage' => 'Manage roles & permissions',
             ],
-            'Contacts' => [
-                'contacts.manage' => 'Manage suppliers & customers',
+            'Customers' => [
+                'customers.manage' => 'Manage customers & customer groups',
             ],
-            'Products' => [
-                'products.manage' => 'Manage products & inventory',
+            'HS Codes' => [
+                'hs.manage' => 'Manage HS codes & the customs tariff',
             ],
             'Quotations' => [
                 'quotations.manage' => 'Manage quotation requests & quotes',
@@ -48,6 +48,7 @@ class RolePermissionSeeder extends Seeder
                 'reports.view' => 'View reports',
             ],
             'Warehouse' => [
+                'warehouses.manage' => 'Manage warehouses',
                 'expenses.manage' => 'Manage warehouse expense categories',
             ],
             'Settings' => [
@@ -60,6 +61,10 @@ class RolePermissionSeeder extends Seeder
                 Permission::updateOrCreate(['key' => $key], ['name' => $name, 'group' => $group]);
             }
         }
+
+        // Retired with the product catalogue and the supplier directory — the
+        // business only ships other people's goods.
+        Permission::whereIn('key', ['products.manage', 'contacts.manage'])->delete();
 
         // Roles (Admin & Customer are system roles that can't be deleted).
         $admin = Role::updateOrCreate(['slug' => 'admin'], ['name' => 'Admin', 'is_system' => true, 'description' => 'Full access to everything']);
@@ -78,7 +83,7 @@ class RolePermissionSeeder extends Seeder
         // Staff / Agent: operational modules, no finance.
         $staff->permissions()->sync(
             Permission::whereIn('key', [
-                'contacts.manage', 'products.manage', 'quotations.manage',
+                'customers.manage', 'hs.manage', 'warehouses.manage', 'quotations.manage',
                 'orders.manage', 'orders.update-status', 'lc.manage', 'containers.manage',
             ])->pluck('id')
         );

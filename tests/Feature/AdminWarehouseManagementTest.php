@@ -59,9 +59,9 @@ test('exiting manage mode clears the session and blocks the portal again', funct
         ->assertRedirect(route('warehouses.index'));
 });
 
-test('manage mode is admin-only even with the products permission', function () {
+test('manage mode is admin-only even with the warehouse permission', function () {
     $warehouse = Warehouse::factory()->create();
-    $permission = Permission::firstOrCreate(['key' => 'products.manage'], ['name' => 'Manage products', 'group' => 'Products']);
+    $permission = Permission::firstOrCreate(['key' => 'warehouses.manage'], ['name' => 'Manage warehouses', 'group' => 'Warehouse']);
     $role = Role::create(['slug' => 'staff', 'name' => 'Staff']);
     $role->permissions()->sync([$permission->id]);
     $staff = User::factory()->create(['role_id' => $role->id]);

@@ -43,8 +43,8 @@ class ReportController extends Controller
             return (object) [
                 'order' => $o,
                 'revenue' => $revenue,
-                // Supplier goods cost isn't stored on its own; back it out of the profit formula.
-                'supplier_cost' => round($revenue - $profit - $orderCost - $lcCost - $containerCost, 2),
+                'freight_cost' => (float) $o->freight_cost,
+                'duty_total' => (float) $o->duty_total,
                 'order_cost' => $orderCost,
                 'lc_cost' => $lcCost,
                 'container_cost' => $containerCost,
@@ -57,7 +57,8 @@ class ReportController extends Controller
         $totalProfit = round($rows->sum('profit'), 2);
         $totals = [
             'revenue' => $totalRevenue,
-            'supplier_cost' => round($rows->sum('supplier_cost'), 2),
+            'freight_cost' => round($rows->sum('freight_cost'), 2),
+            'duty_total' => round($rows->sum('duty_total'), 2),
             'order_cost' => round($rows->sum('order_cost'), 2),
             'lc_cost' => round($rows->sum('lc_cost'), 2),
             'container_cost' => round($rows->sum('container_cost'), 2),

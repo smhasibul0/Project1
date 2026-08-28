@@ -30,28 +30,28 @@ class Contact extends Model
         ];
     }
 
+    /** Prefix of the human-readable customer code (CO0001, CO0002, …). */
+    private const CODE_PREFIX = 'CO';
+
     protected static function booted(): void
     {
-        // Auto-generate a human-readable code on creation: CO#### for customers
-        // (and "both"), SU#### for suppliers.
         static::creating(function (Contact $contact) {
             if (empty($contact->contact_code)) {
-                $contact->contact_code = static::generateCode($contact->type);
+                $contact->contact_code = static::generateCode();
             }
         });
     }
 
     /**
-     * Build the next sequential contact code for the given type.
+     * Build the next sequential customer code.
      */
-    public static function generateCode(?string $type): string
+    public static function generateCode(): string
     {
-        $prefix = in_array($type, ['customer', 'both'], true) ? 'CO' : 'CU';
+        $last = static::where('contact_code', 'like', self::CODE_PREFIX.'%')
+            ->orderByDesc('id')->value('contact_code');
+        $next = $last ? ((int) substr($last, strlen(self::CODE_PREFIX))) + 1 : 1;
 
-        $last = static::where('contact_code', 'like', $prefix.'%')->orderByDesc('id')->value('contact_code');
-        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return self::CODE_PREFIX.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
     public function customerGroup(): BelongsTo
@@ -81,18 +81,10 @@ class Contact extends Model
     }
 
     /**
-     * Contacts acting as suppliers (type supplier or both).
-     */
-    public function scopeSuppliers(Builder $query): Builder
-    {
-        return $query->whereIn('type', ['supplier', 'both']);
-    }
-
-    /**
-     * Contacts acting as customers (type customer or both).
+     * Every contact is a customer; the scope is kept so call sites read clearly.
      */
     public function scopeCustomers(Builder $query): Builder
     {
-        return $query->whereIn('type', ['customer', 'both']);
+        return $query;
     }
 }

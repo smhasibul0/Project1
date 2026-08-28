@@ -98,11 +98,36 @@
 {{-- ===================== Products ===================== --}}
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <h6 class="mb-0">Products</h6>
-        <button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="ri-add-line me-1"></i> Add Product</button>
+        <h6 class="mb-0">Shipment Items <span class="text-muted fw-normal small">— search an HS code to fill the description &amp; tax rates</span></h6>
+        <button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="ri-add-line me-1"></i> Add Item</button>
     </div>
     <div class="card-body">
         <div id="itemsWrap"></div>
+    </div>
+</div>
+
+{{-- ===================== Cost & charge per CBM ===================== --}}
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">Cost &amp; Charge per CBM</h6></div>
+    <div class="card-body row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label">Our Cost per CBM</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="cost_rate_per_cbm" id="costRate"
+                   value="{{ old('cost_rate_per_cbm', $order?->cost_rate_per_cbm ?? 0) }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Rate We Charge per CBM</label>
+            <input type="number" step="0.01" min="0" class="form-control" name="sell_rate_per_cbm" id="sellRate"
+                   value="{{ old('sell_rate_per_cbm', $order?->sell_rate_per_cbm ?? 0) }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted">Total CBM (from items)</label>
+            <input type="text" class="form-control bg-light" id="totalCbm" readonly value="0.0000">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-muted">Freight Cost</label>
+            <input type="text" class="form-control bg-light" id="freightOut" readonly value="0.00">
+        </div>
     </div>
 </div>
 
@@ -165,15 +190,16 @@
             <div class="card-header"><h6 class="mb-0">Summary</h6></div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    <tr><th>Subtotal (receivable)</th><td class="text-end">৳ <span id="sumSubtotal">0.00</span></td></tr>
+                    <tr><th>Charge (rate × CBM)</th><td class="text-end">৳ <span id="sumSubtotal">0.00</span></td></tr>
                     <tr><th>Discount</th><td class="text-end">− ৳ <span id="sumDiscount">0.00</span></td></tr>
                     <tr><th>Total Amount</th><td class="text-end fw-semibold">৳ <span id="sumTotal">0.00</span></td></tr>
                     <tr><th>Received</th><td class="text-end">৳ <span id="sumReceived">0.00</span></td></tr>
                     <tr><th>Due</th><td class="text-end">৳ <span id="sumDue">0.00</span></td></tr>
-                    <tr><th>Supplier Cost</th><td class="text-end">৳ <span id="sumCost">0.00</span></td></tr>
-                    <tr class="table-light"><th>Profit (before costs)</th><td class="text-end fw-semibold">৳ <span id="sumProfit">0.00</span></td></tr>
+                    <tr><th>Freight Cost</th><td class="text-end">৳ <span id="sumFreight">0.00</span></td></tr>
+                    <tr><th>Duty &amp; Taxes</th><td class="text-end">৳ <span id="sumDuty">0.00</span></td></tr>
+                    <tr class="table-light"><th>Profit (before other costs)</th><td class="text-end fw-semibold">৳ <span id="sumProfit">0.00</span></td></tr>
                 </table>
-                <small class="text-muted">Order costs (freight, customs, LC, etc.) are added on the order page after saving and reduce the final profit.</small>
+                <small class="text-muted">Order costs (customs handling, LC, transport, etc.) are added on the order page after saving and reduce the final profit.</small>
             </div>
         </div>
     </div>
@@ -184,28 +210,42 @@
     <a href="{{ route('orders.index') }}" class="btn btn-secondary">Cancel</a>
 </div>
 
+<x-hs-search />
+
 {{-- ===================== Templates ===================== --}}
 <template id="itemTemplate">
     <div class="border rounded p-3 mb-3 item-block position-relative">
         <button type="button" class="btn btn-sm btn-outline-danger remove-item position-absolute" style="top:.5rem; right:.5rem;"><i class="ri-close-line"></i></button>
-        <div class="fw-semibold text-muted small mb-2 item-title">Product</div>
+        <div class="fw-semibold text-muted small mb-2 item-title">Item</div>
+        <input type="hidden" data-name="hs_code_id">
         <div class="row g-2">
-            <div class="col-md-4"><label class="form-label small">Item Description (Nature of Goods)</label><input type="text" class="form-control form-control-sm" data-name="item_description"></div>
-            <div class="col-md-3"><label class="form-label small">Category</label><select class="form-control form-control-sm" data-name="category_id"><option value="">--</option>@foreach($categories as $c)<option value="{{ $c->id }}">{{ $c->name }}</option>@endforeach</select></div>
-            <div class="col-md-2"><label class="form-label small">HS Code</label><input type="text" class="form-control form-control-sm" data-name="hs_code"></div>
-            <div class="col-md-3"><label class="form-label small">Nature of Packing (pkg)</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" data-name="package_quantity" value="0"></div>
+            <div class="col-md-3">
+                <label class="form-label small">HS Code <i class="ri-search-line"></i></label>
+                <div class="hs-search-wrap">
+                    <input type="text" class="form-control form-control-sm hs-search" data-name="hs_code" placeholder="3911.90.00 or a keyword" autocomplete="off">
+                    <div class="hs-results"></div>
+                </div>
+            </div>
+            <div class="col-md-5"><label class="form-label small">Item Description (Nature of Goods)</label><input type="text" class="form-control form-control-sm" data-name="item_description"></div>
+            <div class="col-md-2"><label class="form-label small">Packages</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" data-name="package_quantity" value="0"></div>
+            <div class="col-md-2"><label class="form-label small">Quantity</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" data-name="quantity" value="0"></div>
         </div>
         <div class="row g-2 mt-1">
-            <div class="col-md-2"><label class="form-label small">Quantity</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="quantity" value="0"></div>
-            <div class="col-md-2"><label class="form-label small">Unit</label><select class="form-control form-control-sm" data-name="unit_id"><option value="">--</option>@foreach($units as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select></div>
             <div class="col-md-2"><label class="form-label small">Net Weight (kg)</label><input type="number" step="0.001" min="0" class="form-control form-control-sm" data-name="net_weight"></div>
-            <div class="col-md-2"><label class="form-label small">Volume (CBM)</label><input type="number" step="0.0001" min="0" class="form-control form-control-sm" data-name="cbm"></div>
+            <div class="col-md-2"><label class="form-label small fw-bold">Volume (CBM)</label><input type="number" step="0.0001" min="0" class="form-control form-control-sm calc" data-name="cbm"></div>
             <div class="col-md-2"><label class="form-label small">Actual Wt (BD)</label><input type="number" step="0.001" min="0" class="form-control form-control-sm" data-name="actual_weight"></div>
+            <div class="col-md-3"><label class="form-label small">Declared Value</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="declared_value" value="0"></div>
+            <div class="col-md-3"><label class="form-label small">Assessable Value</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc av-field" data-name="assessable_value" placeholder="auto (+1% landing)"></div>
         </div>
         <div class="row g-2 mt-1 align-items-end">
-            <div class="col-md-3"><label class="form-label small">Supplier Price</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="supplier_asking_price" value="0"></div>
-            <div class="col-md-3"><label class="form-label small">Our Price to Client</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="our_asking_price" value="0"></div>
-            <div class="col-md-3"><label class="form-label small text-muted">Line Total</label><input type="text" class="form-control form-control-sm bg-light out-line-total" readonly value="0.00"></div>
+            <div class="col-md-1"><label class="form-label small">CD %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="cd_rate" value="0"></div>
+            <div class="col-md-1"><label class="form-label small">SD %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="sd_rate" value="0"></div>
+            <div class="col-md-1"><label class="form-label small">VAT %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="vat_rate" value="0"></div>
+            <div class="col-md-1"><label class="form-label small">AIT %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="ait_rate" value="0"></div>
+            <div class="col-md-1"><label class="form-label small">RD %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="rd_rate" value="0"></div>
+            <div class="col-md-1"><label class="form-label small">AT %</label><input type="number" step="0.01" min="0" class="form-control form-control-sm calc" data-name="at_rate" value="0"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Line Duty (TTI)</label><input type="text" class="form-control form-control-sm bg-light out-duty" readonly value="0.00"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Charge (rate × CBM)</label><input type="text" class="form-control form-control-sm bg-light out-line-total" readonly value="0.00"></div>
         </div>
     </div>
 </template>
@@ -235,16 +275,37 @@ document.addEventListener('DOMContentLoaded', function () {
     const money = n => (Number(n) || 0).toFixed(2);
     const num = el => parseFloat(el?.value) || 0;
 
+    // Bangladesh Customs cascade on the declared value: CD & RD on AV, SD compounds,
+    // VAT/AT compound further, AIT on AV.
+    function recalcDuty(block) {
+        const val = name => num(block.querySelector('[data-name="' + name + '"]'));
+        const avField = block.querySelector('.av-field');
+        if (!avField.dataset.touched) {
+            avField.value = money(val('declared_value') * 1.01);
+        }
+        const av = num(avField);
+        const cd = av * val('cd_rate') / 100;
+        const rd = av * val('rd_rate') / 100;
+        const sd = (av + cd + rd) * val('sd_rate') / 100;
+        const vat = (av + cd + rd + sd) * val('vat_rate') / 100;
+        const ait = av * val('ait_rate') / 100;
+        const at = (av + cd + rd + sd) * val('at_rate') / 100;
+        block.querySelector('.out-duty').value = money(cd + rd + sd + vat + ait + at);
+    }
+
     function recalc() {
-        let subtotal = 0, cost = 0;
+        const sellRate = num(document.getElementById('sellRate'));
+        const costRate = num(document.getElementById('costRate'));
+        let subtotal = 0, totalCbm = 0, duty = 0;
+
         itemsWrap.querySelectorAll('.item-block').forEach(function (b) {
-            const qty = num(b.querySelector('[data-name="quantity"]'));
-            const sup = num(b.querySelector('[data-name="supplier_asking_price"]'));
-            const our = num(b.querySelector('[data-name="our_asking_price"]'));
-            const lt = our * qty;
-            b.querySelector('.out-line-total').value = money(lt);
-            subtotal += lt;
-            cost += sup * qty;
+            recalcDuty(b);
+            const cbm = num(b.querySelector('[data-name="cbm"]'));
+            const lineTotal = sellRate * cbm;
+            b.querySelector('.out-line-total').value = money(lineTotal);
+            subtotal += lineTotal;
+            totalCbm += cbm;
+            duty += num(b.querySelector('.out-duty'));
         });
 
         let received = 0;
@@ -254,14 +315,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const dVal = num(document.getElementById('discountValue'));
         const discount = dType === 'percentage' ? subtotal * dVal / 100 : dVal;
         const total = subtotal - discount;
+        const freight = costRate * totalCbm;
 
+        document.getElementById('totalCbm').value = totalCbm.toFixed(4);
+        document.getElementById('freightOut').value = money(freight);
         document.getElementById('sumSubtotal').textContent = money(subtotal);
         document.getElementById('sumDiscount').textContent = money(discount);
         document.getElementById('sumTotal').textContent = money(total);
         document.getElementById('sumReceived').textContent = money(received);
         document.getElementById('sumDue').textContent = money(total - received);
-        document.getElementById('sumCost').textContent = money(cost);
-        document.getElementById('sumProfit').textContent = money(total - cost);
+        document.getElementById('sumFreight').textContent = money(freight);
+        document.getElementById('sumDuty').textContent = money(duty);
+        document.getElementById('sumProfit').textContent = money(total - freight - duty);
     }
 
     function addItem(data) {
@@ -272,11 +337,21 @@ document.addEventListener('DOMContentLoaded', function () {
             el.name = 'items[' + i + '][' + el.dataset.name + ']';
             if (data && data[el.dataset.name] != null) el.value = data[el.dataset.name];
         });
+
+        // Keep a manually-overridden assessable value; otherwise it follows declared value + 1% landing.
+        const avField = block.querySelector('.av-field');
+        if (data && data.assessable_value != null && data.assessable_value !== '') {
+            const def = (parseFloat(data.declared_value) || 0) * 1.01;
+            if (Math.abs(parseFloat(data.assessable_value) - def) > 0.02) { avField.dataset.touched = '1'; }
+        }
+        avField.addEventListener('input', function () { this.dataset.touched = '1'; });
+
         block.querySelectorAll('.calc').forEach(el => el.addEventListener('input', recalc));
         block.querySelector('.remove-item').addEventListener('click', function () {
             if (itemsWrap.querySelectorAll('.item-block').length > 1) { block.remove(); renumber(); recalc(); }
         });
         itemsWrap.appendChild(node);
+        window.attachHsSearch(itemsWrap.lastElementChild, recalc);
         renumber();
         recalc();
     }
@@ -296,12 +371,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renumber() {
-        itemsWrap.querySelectorAll('.item-block .item-title').forEach((t, n) => t.textContent = 'Product #' + (n + 1));
+        itemsWrap.querySelectorAll('.item-block').forEach(function (b, n) {
+            const code = b.querySelector('.hs-search')?.value || '';
+            b.querySelector('.item-title').textContent = 'Item #' + (n + 1) + (code ? ' — ' + code : '');
+        });
     }
 
     document.getElementById('addItemBtn').addEventListener('click', () => addItem());
     document.getElementById('addPaymentBtn').addEventListener('click', () => addPayment());
-    ['discountType', 'discountValue'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
+    ['discountType', 'discountValue', 'costRate', 'sellRate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
     document.getElementById('discountType').addEventListener('change', recalc);
 
     const items = @json($order?->items ?? []);

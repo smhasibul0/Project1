@@ -32,14 +32,31 @@ test('the duty calculator follows the BD customs cascade', function () {
     expect($duty['total'])->toEqual(7255.20);
 });
 
-test('a packing list is mandatory when creating a quotation', function () {
+test('a quotation can be created without a packing list', function () {
     $response = $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
-        'items' => [['package_quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
+        'sell_rate_per_cbm' => 100,
+        'items' => [['package_quantity' => 1, 'cbm' => 1, 'declared_value' => 5]],
     ]);
 
-    $response->assertSessionHasErrors('packing_list');
-    expect(Quotation::count())->toBe(0);
+    $response->assertRedirect(route('quotations.index'))->assertSessionHasNoErrors();
+
+    $quotation = Quotation::firstOrFail();
+    expect($quotation->packing_list_path)->toBeNull();
+    expect($quotation->customer_charge)->toEqual('100.00');
+});
+
+test('an uploaded packing list is still stored when one is given', function () {
+    $this->actingAs($this->user)->post(route('quotation.store'), [
+        'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
+        'items' => [['package_quantity' => 1, 'cbm' => 1, 'declared_value' => 5]],
+    ]);
+
+    $quotation = Quotation::firstOrFail();
+    expect($quotation->packing_list_path)->not->toBeNull();
+
+    @unlink(public_path('upload/quotation/'.$quotation->packing_list_path));
 });
 
 test('the packing list parser groups identical cartons and extracts metadata', function () {
@@ -78,18 +95,19 @@ test('storing a quotation computes duties, expenses and the projected profit', f
     $response = $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
         'packing_list' => fakePackingList(),
+        'sell_rate_per_cbm' => 3000,
         'items' => [[
             'description' => 'Ex7 Hand pump',
             'package_quantity' => 100,
-            'supplier_asking_price' => 100,
-            'our_asking_price' => 300,
-            // Assessable value defaults to 100*100*1.01 = 10100
+            'cbm' => 10,
+            'declared_value' => 10000,
+            // Assessable value defaults to the declared value + 1% landing = 10100
             'cd_rate' => 25, 'rd_rate' => 0, 'sd_rate' => 0,
             'vat_rate' => 15, 'ait_rate' => 5, 'at_rate' => 0,
         ]],
         'expenses' => [
-            ['expense_group' => 'lc', 'cost_category_id' => $category->id, 'title' => 'LC opening commission', 'amount' => 1200],
-            ['expense_group' => 'custom', 'title' => 'Local transport', 'amount' => 800],
+            ['cost_category_id' => $category->id, 'title' => 'LC opening commission', 'amount' => 1200],
+            ['title' => 'Local transport', 'amount' => 800],
         ],
     ]);
 
@@ -104,12 +122,12 @@ test('storing a quotation computes duties, expenses and the projected profit', f
     expect($q->total_duty)->toEqual('4923.75');
 
     expect($q->expenses)->toHaveCount(2);
-    expect($q->lcExpenses()->sum('amount'))->toEqual(1200.0);
-    expect($q->customExpenses()->sum('amount'))->toEqual(800.0);
+    expect($q->expenses->sum('amount'))->toEqual(2000.0);
 
-    // Projection: goods 10000 + duty 4923.75 + expenses 2000 = 16923.75; asking 30000
-    expect($q->projected_cost_total)->toEqual('16923.75');
-    expect($q->projected_profit)->toEqual('13076.25');
+    // Cost: duty 4923.75 + expenses 2000 = 6923.75 (nothing is bought); charge 10 CBM x 3000
+    expect($q->customer_charge)->toEqual('30000.00');
+    expect($q->projected_cost_total)->toEqual('6923.75');
+    expect($q->projected_profit)->toEqual('23076.25');
 
     // The uploaded packing list is stored against the quotation.
     expect($q->packing_list_path)->not->toBeNull();
@@ -124,8 +142,8 @@ test('a manually overridden assessable value is respected', function () {
         'packing_list' => fakePackingList(),
         'items' => [[
             'package_quantity' => 10,
-            'supplier_asking_price' => 100,
-            'our_asking_price' => 200,
+            'cbm' => 2,
+            'declared_value' => 1000,
             'assessable_value' => 5000,
             'vat_rate' => 15,
         ]],
@@ -144,15 +162,15 @@ test('updating a quotation replaces its predicted expenses', function () {
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
         'packing_list' => fakePackingList(),
-        'items' => [['package_quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
-        'expenses' => [['expense_group' => 'custom', 'title' => 'Old expense', 'amount' => 100]],
+        'items' => [['package_quantity' => 1, 'cbm' => 1, 'declared_value' => 5]],
+        'expenses' => [['title' => 'Old expense', 'amount' => 100]],
     ]);
     $q = Quotation::firstOrFail();
 
     $this->actingAs($this->user)->put(route('quotation.update', $q->id), [
         'customer_id' => $this->customer->id,
-        'items' => [['package_quantity' => 1, 'our_asking_price' => 10, 'supplier_asking_price' => 5]],
-        'expenses' => [['expense_group' => 'custom', 'title' => 'New expense', 'amount' => 250]],
+        'items' => [['package_quantity' => 1, 'cbm' => 1, 'declared_value' => 5]],
+        'expenses' => [['title' => 'New expense', 'amount' => 250]],
     ]);
 
     $q->refresh()->load('expenses');
@@ -169,15 +187,17 @@ test('converting a quotation seeds the order costs with projections', function (
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
         'packing_list' => fakePackingList(),
+        'sell_rate_per_cbm' => 3000,
         'items' => [[
             'description' => 'Ex7 Hand pump',
+            'hs_code' => '8413.20.00',
             'package_quantity' => 100,
-            'supplier_asking_price' => 100,
-            'our_asking_price' => 300,
+            'cbm' => 10,
+            'declared_value' => 10000,
             'cd_rate' => 25, 'vat_rate' => 15, 'ait_rate' => 5,
         ]],
         'expenses' => [
-            ['expense_group' => 'lc', 'cost_category_id' => $category->id, 'title' => 'LC opening commission', 'amount' => 1200],
+            ['cost_category_id' => $category->id, 'title' => 'LC opening commission', 'amount' => 1200],
         ],
     ]);
     $quotation = Quotation::firstOrFail();
@@ -187,12 +207,12 @@ test('converting a quotation seeds the order costs with projections', function (
 
     $order = Order::with(['items', 'costs'])->firstOrFail();
     expect($order->items->first()->item_description)->toBe('Ex7 Hand pump');
-    expect($order->costs)->toHaveCount(2);
+    expect($order->items->first()->hs_code)->toBe('8413.20.00');
 
-    $dutyCost = $order->costs->firstWhere('title', 'Duty & taxes (projected)');
-    expect($dutyCost)->not->toBeNull();
-    expect((float) $dutyCost->amount)->toEqual((float) $quotation->total_duty);
-    expect($dutyCost->note)->toContain($quotation->quotation_no);
+    // Duty rides on the items, so only the predicted expense becomes a cost line.
+    expect($order->costs)->toHaveCount(1);
+    expect($order->duty_total)->toEqual($quotation->total_duty);
+    expect($order->sell_rate_per_cbm)->toEqual('3000.00');
 
     $lcCost = $order->costs->firstWhere('title', 'LC opening commission');
     expect($lcCost)->not->toBeNull();
@@ -208,19 +228,22 @@ test('LCL predicted freight is computed from rate x total item CBM', function ()
         'packing_list' => fakePackingList(),
         'freight_type' => 'lcl',
         'freight_rate' => 55,
+        'sell_rate_per_cbm' => 300,
         'items' => [
-            ['package_quantity' => 100, 'supplier_asking_price' => 10, 'our_asking_price' => 20, 'cbm' => 6],
-            ['package_quantity' => 50, 'supplier_asking_price' => 10, 'our_asking_price' => 20, 'cbm' => 4],
+            ['package_quantity' => 100, 'declared_value' => 1000, 'cbm' => 6],
+            ['package_quantity' => 50, 'declared_value' => 500, 'cbm' => 4],
         ],
     ]);
 
     $q = Quotation::firstOrFail();
     expect($q->freight_type)->toBe('lcl');
+    expect($q->total_cbm)->toEqual('10.0000');
     expect($q->freight_amount)->toEqual('550.00'); // 55 x 10 CBM
 
-    // Projection: goods 1500 + freight 550 = 2050 (no duty rates given)
-    expect($q->projected_cost_total)->toEqual('2050.00');
-    expect($q->projected_profit)->toEqual('950.00'); // asking 3000 - 2050
+    // Cost is the freight alone (no duty rates given); charge is 10 CBM at 300.
+    expect($q->projected_cost_total)->toEqual('550.00');
+    expect($q->customer_charge)->toEqual('3000.00');
+    expect($q->projected_profit)->toEqual('2450.00');
 
     @unlink(public_path('upload/quotation/'.$q->packing_list_path));
 });
@@ -232,35 +255,65 @@ test('FCL predicted freight stores the flat container price and size', function 
         'freight_type' => 'fcl',
         'freight_container_size' => '40HQ',
         'freight_amount' => 3200,
-        'items' => [['package_quantity' => 10, 'supplier_asking_price' => 100, 'our_asking_price' => 600, 'cbm' => 20]],
+        'sell_rate_per_cbm' => 300,
+        'items' => [['package_quantity' => 10, 'declared_value' => 1000, 'cbm' => 20]],
     ]);
 
     $q = Quotation::firstOrFail();
     expect($q->freight_type)->toBe('fcl');
     expect($q->freight_container_size)->toBe('40HQ');
-    expect($q->freight_amount)->toEqual('3200.00');
-    expect($q->projected_cost_total)->toEqual('4200.00'); // goods 1000 + freight 3200
-    expect($q->projected_profit)->toEqual('1800.00');     // asking 6000 - 4200
+    expect($q->freight_amount)->toEqual('3200.00');       // flat, not per CBM
+    expect($q->projected_cost_total)->toEqual('3200.00');
+    expect($q->customer_charge)->toEqual('6000.00');      // 20 CBM at 300
+    expect($q->projected_profit)->toEqual('2800.00');
 
     @unlink(public_path('upload/quotation/'.$q->packing_list_path));
 });
 
-test('converting a quotation carries the predicted freight into the order costs', function () {
+test('converting an LCL quotation carries both rates onto the order', function () {
     $this->actingAs($this->user)->post(route('quotation.store'), [
         'customer_id' => $this->customer->id,
         'packing_list' => fakePackingList(),
         'freight_type' => 'lcl',
         'freight_rate' => 50,
-        'items' => [['package_quantity' => 10, 'supplier_asking_price' => 100, 'our_asking_price' => 200, 'cbm' => 8]],
+        'sell_rate_per_cbm' => 200,
+        'items' => [['package_quantity' => 10, 'declared_value' => 1000, 'cbm' => 8]],
     ]);
     $quotation = Quotation::firstOrFail();
     $quotation->update(['status' => 'accepted']);
 
     $this->actingAs($this->user)->post(route('order.from.quotation', $quotation->id))->assertRedirect();
 
-    $freightCost = Order::firstOrFail()->costs()->where('title', 'like', 'LCL freight%')->first();
+    $order = Order::firstOrFail();
+    expect($order->cost_rate_per_cbm)->toEqual('50.00');
+    expect($order->sell_rate_per_cbm)->toEqual('200.00');
+    expect($order->total_cbm)->toEqual('8.0000');
+    expect($order->freight_cost)->toEqual('400.00');   // 50 x 8 CBM
+    expect($order->subtotal)->toEqual('1600.00');      // 200 x 8 CBM
+    expect($order->profit)->toEqual('1200.00');
+    expect($order->costs)->toHaveCount(0);             // an LCL rate is not a cost line
+
+    @unlink(public_path('upload/quotation/'.$quotation->packing_list_path));
+});
+
+test('converting an FCL quotation books the flat container price as a cost', function () {
+    $this->actingAs($this->user)->post(route('quotation.store'), [
+        'customer_id' => $this->customer->id,
+        'packing_list' => fakePackingList(),
+        'freight_type' => 'fcl',
+        'freight_container_size' => '40HQ',
+        'freight_amount' => 3200,
+        'sell_rate_per_cbm' => 300,
+        'items' => [['package_quantity' => 10, 'declared_value' => 1000, 'cbm' => 20]],
+    ]);
+    $quotation = Quotation::firstOrFail();
+    $quotation->update(['status' => 'accepted']);
+
+    $this->actingAs($this->user)->post(route('order.from.quotation', $quotation->id))->assertRedirect();
+
+    $freightCost = Order::firstOrFail()->costs()->where('title', 'like', 'FCL freight%')->first();
     expect($freightCost)->not->toBeNull();
-    expect((float) $freightCost->amount)->toEqual(400.0); // 50 x 8 CBM
+    expect((float) $freightCost->amount)->toEqual(3200.0);
     expect($freightCost->note)->toContain($quotation->quotation_no);
 
     @unlink(public_path('upload/quotation/'.$quotation->packing_list_path));

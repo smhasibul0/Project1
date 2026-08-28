@@ -64,7 +64,8 @@
                                 <th>Date</th>
                                 <th>Customer</th>
                                 <th class="text-end">Revenue</th>
-                                <th class="text-end">Supplier Cost</th>
+                                <th class="text-end">Freight</th>
+                                <th class="text-end">Duty &amp; Taxes</th>
                                 <th class="text-end">Order Costs</th>
                                 <th class="text-end">LC Cost</th>
                                 <th class="text-end">Container Cost</th>
@@ -79,7 +80,8 @@
                                 <td>{{ $r->order->order_date?->format('d M Y') ?: '—' }}</td>
                                 <td>{{ $r->order->customer->name ?? '—' }}</td>
                                 <td class="text-end">{{ number_format($r->revenue, 2) }}</td>
-                                <td class="text-end">{{ number_format($r->supplier_cost, 2) }}</td>
+                                <td class="text-end">{{ number_format($r->freight_cost, 2) }}</td>
+                                <td class="text-end">{{ number_format($r->duty_total, 2) }}</td>
                                 <td class="text-end">{{ number_format($r->order_cost, 2) }}</td>
                                 <td class="text-end">{{ number_format($r->lc_cost, 2) }}</td>
                                 <td class="text-end">{{ number_format($r->container_cost, 2) }}</td>
@@ -87,14 +89,15 @@
                                 <td class="text-end">{{ number_format($r->margin, 2) }}</td>
                             </tr>
                             @empty
-                            <tr><td colspan="10" class="text-center text-muted py-4">No orders in this range.</td></tr>
+                            <tr><td colspan="11" class="text-center text-muted py-4">No orders in this range.</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot>
                             <tr class="table-light fw-semibold">
                                 <td colspan="3">Totals</td>
                                 <td class="text-end">{{ number_format($totals['revenue'], 2) }}</td>
-                                <td class="text-end">{{ number_format($totals['supplier_cost'], 2) }}</td>
+                                <td class="text-end">{{ number_format($totals['freight_cost'], 2) }}</td>
+                                <td class="text-end">{{ number_format($totals['duty_total'], 2) }}</td>
                                 <td class="text-end">{{ number_format($totals['order_cost'], 2) }}</td>
                                 <td class="text-end">{{ number_format($totals['lc_cost'], 2) }}</td>
                                 <td class="text-end">{{ number_format($totals['container_cost'], 2) }}</td>

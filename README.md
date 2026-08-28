@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🚢 Import Sourcing & Freight ERP
+# 🚢 Freight Forwarding & Customs Clearing ERP
 
-**An order-centric ERP for customer-driven import sourcing and freight forwarding —
-from a customer's first enquiry in Dhaka to goods landing in the warehouse, with every
-taka of cost and profit tracked along the way.**
+**An order-centric ERP for freight forwarding and customs clearing — from a customer's
+first enquiry in Dhaka to their goods landing in the warehouse, priced by the cubic
+metre with every taka of duty, cost and profit tracked along the way.**
 
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![Pest](https://img.shields.io/badge/Pest-3-8A2BE2?logo=pest&logoColor=white)](https://pestphp.com)
-[![Tests](https://img.shields.io/badge/tests-240%20passing-3fb950)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-231%20passing-3fb950)](#-testing)
 [![Code Style](https://img.shields.io/badge/code%20style-Pint-FF2D20)](https://laravel.com/docs/pint)
 
 </div>
@@ -18,14 +18,18 @@ taka of cost and profit tracked along the way.**
 
 ## What this is
 
-This is **not** a point-of-sale or a stock-selling shop. It models a real
-**import sourcing and freight-forwarding business**: a customer asks for a product,
-you source it from Chinese suppliers, consolidate it into a container, open a letter of
-credit, ship it, clear it at port, receive it into a Bangladesh warehouse, and deliver it.
+This is **not** a shop and it owns no stock. It models a real **freight-forwarding and
+customs-clearing business**: a customer's goods are consolidated into a container,
+shipped, cleared at port, received into a Bangladesh warehouse and delivered — and you
+are paid **by the cubic metre** for moving them.
 
-The **Order is the hub**. Everything — items, supplier costs, freight, customs, LC bank
-charges, container costs, payments, tracking history — hangs off the order, so the
-profit on any shipment is always one page away.
+There is no product catalogue. An item is a **tariff line**: type an HS code and the
+customs description and its six duty rates fill themselves in from the imported
+Bangladesh Customs tariff.
+
+The **Order is the hub**. Everything — items, freight, duty, LC bank charges, container
+costs, payments, tracking history — hangs off the order, so the profit on any shipment
+is always one page away.
 
 ```mermaid
 flowchart LR
@@ -53,7 +57,7 @@ automatically receives the order's items into warehouse inventory as stock lots.
 
 | Surface | Route | Who | What they get |
 |---|---|---|---|
-| **Admin panel** | `/dashboard` | Admin, Staff, Accountant | The full pipeline — contacts, products, quotations, orders, costs, LC, containers, finance, reports |
+| **Admin panel** | `/dashboard` | Admin, Staff, Accountant | The full pipeline — customers, HS codes, quotations, orders, costs, LC, containers, finance, reports |
 | **Customer portal** | `/portal` | Customers | Submit requests, accept or reject quotes, follow orders, view payments and dues |
 | **Warehouse portal** | `/warehouse` | Warehouse managers | Inventory, incoming orders, expenses, staff and payroll — scoped to their own warehouse |
 | **Public tracking** | `/track` | Anyone | Enter an order number for status and timeline — no financials, no login |
@@ -68,12 +72,13 @@ without needing a separate warehouse login.
 <table>
 <tr><td width="50%" valign="top">
 
-**Sourcing & sales**
-- Contacts — suppliers, customers, customer groups
-- Products with categories, brands, units, HS codes
-- Quotations with per-item profit and margin
+**Tariff & quoting**
+- Customers and customer groups
+- HS code database imported from the customs tariff book
+- Type-ahead HS lookup fills description + CD/SD/VAT/AIT/RD/AT
+- Quotations priced per CBM, with duty projected per line
 - Excel packing-list import (PhpSpreadsheet)
-- Landed-cost projection before quoting
+- Total cost vs. customer price, side by side
 - One-click convert quotation → order
 
 </td><td width="50%" valign="top">
@@ -117,9 +122,10 @@ This is the heart of the system. Costs live in the place they belong, and all of
 roll up into one number.
 
 ```
-Order revenue
-  − supplier goods cost              (from order items)
-  − order costs                      (freight, customs, local transport, service…)
+Order revenue                        (sell rate per CBM × the shipment's CBM)
+  − freight                          (cost rate per CBM × the shipment's CBM)
+  − duty & taxes                     (the customs cascade on each line's declared value)
+  − order costs                      (clearing, local transport, service…)
   − LC cost                          (bank charges + LC charge lines)
   − allocated container cost         (shared cost split by CBM, weight, cartons or equally)
   ─────────────────────────────────
@@ -150,7 +156,7 @@ resolves every ability against the user's role, with Admin bypassing all checks.
 | Role | Scope |
 |---|---|
 | **Admin** | Everything, including account balances and settings |
-| **Staff / Agent** | Contacts, products, quotations, orders, LC, containers — no finance |
+| **Staff / Agent** | Customers, HS codes, quotations, orders, LC, containers — no finance |
 | **Accountant** | Costs, payment accounts, payments, reports, expense categories |
 | **Customer** | Customer portal only, scoped to their own contact record |
 | **Warehouse** | Warehouse portal only, scoped to their assigned warehouse |
@@ -169,7 +175,7 @@ resolves every ability against the user's role, with Admin bypassing all checks.
 | Database | MySQL 8 |
 | Views | Blade + a Bootstrap 5 admin theme; Vite, Tailwind and Alpine for the Breeze auth scaffolding |
 | Tables | A custom, dependency-free `<x-data-table>` — search, sort, filters, column toggles, CSV/print export, no jQuery |
-| Spreadsheets | PhpSpreadsheet (packing-list import) |
+| Spreadsheets | PhpSpreadsheet (packing-list import, customs tariff import) |
 | Images | Intervention Image |
 | Tests | Pest 3 on SQLite in-memory |
 | Style | Laravel Pint |
@@ -202,9 +208,9 @@ npm install && npm run build
 php artisan serve
 ```
 
-Seeding creates the roles and permission catalog, account types, customer groups, units,
-categories, a Main Warehouse, transportation modes, packing types, cost categories,
-expense categories, company invoice settings, and one **admin** user:
+Seeding creates the roles and permission catalog, account types, customer groups,
+a Main Warehouse, transportation modes, packing types, cost categories, expense
+categories, company invoice settings, and one **admin** user:
 
 ```
 email:    test@example.com     (or username: testuser)
@@ -214,8 +220,14 @@ password: password
 The login field accepts an email **or** a username. Change this password before putting
 anything real in the database.
 
+**Load the customs tariff.** The HS code database starts empty. Go to **HS Codes →
+Import from Excel** and upload the published Bangladesh Customs tariff workbook — around
+7,400 lines load in about fifteen seconds, each with its full customs description and its
+rate of customs duty. The book carries CD only; SD, VAT, AIT, RD and AT arrive from a
+second upload of a rates sheet (HS code + those columns), or are keyed in per code.
+
 **Creating the other logins:**
-- **Customer** — Contacts → Customers → row actions → *Create Login*
+- **Customer** — Customers → Customer List → row actions → *Create Login*
 - **Warehouse** — Users → Add User → role `Warehouse`, then pick the warehouse
 
 ---
@@ -223,7 +235,7 @@ anything real in the database.
 ## 🧪 Testing
 
 ```bash
-composer test                      # full suite (240 tests)
+composer test                      # full suite (231 tests)
 php artisan test --compact --filter=WarehousePortalTest
 ```
 
@@ -252,13 +264,14 @@ app/
 │   └── Middleware/         EnsureAdminAccess · EnsureCustomerAccess · EnsureWarehouseAccess
 ├── Models/                 Order is the hub; costs, payments and stock hang off it
 ├── Providers/              Gate definitions (orders.view, accounts.view-balance)
-└── Support/                CurrentWarehouse · PackingListParser · DutyCalculator · NumberToWords
+└── Support/                CurrentWarehouse · PackingListParser · HsCodeSheetImporter
+                            DutyCalculator · NumberToWords
 
 resources/views/
 ├── admin/backend/          Admin screens
 ├── portal/                 Customer portal
 ├── warehouse/              Warehouse portal
-└── components/             x-data-table · x-account-options · x-customer-select
+└── components/             x-data-table · x-account-options · x-customer-select · x-hs-search
 
 tests/Feature/              Pest feature tests, one file per module
 ```

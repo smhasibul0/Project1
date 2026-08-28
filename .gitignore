@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Customer packing lists uploaded against quotations (data, not code)
+/public/upload/quotation/*
+!/public/upload/quotation/.gitkeep

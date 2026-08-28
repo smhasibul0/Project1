@@ -45,24 +45,23 @@
     <div class="bd flush">
         <div class="pt-scroll">
             <table class="pt-table">
-                <thead><tr><th>#</th><th>Item</th><th>Category</th><th>HS Code</th><th class="num">Qty</th><th class="num">Net Wt</th><th class="num">CBM</th><th class="num">Rate</th><th class="num">Total</th></tr></thead>
+                <thead><tr><th>#</th><th>HS Code</th><th>Item</th><th class="num">Qty</th><th class="num">Net Wt</th><th class="num">CBM</th><th class="num">Rate/CBM</th><th class="num">Total</th></tr></thead>
                 <tbody>
                     @foreach($quotation->items as $i => $item)
                     <tr>
                         <td>{{ $i + 1 }}</td>
-                        <td><strong>{{ $item->remarks ?: '—' }}</strong></td>
-                        <td>{{ $item->category->name ?? '—' }}</td>
                         <td>{{ $item->hs_code ?: '—' }}</td>
+                        <td><strong>{{ $item->description ?: ($item->remarks ?: '—') }}</strong></td>
                         <td class="num">{{ rtrim(rtrim(number_format($item->package_quantity, 2), '0'), '.') }}</td>
                         <td class="num">{{ $item->net_weight ? rtrim(rtrim(number_format($item->net_weight, 3), '0'), '.') : '—' }}</td>
                         <td class="num">{{ $item->cbm ? rtrim(rtrim(number_format($item->cbm, 4), '0'), '.') : '—' }}</td>
-                        <td class="num money">{{ (float) $item->our_asking_price > 0 ? '৳'.number_format($item->our_asking_price, 2) : '—' }}</td>
+                        <td class="num money">{{ (float) $quotation->sell_rate_per_cbm > 0 ? '৳'.number_format($quotation->sell_rate_per_cbm, 2) : '—' }}</td>
                         <td class="num money">{{ (float) $item->line_total > 0 ? '৳'.number_format($item->line_total, 2) : '—' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
                 @if((float) $quotation->grand_total > 0)
-                <tfoot><tr><td colspan="8" class="num">Grand Total</td><td class="num money">৳{{ number_format($quotation->grand_total, 2) }}</td></tr></tfoot>
+                <tfoot><tr><td colspan="7" class="num">Grand Total</td><td class="num money">৳{{ number_format($quotation->grand_total, 2) }}</td></tr></tfoot>
                 @endif
             </table>
         </div>

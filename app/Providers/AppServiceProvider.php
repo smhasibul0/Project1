@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The admin theme is Bootstrap 5; the tariff list is the one paged screen.
+        Paginator::useBootstrapFive();
+
         // Resolve every ability against the user's role permissions. Admin bypasses all.
         // Ability strings ARE the permission keys (e.g. "orders.manage"), so `@can('orders.manage')`
         // and route middleware `can:orders.manage` both flow through here.

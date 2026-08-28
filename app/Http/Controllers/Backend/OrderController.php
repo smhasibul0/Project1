@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\Contact;
 use App\Models\CostCategory;
@@ -15,9 +14,9 @@ use App\Models\PaymentAccount;
 use App\Models\Quotation;
 use App\Models\Transaction;
 use App\Models\TransportationMode;
-use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,7 +27,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with('customer')->withCount('items')->latest()->get();
+        $orders = Order::with(['customer', 'containers'])->withCount('items')->latest()->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.backend.orders.orders', compact('orders', 'accounts'));
@@ -40,56 +39,63 @@ class OrderController extends Controller
     }
 
     /**
-     * Create an order from an accepted quotation (copies its products), then open it for editing.
+     * Create an order from a quotation (copying its items, rates and predicted costs),
+     * then open it for editing. Any quotation can be converted — accepted is simply the
+     * usual point — but only once, so a repeated submit can't duplicate the order.
      */
     public function fromQuotation($quotationId)
     {
-        $quotation = Quotation::with(['items.category', 'items.product', 'expenses'])->findOrFail($quotationId);
+        $quotation = Quotation::with(['items', 'expenses'])->findOrFail($quotationId);
+
+        if ($quotation->status === 'converted') {
+            $existing = Order::where('quotation_id', $quotation->id)->latest('id')->first();
+
+            return redirect()->route($existing ? 'order.show' : 'quotations.index', $existing?->id)
+                ->with('error', $quotation->quotation_no.' has already been converted to an order.');
+        }
 
         $order = DB::transaction(function () use ($quotation) {
             $order = Order::create([
                 'order_date' => now()->toDateString(),
                 'quotation_id' => $quotation->id,
                 'customer_id' => $quotation->customer_id,
+                'transportation_mode_id' => $quotation->transportation_mode_id,
+                'country_of_loading' => $quotation->country_of_loading,
                 'goods_status' => 'pending',
                 'delivery_status' => 'pending',
+                // The quoted rates carry over as the order's rates.
+                'cost_rate_per_cbm' => $quotation->freight_type === 'lcl' ? $quotation->freight_rate : 0,
+                'sell_rate_per_cbm' => $quotation->sell_rate_per_cbm,
                 'added_by' => Auth::id(),
             ]);
 
             foreach ($quotation->items as $qi) {
                 $order->items()->create([
-                    'item_description' => $qi->product->name ?? ($qi->description ?: ($qi->category->name ?? null)),
-                    'category_id' => $qi->category_id,
+                    'hs_code_id' => $qi->hs_code_id,
                     'hs_code' => $qi->hs_code,
+                    'item_description' => $qi->description,
                     'quantity' => $qi->package_quantity,
                     'package_quantity' => $qi->package_quantity,
                     'net_weight' => $qi->net_weight,
                     'cbm' => $qi->cbm,
-                    'supplier_asking_price' => $qi->supplier_asking_price,
-                    'our_asking_price' => $qi->our_asking_price,
-                    'line_total' => round((float) $qi->our_asking_price * (float) $qi->package_quantity, 2),
+                    'declared_value' => $qi->declared_value,
+                    'assessable_value' => $qi->assessable_value,
+                    'cd_rate' => $qi->cd_rate,
+                    'rd_rate' => $qi->rd_rate,
+                    'sd_rate' => $qi->sd_rate,
+                    'vat_rate' => $qi->vat_rate,
+                    'ait_rate' => $qi->ait_rate,
+                    'at_rate' => $qi->at_rate,
+                    'duty_amount' => $qi->duty_amount,
+                    'line_total' => $qi->line_total,
                 ]);
             }
 
-            // Seed the order's cost ledger with the quotation's projections so they
-            // can be adjusted or replaced with actuals during the order phase.
-            if ((float) $quotation->total_duty > 0) {
+            // An FCL container price is a flat cost, so it can't be derived from a
+            // rate per CBM — it carries over as a cost line instead.
+            if ($quotation->freight_type === 'fcl' && (float) $quotation->freight_amount > 0) {
                 $order->costs()->create([
-                    'title' => 'Duty & taxes (projected)',
-                    'amount' => $quotation->total_duty,
-                    'cost_date' => now()->toDateString(),
-                    'note' => 'Projected from quotation '.$quotation->quotation_no,
-                    'added_by' => Auth::id(),
-                ]);
-            }
-
-            if ((float) $quotation->freight_amount > 0) {
-                $freightTitle = $quotation->freight_type === 'lcl'
-                    ? 'LCL freight (projected @ '.number_format((float) $quotation->freight_rate, 2).'/CBM)'
-                    : 'FCL freight (projected'.($quotation->freight_container_size ? ', '.$quotation->freight_container_size : '').')';
-
-                $order->costs()->create([
-                    'title' => $freightTitle,
+                    'title' => 'FCL freight (projected'.($quotation->freight_container_size ? ', '.$quotation->freight_container_size : '').')',
                     'amount' => $quotation->freight_amount,
                     'cost_date' => now()->toDateString(),
                     'note' => 'Projected from quotation '.$quotation->quotation_no,
@@ -97,6 +103,8 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Seed the order's cost ledger with the quotation's predicted expenses so
+            // they can be adjusted or replaced with actuals during the order phase.
             foreach ($quotation->expenses as $expense) {
                 $order->costs()->create([
                     'cost_category_id' => $expense->cost_category_id,
@@ -138,7 +146,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.category', 'items.unit', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs', 'containers'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.hsCodeRecord', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs', 'containers'])
             ->findOrFail($id);
         $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
@@ -159,7 +167,7 @@ class OrderController extends Controller
      */
     public function invoice($id)
     {
-        $order = Order::with(['customer', 'items.unit'])->findOrFail($id);
+        $order = Order::with(['customer', 'items', 'containers'])->findOrFail($id);
         $company = CompanySetting::current();
         $currency = $company->currency ?: 'BDT';
         $amountWords = NumberToWords::make((float) $order->total_amount, $currency === 'BDT' ? 'Taka' : $currency);
@@ -268,8 +276,6 @@ class OrderController extends Controller
                     'order_id' => $order->id,
                     'order_item_id' => $item->id,
                     'item_description' => $item->item_description ?: 'Goods',
-                    'category_id' => $item->category_id,
-                    'unit_id' => $item->unit_id,
                     'received_qty' => $qty,
                     'received_date' => now()->toDateString(),
                     'added_by' => Auth::id(),
@@ -377,6 +383,8 @@ class OrderController extends Controller
             'goods_status' => $data['goods_status'] ?? 'pending',
             'delivery_status' => $data['delivery_status'] ?? 'pending',
             'delivered_date' => $data['delivered_date'] ?? null,
+            'cost_rate_per_cbm' => $data['cost_rate_per_cbm'] ?? 0,
+            'sell_rate_per_cbm' => $data['sell_rate_per_cbm'] ?? 0,
             'discount_type' => $data['discount_type'] ?? 'fixed',
             'discount_value' => $data['discount_value'] ?? 0,
             'remarks' => $data['remarks'] ?? null,
@@ -388,23 +396,38 @@ class OrderController extends Controller
      */
     private function syncItems(Order $order, array $items): void
     {
+        $sellRate = (float) $order->sell_rate_per_cbm;
+
         foreach ($items as $row) {
-            $qty = (float) ($row['quantity'] ?? 0);
-            $rate = (float) ($row['our_asking_price'] ?? 0);
+            $cbm = (float) ($row['cbm'] ?? 0);
+            $declaredValue = (float) ($row['declared_value'] ?? 0);
+
+            // Duty is assessed on the declared invoice value plus the landing charge.
+            $assessableValue = ($row['assessable_value'] ?? '') !== '' && $row['assessable_value'] !== null
+                ? (float) $row['assessable_value']
+                : DutyCalculator::defaultAssessableValue($declaredValue);
+            $duty = DutyCalculator::calculate($assessableValue, $row);
 
             $order->items()->create([
-                'item_description' => $row['item_description'] ?? null,
-                'category_id' => $row['category_id'] ?? null,
+                'hs_code_id' => $row['hs_code_id'] ?? null,
                 'hs_code' => $row['hs_code'] ?? null,
-                'quantity' => $qty,
-                'unit_id' => $row['unit_id'] ?? null,
+                'item_description' => $row['item_description'] ?? null,
+                'quantity' => (float) ($row['quantity'] ?? 0),
                 'package_quantity' => $row['package_quantity'] ?? 0,
                 'net_weight' => $row['net_weight'] ?? null,
-                'cbm' => $row['cbm'] ?? null,
+                'cbm' => $cbm,
                 'actual_weight' => $row['actual_weight'] ?? null,
-                'supplier_asking_price' => $row['supplier_asking_price'] ?? 0,
-                'our_asking_price' => $rate,
-                'line_total' => round($rate * $qty, 2),
+                'declared_value' => $declaredValue,
+                'assessable_value' => $assessableValue,
+                'cd_rate' => (float) ($row['cd_rate'] ?? 0),
+                'rd_rate' => (float) ($row['rd_rate'] ?? 0),
+                'sd_rate' => (float) ($row['sd_rate'] ?? 0),
+                'vat_rate' => (float) ($row['vat_rate'] ?? 0),
+                'ait_rate' => (float) ($row['ait_rate'] ?? 0),
+                'at_rate' => (float) ($row['at_rate'] ?? 0),
+                'duty_amount' => $duty['total'],
+                // Freight is charged by the cubic metre at the order's rate.
+                'line_total' => round($sellRate * $cbm, 2),
             ]);
         }
     }
@@ -541,8 +564,6 @@ class OrderController extends Controller
         return [
             'customers' => Contact::customers()->orderBy('name')->get(),
             'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
-            'categories' => Category::orderBy('name')->get(),
-            'units' => Unit::orderBy('name')->get(),
             'transportationModes' => TransportationMode::orderBy('name')->get(),
             'packingTypes' => PackingType::orderBy('name')->get(),
         ];
@@ -570,21 +591,28 @@ class OrderController extends Controller
             'goods_status' => 'nullable|string|max:50',
             'delivery_status' => 'nullable|in:pending,delivered',
             'delivered_date' => 'nullable|date',
+            'cost_rate_per_cbm' => 'nullable|numeric|min:0',
+            'sell_rate_per_cbm' => 'nullable|numeric|min:0',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.item_description' => 'nullable|string|max:255',
-            'items.*.category_id' => 'nullable|exists:categories,id',
+            'items.*.hs_code_id' => 'nullable|exists:hs_codes,id',
             'items.*.hs_code' => 'nullable|string|max:100',
+            'items.*.item_description' => 'nullable|string|max:255',
             'items.*.quantity' => 'nullable|numeric|min:0',
-            'items.*.unit_id' => 'nullable|exists:units,id',
             'items.*.package_quantity' => 'nullable|numeric|min:0',
             'items.*.net_weight' => 'nullable|numeric|min:0',
             'items.*.cbm' => 'nullable|numeric|min:0',
             'items.*.actual_weight' => 'nullable|numeric|min:0',
-            'items.*.supplier_asking_price' => 'nullable|numeric|min:0',
-            'items.*.our_asking_price' => 'nullable|numeric|min:0',
+            'items.*.declared_value' => 'nullable|numeric|min:0',
+            'items.*.assessable_value' => 'nullable|numeric|min:0',
+            'items.*.cd_rate' => 'nullable|numeric|min:0|max:1000',
+            'items.*.rd_rate' => 'nullable|numeric|min:0|max:1000',
+            'items.*.sd_rate' => 'nullable|numeric|min:0|max:1000',
+            'items.*.vat_rate' => 'nullable|numeric|min:0|max:1000',
+            'items.*.ait_rate' => 'nullable|numeric|min:0|max:1000',
+            'items.*.at_rate' => 'nullable|numeric|min:0|max:1000',
             'payments' => 'nullable|array',
             'payments.*.amount' => 'nullable|numeric|min:0',
             'payments.*.payment_date' => 'nullable|date',

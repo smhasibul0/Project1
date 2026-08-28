@@ -148,10 +148,60 @@ test('a document can be uploaded and deleted', function () {
     @unlink(public_path('upload/containers/'.$doc->file));
 });
 
+test("a container's number and its cost share show on the orders inside it", function () {
+    $container = Container::factory()->create([
+        'container_number' => 'FFAU7873853',
+        'allocation_basis' => 'cbm',
+    ]);
+    $orderA = Order::factory()->create();
+    $orderB = Order::factory()->create();
+    $container->orders()->attach($orderA->id, ['ctn' => 3, 'weight' => 100, 'cbm' => 6]);
+    $container->orders()->attach($orderB->id, ['ctn' => 2, 'weight' => 50, 'cbm' => 2]);
+
+    // Adding a cost to the container splits it across both orders by CBM straight away.
+    $this->actingAs($this->user)->post(route('container.cost.store', $container->id), [
+        'title' => 'Ocean freight',
+        'amount' => 800,
+        'cost_date' => '2026-07-05',
+    ])->assertSessionHas('success');
+
+    expect($orderA->fresh()->container_cost)->toEqual('600.00');  // 6 of 8 CBM
+    expect($orderB->fresh()->container_cost)->toEqual('200.00');  // 2 of 8 CBM
+
+    // The order picks the container number up from the container, no typing needed.
+    expect($orderA->fresh()->containerNumbers())->toBe('FFAU7873853');
+    expect($orderA->fresh()->load('containers')->shareOfContainerCost($container->fresh()))->toEqual(600.0);
+
+    $this->actingAs($this->user)->get(route('order.show', $orderA->id))
+        ->assertOk()
+        ->assertSee('FFAU7873853')
+        ->assertSee('Container No');
+
+    $this->actingAs($this->user)->get(route('orders.index'))
+        ->assertOk()
+        ->assertSee('FFAU7873853');
+});
+
+test('an order in two containers shows both numbers and the summed share', function () {
+    $order = Order::factory()->create();
+    $first = Container::factory()->create(['container_number' => 'AAAU1111111', 'allocation_basis' => 'equal']);
+    $second = Container::factory()->create(['container_number' => 'BBBU2222222', 'allocation_basis' => 'equal']);
+
+    foreach ([$first, $second] as $container) {
+        $container->orders()->attach($order->id, ['ctn' => 1, 'weight' => 10, 'cbm' => 1]);
+        $container->costs()->create(['title' => 'Freight', 'amount' => 300, 'cost_date' => '2026-07-05']);
+    }
+
+    $order->refresh()->recomputeFinancials();
+
+    expect($order->containerNumbers())->toBe('AAAU1111111, BBBU2222222');
+    expect($order->fresh()->container_cost)->toEqual('600.00');
+});
+
 test('the container pages and generated lists load', function () {
     $container = Container::factory()->create();
     $order = Order::factory()->create();
-    $order->items()->create(['item_description' => 'Toys', 'quantity' => 5, 'package_quantity' => 3, 'cbm' => 1.2, 'our_asking_price' => 100, 'supplier_asking_price' => 60, 'line_total' => 500]);
+    $order->items()->create(['item_description' => 'Toys', 'quantity' => 5, 'package_quantity' => 3, 'cbm' => 1.2, 'declared_value' => 300, 'line_total' => 500]);
     $container->orders()->attach($order->id, ['ctn' => 3, 'weight' => 100, 'cbm' => 1.2]);
 
     $this->actingAs($this->user)->get(route('container.index'))->assertOk();

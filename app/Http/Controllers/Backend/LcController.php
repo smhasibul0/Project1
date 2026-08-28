@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Models\Contact;
 use App\Models\CostCategory;
 use App\Models\Lc;
 use App\Models\LcCost;
@@ -18,7 +17,7 @@ class LcController extends Controller
 {
     public function index()
     {
-        $lcs = Lc::with(['order', 'supplier'])->latest()->get();
+        $lcs = Lc::with('order')->latest()->get();
 
         return view('admin.backend.lc.lc', compact('lcs'));
     }
@@ -46,7 +45,7 @@ class LcController extends Controller
 
     public function show($id)
     {
-        $lc = Lc::with(['order.customer', 'supplier', 'addedBy', 'costs.category', 'costs.paymentAccount'])->findOrFail($id);
+        $lc = Lc::with(['order.customer', 'addedBy', 'costs.category', 'costs.paymentAccount'])->findOrFail($id);
 
         return view('admin.backend.lc.show', [
             'lc' => $lc,
@@ -257,7 +256,6 @@ class LcController extends Controller
     {
         return [
             'orders' => Order::with('customer')->latest()->get(),
-            'suppliers' => Contact::suppliers()->orderBy('name')->get(),
             'statuses' => Lc::statuses(),
         ];
     }
@@ -269,7 +267,7 @@ class LcController extends Controller
     {
         return $request->validate([
             'order_id' => 'nullable|exists:orders,id',
-            'supplier_id' => 'nullable|exists:contacts,id',
+            'shipper' => 'nullable|string|max:255',
             'pi_date' => 'nullable|date',
             'pi_no' => 'nullable|string|max:255',
             'lc_number' => 'nullable|string|max:255',

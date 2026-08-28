@@ -14,10 +14,10 @@
 
         <div class="card">
             <div class="card-body row g-3">
-                <div class="col-md-3"><small class="text-muted d-block">Received</small><strong>{{ number_format($stock->received_qty, 2) }} {{ $stock->unit->name ?? '' }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Received</small><strong>{{ number_format($stock->received_qty, 2) }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">Dispatched</small><strong>{{ number_format($stock->dispatched_qty, 2) }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">On Hand</small><strong class="text-primary">{{ number_format($stock->onHand(), 2) }}</strong></div>
-                <div class="col-md-3"><small class="text-muted d-block">Category</small><strong>{{ $stock->category->name ?? '—' }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">HS Code</small><strong>{{ $stock->orderItem->hs_code ?? '—' }}</strong></div>
             </div>
         </div>
 

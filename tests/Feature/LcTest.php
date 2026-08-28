@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Contact;
 use App\Models\Lc;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,13 +11,12 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->user = adminUser();
     $this->order = Order::factory()->create();
-    $this->supplier = Contact::factory()->supplier()->create();
 });
 
 test('an LC is created against an order with auto code and computed bank charges', function () {
     $response = $this->actingAs($this->user)->post(route('lc.store'), [
         'order_id' => $this->order->id,
-        'supplier_id' => $this->supplier->id,
+        'shipper' => 'Hongkong Wandeful Ltd',
         'pi_date' => '2026-01-12',
         'pi_no' => 'RTCHW-01/2026',
         'lc_number' => '9326160005',
@@ -39,7 +37,7 @@ test('an LC is created against an order with auto code and computed bank charges
     $lc = Lc::firstOrFail();
     expect($lc->lc_code)->toBe('LC0001');
     expect($lc->order_id)->toBe($this->order->id);
-    expect($lc->supplier_id)->toBe($this->supplier->id);
+    expect($lc->shipper)->toBe('Hongkong Wandeful Ltd');
     // Bank charges auto = invoice_amount - net_amount_received
     expect($lc->bank_charges)->toEqual('300.00');
     expect($lc->lc_status)->toBe('released');
@@ -56,7 +54,7 @@ test('bank charges are zero when no net amount received is entered', function ()
 
 test('an LC can be created standalone without an order', function () {
     $response = $this->actingAs($this->user)->post(route('lc.store'), [
-        'supplier_id' => $this->supplier->id,
+        'shipper' => 'Hongkong Wandeful Ltd',
         'invoice_amount' => 5000,
         'net_amount_received' => 4900,
     ]);
@@ -158,10 +156,11 @@ test('an LC can be deleted', function () {
 });
 
 test('LC bank charges and charge lines feed the linked order cost and profit', function () {
-    // Order with revenue 500, supplier cost 300.
+    // Order with revenue 500 and 300 of freight cost.
+    $this->order->update(['cost_rate_per_cbm' => 60, 'sell_rate_per_cbm' => 100]);
     $this->order->items()->create([
-        'item_description' => 'Toys', 'quantity' => 5,
-        'our_asking_price' => 100, 'supplier_asking_price' => 60, 'line_total' => 500,
+        'item_description' => 'Toys', 'quantity' => 5, 'cbm' => 5,
+        'declared_value' => 300, 'line_total' => 500,
     ]);
 
     // LC with 300 bank charges (invoice 12000, received 11700).
@@ -174,7 +173,7 @@ test('LC bank charges and charge lines feed the linked order cost and profit', f
 
     $this->order->refresh();
     expect($this->order->lc_cost)->toEqual('300.00');
-    // profit 500 - 300 supplier - 0 order costs - 300 lc = -100
+    // profit 500 - 300 freight - 0 order costs - 300 lc = -100
     expect($this->order->profit)->toEqual('-100.00');
 
     // Add an LC charge line of 200.

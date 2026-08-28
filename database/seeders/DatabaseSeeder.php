@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AccountTypeSeeder::class,
             CustomerGroupSeeder::class,
-            InventorySeeder::class,
+            WarehouseSeeder::class,
             QuotationLookupSeeder::class,
             CompanySettingSeeder::class,
             CostCategorySeeder::class,

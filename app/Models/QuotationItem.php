@@ -22,8 +22,7 @@ class QuotationItem extends Model
             'width' => 'decimal:2',
             'height' => 'decimal:2',
             'cbm' => 'decimal:4',
-            'supplier_asking_price' => 'decimal:2',
-            'our_asking_price' => 'decimal:2',
+            'declared_value' => 'decimal:2',
             'assessable_value' => 'decimal:2',
             'cd_rate' => 'decimal:2',
             'rd_rate' => 'decimal:2',
@@ -33,10 +32,7 @@ class QuotationItem extends Model
             'at_rate' => 'decimal:2',
             'duty_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
-            'unit_profit' => 'decimal:2',
             'total_profit' => 'decimal:2',
-            'profit_margin' => 'decimal:2',
-            'supplier_quotation_date' => 'date',
         ];
     }
 
@@ -45,28 +41,16 @@ class QuotationItem extends Model
         return $this->belongsTo(Quotation::class);
     }
 
-    public function category(): BelongsTo
+    /**
+     * The tariff line this item is declared under.
+     */
+    public function hsCodeRecord(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(Product::class);
-    }
-
-    public function transportationMode(): BelongsTo
-    {
-        return $this->belongsTo(TransportationMode::class);
+        return $this->belongsTo(HsCode::class, 'hs_code_id');
     }
 
     public function packingType(): BelongsTo
     {
         return $this->belongsTo(PackingType::class);
-    }
-
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Contact::class, 'supplier_id');
     }
 }

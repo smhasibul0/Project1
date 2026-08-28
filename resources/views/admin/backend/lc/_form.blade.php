@@ -18,13 +18,9 @@
             <small class="text-muted">Linking an order folds this LC's charges into that order's cost &amp; profit.</small>
         </div>
         <div class="col-md-4">
-            <label class="form-label">Supplier (PI issuer)</label>
-            <select class="form-control" name="supplier_id">
-                <option value="">-- Select Supplier --</option>
-                @foreach($suppliers as $s)
-                    <option value="{{ $s->id }}" @selected(old('supplier_id', $lc?->supplier_id) == $s->id)>{{ $s->name }} @if($s->business_name)({{ $s->business_name }})@endif</option>
-                @endforeach
-            </select>
+            <label class="form-label">Shipper (PI issuer)</label>
+            <input type="text" class="form-control" name="shipper" value="{{ old('shipper', $lc?->shipper) }}"
+                   placeholder="Who issued the proforma invoice">
         </div>
         <div class="col-md-4">
             <label class="form-label">LC Number</label>

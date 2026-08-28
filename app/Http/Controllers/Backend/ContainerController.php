@@ -271,7 +271,7 @@ class ContainerController extends Controller
      */
     public function packingList($id)
     {
-        $container = Container::with(['orders.customer', 'orders.items.unit'])->findOrFail($id);
+        $container = Container::with(['orders.customer', 'orders.items'])->findOrFail($id);
 
         return view('admin.backend.containers.packing_list', compact('container'));
     }
@@ -281,7 +281,7 @@ class ContainerController extends Controller
      */
     public function loadingList($id)
     {
-        $container = Container::with(['orders.customer', 'orders.items.unit'])->findOrFail($id);
+        $container = Container::with(['orders.customer', 'orders.items'])->findOrFail($id);
 
         return view('admin.backend.containers.loading_list', compact('container'));
     }

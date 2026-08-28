@@ -2,8 +2,6 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Backend\AccountTypeController;
-use App\Http\Controllers\Backend\BrandController;
-use App\Http\Controllers\Backend\CategoryController;
 use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\ContainerController;
@@ -11,16 +9,15 @@ use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\ExpenseCategoryController;
+use App\Http\Controllers\Backend\HsCodeController;
 use App\Http\Controllers\Backend\LcController;
 use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
-use App\Http\Controllers\Backend\ProductController;
 use App\Http\Controllers\Backend\QuotationController;
 use App\Http\Controllers\Backend\ReportController;
 use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\TransportationModeController;
-use App\Http\Controllers\Backend\UnitController;
 use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\PortalController;
@@ -136,10 +133,8 @@ Route::middleware(['auth', 'admin', 'can:accounts.manage'])->group(function () {
     });
 });
 
-// Contacts: suppliers, customers & customer groups
-Route::middleware(['auth', 'admin', 'can:contacts.manage'])->group(function () {
-    // Suppliers & Customers share one controller (Contact) filtered by type.
-    Route::get('/suppliers', [ContactController::class, 'suppliers'])->name('suppliers.index');
+// Customers & customer groups
+Route::middleware(['auth', 'admin', 'can:customers.manage'])->group(function () {
     Route::get('/customers', [ContactController::class, 'customers'])->name('customers.index');
     Route::post('/contacts', [ContactController::class, 'store'])->name('contact.store');
     Route::put('/contacts/{id}', [ContactController::class, 'update'])->name('contact.update');
@@ -154,41 +149,27 @@ Route::middleware(['auth', 'admin', 'can:contacts.manage'])->group(function () {
     Route::delete('/customer-groups/{id}', [CustomerGroupController::class, 'destroy'])->name('customer.group.delete');
 });
 
-// Products & Inventory: categories, brands, units, warehouses, products
-Route::middleware(['auth', 'admin', 'can:products.manage'])->group(function () {
-    // Categories
-    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-    Route::post('/categories', [CategoryController::class, 'store'])->name('category.store');
-    Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('category.update');
-    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('category.delete');
+// HS code lookup — available to anyone signed in (admin panel & customer portal
+// both fill item rows from it); the tariff itself is public information.
+Route::middleware('auth')->get('/hs-codes/search', [HsCodeController::class, 'search'])->name('hs.code.search');
 
-    // Brands
-    Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
-    Route::post('/brands', [BrandController::class, 'store'])->name('brand.store');
-    Route::put('/brands/{id}', [BrandController::class, 'update'])->name('brand.update');
-    Route::delete('/brands/{id}', [BrandController::class, 'destroy'])->name('brand.delete');
+// HS codes / customs tariff: bulk import from the published book + manual upkeep
+Route::middleware(['auth', 'admin', 'can:hs.manage'])->group(function () {
+    Route::get('/hs-codes', [HsCodeController::class, 'index'])->name('hs.codes');
+    Route::post('/hs-codes', [HsCodeController::class, 'store'])->name('hs.code.store');
+    Route::post('/hs-codes/import', [HsCodeController::class, 'import'])->name('hs.code.import');
+    Route::put('/hs-codes/{id}', [HsCodeController::class, 'update'])->name('hs.code.update');
+    Route::delete('/hs-codes/{id}', [HsCodeController::class, 'destroy'])->name('hs.code.delete');
+});
 
-    // Units
-    Route::get('/units', [UnitController::class, 'index'])->name('units.index');
-    Route::post('/units', [UnitController::class, 'store'])->name('unit.store');
-    Route::put('/units/{id}', [UnitController::class, 'update'])->name('unit.update');
-    Route::delete('/units/{id}', [UnitController::class, 'destroy'])->name('unit.delete');
-
-    // Warehouses
+// Warehouses
+Route::middleware(['auth', 'admin', 'can:warehouses.manage'])->group(function () {
     Route::get('/warehouses', [WarehouseController::class, 'index'])->name('warehouses.index');
     Route::post('/warehouses', [WarehouseController::class, 'store'])->name('warehouse.store');
     Route::put('/warehouses/{id}', [WarehouseController::class, 'update'])->name('warehouse.update');
     Route::delete('/warehouses/{id}', [WarehouseController::class, 'destroy'])->name('warehouse.delete');
     Route::get('/warehouses/{id}/manage', [WarehouseController::class, 'manage'])->name('warehouse.manage');
     Route::get('/warehouses/manage/exit', [WarehouseController::class, 'exitManage'])->name('warehouse.manage.exit');
-
-    // Products
-    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
-    Route::post('/products', [ProductController::class, 'store'])->name('product.store');
-    Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
-    Route::put('/products/{id}', [ProductController::class, 'update'])->name('product.update');
-    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('product.delete');
 });
 
 // Quotations (+ admin-managed lookups)
@@ -199,6 +180,7 @@ Route::middleware(['auth', 'admin', 'can:quotations.manage'])->group(function ()
     Route::post('/quotations', [QuotationController::class, 'store'])->name('quotation.store');
     Route::post('/quotations/parse-packing-list', [QuotationController::class, 'parsePackingList'])->name('quotation.parse.packing');
     Route::get('/quotations/{id}', [QuotationController::class, 'show'])->name('quotation.show');
+    Route::get('/quotations/{id}/print', [QuotationController::class, 'print'])->name('quotation.print');
     Route::get('/quotations/{id}/edit', [QuotationController::class, 'edit'])->name('quotation.edit');
     Route::put('/quotations/{id}', [QuotationController::class, 'update'])->name('quotation.update');
     Route::post('/quotations/{id}/deny', [QuotationController::class, 'deny'])->name('quotation.deny');
@@ -256,7 +238,7 @@ Route::middleware(['auth', 'admin', 'can:expenses.manage'])->group(function () {
     Route::delete('/expense-categories/{id}', [ExpenseCategoryController::class, 'destroy'])->name('expense.category.delete');
 });
 
-// LC — Letters of Credit (created from a supplier's purchase invoice against an order)
+// LC — Letters of Credit (opened against the shipper's proforma invoice for an order)
 Route::middleware(['auth', 'admin', 'can:lc.manage'])->group(function () {
     Route::get('/lcs', [LcController::class, 'index'])->name('lc.index');
     Route::get('/lcs/create', [LcController::class, 'create'])->name('lc.create');

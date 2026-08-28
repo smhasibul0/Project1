@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Quotation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,10 +42,7 @@ class PortalController extends Controller
 
     public function quotationCreate()
     {
-        return view('portal.quotations.create', [
-            'categories' => Category::orderBy('name')->get(),
-            'products' => Product::with('category')->where('is_active', true)->orderBy('name')->get(),
-        ]);
+        return view('portal.quotations.create');
     }
 
     public function quotationStore(Request $request)
@@ -55,13 +50,13 @@ class PortalController extends Controller
         $data = $request->validate([
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'nullable|exists:products,id',
-            'items.*.category_id' => 'nullable|exists:categories,id',
-            'items.*.description' => 'nullable|string|max:255',
+            'items.*.hs_code_id' => 'nullable|exists:hs_codes,id',
             'items.*.hs_code' => 'nullable|string|max:100',
+            'items.*.description' => 'nullable|string|max:255',
             'items.*.package_quantity' => 'nullable|numeric|min:0',
             'items.*.net_weight' => 'nullable|numeric|min:0',
             'items.*.cbm' => 'nullable|numeric|min:0',
+            'items.*.declared_value' => 'nullable|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($data) {
@@ -76,18 +71,16 @@ class PortalController extends Controller
             ]);
 
             foreach ($data['items'] as $row) {
-                // Customers request items (catalogue or custom) without pricing; admin quotes later.
+                // Customers describe what they are shipping; we price it per CBM later.
                 $quotation->items()->create([
-                    'product_id' => $row['product_id'] ?? null,
-                    'category_id' => $row['category_id'] ?? null,
+                    'hs_code_id' => $row['hs_code_id'] ?? null,
                     'hs_code' => $row['hs_code'] ?? null,
+                    'description' => $row['description'] ?? null,
                     'package_quantity' => $row['package_quantity'] ?? 0,
                     'net_weight' => $row['net_weight'] ?? null,
                     'cbm' => $row['cbm'] ?? null,
-                    'supplier_asking_price' => 0,
-                    'our_asking_price' => 0,
+                    'declared_value' => $row['declared_value'] ?? 0,
                     'line_total' => 0,
-                    'remarks' => $row['description'] ?? null,
                 ]);
             }
         });
@@ -97,7 +90,7 @@ class PortalController extends Controller
 
     public function quotationShow($id)
     {
-        $quotation = Quotation::with(['items.category', 'items.transportationMode', 'items.packingType'])
+        $quotation = Quotation::with(['transportationMode', 'items.packingType'])
             ->where('customer_id', $this->contactId())
             ->findOrFail($id);
 
@@ -140,7 +133,7 @@ class PortalController extends Controller
 
     public function orderShow($id)
     {
-        $order = Order::with(['items.unit', 'tracking.changedBy', 'payments'])
+        $order = Order::with(['items', 'tracking.changedBy', 'payments'])
             ->where('customer_id', $this->contactId())
             ->findOrFail($id);
 

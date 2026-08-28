@@ -70,11 +70,6 @@ class Lc extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Contact::class, 'supplier_id');
-    }
-
     public function costs(): HasMany
     {
         return $this->hasMany(LcCost::class)->latest('id');

@@ -1,71 +1,50 @@
 @extends('admin.admin_master')
 @section('admin')
 
-@php $isCustomer = $type === 'customer'; @endphp
-
 <div class="content">
     <div class="container-xxl">
 
         {{-- Page Header --}}
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">{{ $pageTitle }}</h4>
-                <small class="text-muted">Manage your {{ strtolower($pageTitle) }}</small>
+                <h4 class="fs-18 fw-semibold m-0">Customers</h4>
+                <small class="text-muted">The people and firms whose goods you ship</small>
             </div>
             <div class="text-end">
                 <ol class="breadcrumb m-0 py-0">
                     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active">{{ $pageTitle }}</li>
+                    <li class="breadcrumb-item active">Customers</li>
                 </ol>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h5 class="mb-0">{{ $pageTitle }} List</h5>
+                <h5 class="mb-0">Customer List</h5>
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addContactModal">
-                    <i class="ri-add-line me-1"></i> Add {{ Str::singular($pageTitle) }}
+                    <i class="ri-add-line me-1"></i> Add Customer
                 </button>
             </div>
 
             <div class="card-body p-0">
 
-                <x-data-table id="contactsTable" :export-name="strtolower($pageTitle)">
-                    <table id="contactsTable" class="ct-table" style="min-width: {{ $isCustomer ? '1500px' : '2100px' }};">
+                <x-data-table id="contactsTable" export-name="customers">
+                    <table id="contactsTable" class="ct-table" style="min-width: 1500px;">
                         <thead>
                             <tr>
                                 <th class="dt-noexport">Action</th>
-                                @if($isCustomer)
-                                    <th>Customer ID</th>
-                                    <th>Added On</th>
-                                    <th>Name</th>
-                                    <th>Address</th>
-                                    <th>Mobile</th>
-                                    <th>Email</th>
-                                    <th class="text-end">Credit Limit</th>
-                                    <th>Pay Term</th>
-                                    <th class="text-end">Advance Balance</th>
-                                    <th class="text-end">Total Sale Due</th>
-                                    <th>Lead By</th>
-                                    <th>Remarks</th>
-                                @else
-                                    <th>Supplier ID</th>
-                                    <th>Business Name</th>
-                                    <th>Address</th>
-                                    <th>Mobile</th>
-                                    <th>Email</th>
-                                    <th>Bank Details</th>
-                                    <th data-filter="Country">Country</th>
-                                    <th>Warehouse Address</th>
-                                    <th>Shipping Mark</th>
-                                    <th>More Info</th>
-                                    <th>Remarks</th>
-                                    <th class="text-end">Credit Limit</th>
-                                    <th>Pay Term</th>
-                                    <th class="text-end">Opening Balance</th>
-                                    <th class="text-end">Advance Balance</th>
-                                    <th class="text-end">Total Purchase Due</th>
-                                @endif
+                                <th>Customer ID</th>
+                                <th>Added On</th>
+                                <th>Name</th>
+                                <th>Address</th>
+                                <th>Mobile</th>
+                                <th>Email</th>
+                                <th class="text-end">Credit Limit</th>
+                                <th>Pay Term</th>
+                                <th class="text-end">Advance Balance</th>
+                                <th class="text-end">Total Sale Due</th>
+                                <th>Lead By</th>
+                                <th>Remarks</th>
                                 <th data-filter="Status">Status</th>
                             </tr>
                         </thead>
@@ -93,7 +72,6 @@
                                                     <i class="ri-edit-line me-2"></i>Edit
                                                 </button>
                                             </li>
-                                            @if($isCustomer)
                                             <li>
                                                 @if($contact->user)
                                                     <span class="dropdown-item text-success" style="cursor:default;"><i class="ri-user-follow-line me-2"></i>Login: {{ $contact->user->email }}</span>
@@ -106,7 +84,6 @@
                                                     </button>
                                                 @endif
                                             </li>
-                                            @endif
                                             <li>
                                                 <form action="{{ route('contact.toggle', $contact->id) }}" method="POST" class="m-0">
                                                     @csrf @method('PATCH')
@@ -130,17 +107,10 @@
                                                 </a>
                                             </li>
                                             <li>
-                                                <a class="dropdown-item coming-soon" href="#" data-feature="{{ $isCustomer ? 'Sales' : 'Purchases' }}">
-                                                    <i class="ri-{{ $isCustomer ? 'shopping-cart-2' : 'shopping-bag' }}-line me-2"></i>{{ $isCustomer ? 'Sales' : 'Purchases' }}
+                                                <a class="dropdown-item coming-soon" href="#" data-feature="Shipments">
+                                                    <i class="ri-ship-line me-2"></i>Shipments
                                                 </a>
                                             </li>
-                                            @unless($isCustomer)
-                                            <li>
-                                                <a class="dropdown-item coming-soon" href="#" data-feature="Stock Report">
-                                                    <i class="ri-bar-chart-box-line me-2"></i>Stock Report
-                                                </a>
-                                            </li>
-                                            @endunless
                                             <li>
                                                 <a class="dropdown-item coming-soon" href="#" data-feature="Documents &amp; Note">
                                                     <i class="ri-attachment-line me-2"></i>Documents &amp; Note
@@ -149,45 +119,23 @@
                                         </ul>
                                     </div>
                                 </td>
-                                @if($isCustomer)
-                                    <td><span class="badge bg-light text-dark">{{ $contact->contact_code ?: '—' }}</span></td>
-                                    <td>{{ $contact->created_at?->format('d M Y') }}</td>
-                                    <td>{{ $contact->name }}</td>
-                                    <td>{{ collect([$contact->address_line_1, $contact->city, $contact->country])->filter()->implode(', ') ?: '—' }}</td>
-                                    <td>{{ $contact->mobile ?: '—' }}</td>
-                                    <td>{{ $contact->email ?: '—' }}</td>
-                                    <td class="text-end">{{ $contact->credit_limit !== null ? '৳ '.number_format($contact->credit_limit, 2) : 'No Limit' }}</td>
-                                    <td>{{ $contact->pay_term_number ? $contact->pay_term_number.' '.ucfirst($contact->pay_term_type) : '—' }}</td>
-                                    <td class="text-end">৳ {{ number_format($contact->advance_balance, 2) }}</td>
-                                    <td class="text-end">৳ 0.00</td>
-                                    <td>{{ $contact->lead_by ?: '—' }}</td>
-                                    <td>{{ $contact->notes ?: '—' }}</td>
-                                @else
-                                    <td><span class="badge bg-light text-dark">{{ $contact->contact_code ?: '—' }}</span></td>
-                                    <td>{{ $contact->business_name ?: $contact->name }}</td>
-                                    <td>{{ Str::limit(collect([$contact->address_line_1, $contact->city, $contact->country])->filter()->implode(', '), 30) ?: '—' }}</td>
-                                    <td>{{ $contact->mobile ?: '—' }}</td>
-                                    <td>{{ $contact->email ?: '—' }}</td>
-                                    <td>{{ Str::limit($contact->bank_details, 25) ?: '—' }}</td>
-                                    <td>{{ $contact->country ?: '—' }}</td>
-                                    <td>{{ Str::limit($contact->warehouse_address, 25) ?: '—' }}</td>
-                                    <td>{{ $contact->shipping_mark ?: '—' }}</td>
-                                    <td>{{ Str::limit($contact->more_information, 25) ?: '—' }}</td>
-                                    <td>{{ Str::limit($contact->notes, 25) ?: '—' }}</td>
-                                    <td class="text-end">{{ $contact->credit_limit !== null ? '৳ '.number_format($contact->credit_limit, 2) : 'No Limit' }}</td>
-                                    <td>{{ $contact->pay_term_number ? $contact->pay_term_number.' '.ucfirst($contact->pay_term_type) : '—' }}</td>
-                                    <td class="text-end">৳ {{ number_format($contact->opening_balance, 2) }}</td>
-                                    <td class="text-end">৳ {{ number_format($contact->advance_balance, 2) }}</td>
-                                    <td class="text-end">৳ 0.00</td>
-                                @endif
+                                <td><span class="badge bg-light text-dark">{{ $contact->contact_code ?: '—' }}</span></td>
+                                <td>{{ $contact->created_at?->format('d M Y') }}</td>
+                                <td>{{ $contact->name }}</td>
+                                <td>{{ collect([$contact->address_line_1, $contact->city, $contact->country])->filter()->implode(', ') ?: '—' }}</td>
+                                <td>{{ $contact->mobile ?: '—' }}</td>
+                                <td>{{ $contact->email ?: '—' }}</td>
+                                <td class="text-end">{{ $contact->credit_limit !== null ? '৳ '.number_format($contact->credit_limit, 2) : 'No Limit' }}</td>
+                                <td>{{ $contact->pay_term_number ? $contact->pay_term_number.' '.ucfirst($contact->pay_term_type) : '—' }}</td>
+                                <td class="text-end">৳ {{ number_format($contact->advance_balance, 2) }}</td>
+                                <td class="text-end">৳ 0.00</td>
+                                <td>{{ $contact->lead_by ?: '—' }}</td>
+                                <td>{{ $contact->notes ?: '—' }}</td>
                                 <td>
                                     @if($contact->is_active)
                                         <span class="badge bg-success">Active</span>
                                     @else
                                         <span class="badge bg-secondary">Inactive</span>
-                                    @endif
-                                    @if($contact->type === 'both')
-                                        <span class="badge bg-info">Both</span>
                                     @endif
                                 </td>
                             </tr>
@@ -211,51 +159,42 @@
                 @if($mode === 'edit') @method('PUT') @endif
 
                 <div class="modal-header">
-                    <h5 class="modal-title">{{ ucfirst($mode) }} {{ Str::singular($pageTitle) }}</h5>
+                    <h5 class="modal-title">{{ ucfirst($mode) }} Customer</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body row g-3" style="max-height: 65vh; overflow-y: auto;">
                     <div class="col-md-6">
-                        <label class="form-label">Type</label>
-                        <select class="form-control" name="type" data-field="type">
-                            <option value="{{ $type }}">{{ ucfirst($type) }}</option>
-                            <option value="both">Both (Supplier &amp; Customer)</option>
-                        </select>
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" data-field="name" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Name @if($isCustomer)<span class="text-danger">*</span>@endif</label>
-                        <input type="text" class="form-control" name="name" data-field="name" {{ $isCustomer ? 'required' : '' }}>
+                        <label class="form-label">Business Name</label>
+                        <input type="text" class="form-control" name="business_name" data-field="business_name">
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Business Name @unless($isCustomer)<span class="text-danger">*</span>@endunless</label>
-                        <input type="text" class="form-control" name="business_name" data-field="business_name" {{ $isCustomer ? '' : 'required' }}>
-                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Tax / VAT Number</label>
                         <input type="text" class="form-control" name="tax_number" data-field="tax_number">
                     </div>
-
                     <div class="col-md-6">
                         <label class="form-label">Mobile</label>
                         <input type="text" class="form-control" name="mobile" data-field="mobile">
                     </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Alternate Contact</label>
                         <input type="text" class="form-control" name="alternate_contact" data-field="alternate_contact">
                     </div>
-
                     <div class="col-md-6">
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" name="email" data-field="email">
                     </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Opening Balance</label>
                         <input type="number" step="0.01" class="form-control" name="opening_balance" data-field="opening_balance" value="0">
                     </div>
-
-                    @if($isCustomer)
                     <div class="col-md-6">
                         <label class="form-label">Customer Group</label>
                         <select class="form-control" name="customer_group_id" data-field="customer_group_id">
@@ -265,7 +204,7 @@
                             @endforeach
                         </select>
                     </div>
-                    @endif
+
                     <div class="col-md-6">
                         <label class="form-label">Credit Limit</label>
                         <input type="number" step="0.01" class="form-control" name="credit_limit" data-field="credit_limit" placeholder="Leave blank for no limit">
@@ -309,29 +248,13 @@
                         <input type="text" class="form-control" name="country" data-field="country">
                     </div>
 
-                    @unless($isCustomer)
-                    <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Supplier / Import Details</small></div>
-                    <div class="col-12">
-                        <label class="form-label">Bank Details</label>
-                        <textarea class="form-control" name="bank_details" data-field="bank_details" rows="2" placeholder="Bank name, account no, SWIFT, LC details…"></textarea>
-                    </div>
                     <div class="col-md-6">
-                        <label class="form-label">Warehouse Address</label>
-                        <textarea class="form-control" name="warehouse_address" data-field="warehouse_address" rows="2"></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Shipping Mark</label>
-                        <input type="text" class="form-control" name="shipping_mark" data-field="shipping_mark">
+                        <label class="form-label">Lead By</label>
+                        <input type="text" class="form-control" name="lead_by" data-field="lead_by" placeholder="Who brought this lead">
                     </div>
                     <div class="col-12">
                         <label class="form-label">More Information</label>
                         <textarea class="form-control" name="more_information" data-field="more_information" rows="2"></textarea>
-                    </div>
-                    @endunless
-
-                    <div class="col-md-6">
-                        <label class="form-label">Lead By</label>
-                        <input type="text" class="form-control" name="lead_by" data-field="lead_by" placeholder="Who brought this lead">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Remarks</label>
@@ -360,14 +283,13 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ Str::singular($pageTitle) }} Details</h5>
+                <h5 class="modal-title">Customer Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <table class="table table-sm mb-0">
                     <tbody>
-                        <tr><th style="width:38%">{{ $isCustomer ? 'Customer' : 'Supplier' }} ID</th><td data-view="contact_code"></td></tr>
-                        <tr><th>Type</th><td data-view="type"></td></tr>
+                        <tr><th style="width:38%">Customer ID</th><td data-view="contact_code"></td></tr>
                         <tr><th>Name</th><td data-view="name"></td></tr>
                         <tr><th>Business Name</th><td data-view="business_name"></td></tr>
                         <tr><th>Email</th><td data-view="email"></td></tr>
@@ -379,18 +301,12 @@
                         <tr><th>Pay Term</th><td data-view="_pay_term"></td></tr>
                         <tr><th>Advance Balance</th><td data-view="advance_balance"></td></tr>
                         <tr><th>Address</th><td data-view="_address"></td></tr>
-                        @unless($isCustomer)
-                        <tr><th>Bank Details</th><td data-view="bank_details"></td></tr>
-                        <tr><th>Warehouse Address</th><td data-view="warehouse_address"></td></tr>
-                        <tr><th>Shipping Mark</th><td data-view="shipping_mark"></td></tr>
                         <tr><th>More Information</th><td data-view="more_information"></td></tr>
-                        @endunless
                         <tr><th>Lead By</th><td data-view="lead_by"></td></tr>
                         <tr><th>Remarks</th><td data-view="notes"></td></tr>
                     </tbody>
                 </table>
 
-                @if($isCustomer)
                 <h6 class="fw-semibold mt-3 mb-2"><i class="ri-file-list-3-line me-1"></i>Quotation Requests</h6>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0" id="vcRequests">
@@ -398,7 +314,6 @@
                         <tbody></tbody>
                     </table>
                 </div>
-                @endif
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -407,8 +322,7 @@
     </div>
 </div>
 
-{{-- ===================== Create Login modal (customers) ===================== --}}
-@if($isCustomer)
+{{-- ===================== Create Login modal ===================== --}}
 <div class="modal fade" id="createLoginModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -442,23 +356,19 @@
         </div>
     </div>
 </div>
-@endif
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
     // Create-login modal: fill the form from the clicked customer row.
-    const clModal = document.getElementById('createLoginModal');
-    if (clModal) {
-        clModal.addEventListener('show.bs.modal', function (e) {
-            const btn = e.relatedTarget;
-            if (!btn) { return; }
-            document.getElementById('createLoginForm').action = '{{ url('customers') }}/' + btn.dataset.id + '/create-login';
-            document.getElementById('clName').textContent = btn.dataset.name || 'this customer';
-            document.getElementById('clEmail').value = btn.dataset.email || '';
-            document.getElementById('clUsername').value = btn.dataset.email || '';
-        });
-    }
+    document.getElementById('createLoginModal').addEventListener('show.bs.modal', function (e) {
+        const btn = e.relatedTarget;
+        if (!btn) { return; }
+        document.getElementById('createLoginForm').action = '{{ url('customers') }}/' + btn.dataset.id + '/create-login';
+        document.getElementById('clName').textContent = btn.dataset.name || 'this customer';
+        document.getElementById('clEmail').value = btn.dataset.email || '';
+        document.getElementById('clUsername').value = btn.dataset.email || '';
+    });
 
     // Render Actions dropdowns with a fixed Popper strategy so the responsive-table
     // overflow doesn't clip the open menu.
@@ -503,20 +413,18 @@ document.addEventListener('DOMContentLoaded', function () {
             cell.textContent = (val === null || val === undefined || val === '') ? '—' : val;
         });
 
-        // Customer quotation requests (portal + admin quotations for this customer)
+        // Quotation requests (portal + admin quotations for this customer)
         const reqBody = viewModal.querySelector('#vcRequests tbody');
-        if (reqBody) {
-            const rows = (c.quotations || []);
-            const badge = { draft: 'secondary', requested: 'warning', quoted: 'info', accepted: 'success', negotiating: 'primary', rejected: 'danger', converted: 'dark' };
-            reqBody.innerHTML = rows.length ? rows.map(function (q) {
-                const total = Number(q.grand_total) > 0 ? '৳' + Number(q.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—';
-                const d = (q.query_received_date || q.created_at || '').substring(0, 10);
-                return '<tr><td>' + q.quotation_no + '</td><td>' + d + '</td>'
-                    + '<td><span class="badge bg-' + (badge[q.status] || 'secondary') + ' text-capitalize">' + q.status + '</span></td>'
-                    + '<td class="text-end">' + total + '</td>'
-                    + '<td class="text-end"><a href="{{ url('quotations') }}/' + q.id + '" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a></td></tr>';
-            }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No requests yet.</td></tr>';
-        }
+        const rows = (c.quotations || []);
+        const badge = { draft: 'secondary', requested: 'warning', quoted: 'info', accepted: 'success', negotiating: 'primary', rejected: 'danger', converted: 'dark' };
+        reqBody.innerHTML = rows.length ? rows.map(function (q) {
+            const total = Number(q.grand_total) > 0 ? '৳' + Number(q.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—';
+            const d = (q.query_received_date || q.created_at || '').substring(0, 10);
+            return '<tr><td>' + q.quotation_no + '</td><td>' + d + '</td>'
+                + '<td><span class="badge bg-' + (badge[q.status] || 'secondary') + ' text-capitalize">' + q.status + '</span></td>'
+                + '<td class="text-end">' + total + '</td>'
+                + '<td class="text-end"><a href="{{ url('quotations') }}/' + q.id + '" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a></td></tr>';
+        }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No requests yet.</td></tr>';
     });
 
     // Delegated so handlers survive table paging / row reordering.
@@ -526,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (del) {
             const form = del.closest('form');
             Swal.fire({
-                title: 'Delete this contact?',
+                title: 'Delete this customer?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, delete',
@@ -549,7 +457,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     });
-
 
 });
 </script>

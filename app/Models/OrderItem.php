@@ -20,8 +20,15 @@ class OrderItem extends Model
             'net_weight' => 'decimal:3',
             'cbm' => 'decimal:4',
             'actual_weight' => 'decimal:3',
-            'supplier_asking_price' => 'decimal:2',
-            'our_asking_price' => 'decimal:2',
+            'declared_value' => 'decimal:2',
+            'assessable_value' => 'decimal:2',
+            'cd_rate' => 'decimal:2',
+            'rd_rate' => 'decimal:2',
+            'sd_rate' => 'decimal:2',
+            'vat_rate' => 'decimal:2',
+            'ait_rate' => 'decimal:2',
+            'at_rate' => 'decimal:2',
+            'duty_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
         ];
     }
@@ -31,13 +38,11 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function category(): BelongsTo
+    /**
+     * The tariff line this item is declared under.
+     */
+    public function hsCodeRecord(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
-    }
-
-    public function unit(): BelongsTo
-    {
-        return $this->belongsTo(Unit::class);
+        return $this->belongsTo(HsCode::class, 'hs_code_id');
     }
 }

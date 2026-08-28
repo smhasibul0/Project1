@@ -25,11 +25,6 @@ class Warehouse extends Model
         ];
     }
 
-    public function stocks(): HasMany
-    {
-        return $this->hasMany(ProductStock::class);
-    }
-
     /**
      * Goods lots received into this warehouse from orders.
      */

@@ -12,7 +12,7 @@ class InventoryController extends Controller
 {
     public function index()
     {
-        $stocks = WarehouseStock::with(['order', 'category', 'unit'])
+        $stocks = WarehouseStock::with(['order', 'orderItem'])
             ->where('warehouse_id', CurrentWarehouse::id())
             ->latest('id')->get();
 
@@ -25,7 +25,7 @@ class InventoryController extends Controller
     public function show($id)
     {
         $stock = $this->findStock($id);
-        $stock->load(['order', 'category', 'unit', 'movements.movedBy']);
+        $stock->load(['order', 'orderItem', 'movements.movedBy']);
 
         return view('warehouse.inventory.show', ['stock' => $stock]);
     }

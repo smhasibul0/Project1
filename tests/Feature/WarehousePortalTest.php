@@ -484,6 +484,10 @@ test('a salary payment cannot exceed the remaining due for the month', function 
 });
 
 test('the staff page shows a monthly salary summary filtered by year', function () {
+    // The summary runs up to the current month, so pin "now" instead of letting
+    // the assertions drift as the real calendar moves on.
+    $this->travelTo('2026-07-15');
+
     $warehouse = Warehouse::factory()->create();
     $user = warehouseUser($warehouse);
     $staff = WarehouseStaff::create(['warehouse_id' => $warehouse->id, 'name' => 'Karim', 'monthly_salary' => 5000, 'join_date' => '2025-11-05']);

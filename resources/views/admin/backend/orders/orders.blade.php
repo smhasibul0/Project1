@@ -32,6 +32,7 @@
                                 <th>Order No</th>
                                 <th>Date</th>
                                 <th>Customer</th>
+                                <th>Container No</th>
                                 <th>Items</th>
                                 <th class="text-end">Total</th>
                                 <th class="text-end">Received</th>
@@ -82,6 +83,7 @@
                                 <td><span class="badge bg-light text-dark">{{ $o->order_no }}</span></td>
                                 <td>{{ $o->order_date?->format('d M Y') ?: '—' }}</td>
                                 <td>{{ $o->customer->name ?? '—' }}</td>
+                                <td>{{ $o->containerNumbers() ?: '—' }}</td>
                                 <td>{{ $o->items_count }}</td>
                                 <td class="text-end">৳ {{ number_format($o->total_amount, 2) }}</td>
                                 <td class="text-end">৳ {{ number_format($o->received_amount, 2) }}</td>

@@ -20,7 +20,7 @@
                                 <th class="dt-noexport">Action</th>
                                 <th>Item</th>
                                 <th>Order</th>
-                                <th>Category</th>
+                                <th>HS Code</th>
                                 <th class="text-end">Received</th>
                                 <th class="text-end">Dispatched</th>
                                 <th class="text-end">On Hand</th>
@@ -43,10 +43,10 @@
                                 </td>
                                 <td>{{ $s->item_description }}</td>
                                 <td>{{ $s->order->order_no ?? '—' }}</td>
-                                <td>{{ $s->category->name ?? '—' }}</td>
+                                <td>{{ $s->orderItem->hs_code ?? '—' }}</td>
                                 <td class="text-end">{{ number_format($s->received_qty, 2) }}</td>
                                 <td class="text-end">{{ number_format($s->dispatched_qty, 2) }}</td>
-                                <td class="text-end fw-semibold">{{ number_format($s->onHand(), 2) }} {{ $s->unit->name ?? '' }}</td>
+                                <td class="text-end fw-semibold">{{ number_format($s->onHand(), 2) }}</td>
                                 <td>{{ $s->received_date?->format('d M Y') ?: '—' }}</td>
                             </tr>
                             @endforeach

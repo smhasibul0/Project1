@@ -18,7 +18,6 @@ class ContactFactory extends Factory
     public function definition(): array
     {
         return [
-            'type' => 'customer',
             'business_name' => fake()->company(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
@@ -31,18 +30,10 @@ class ContactFactory extends Factory
     }
 
     /**
-     * A supplier contact.
-     */
-    public function supplier(): static
-    {
-        return $this->state(fn () => ['type' => 'supplier']);
-    }
-
-    /**
-     * A customer contact.
+     * Kept so existing tests read clearly — every contact is a customer.
      */
     public function customer(): static
     {
-        return $this->state(fn () => ['type' => 'customer']);
+        return $this->state(fn () => []);
     }
 }

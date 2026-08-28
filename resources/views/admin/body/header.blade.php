@@ -139,17 +139,14 @@ window.__adminSearch = [
     @can('costs.manage')
     { l: 'Cost Categories', i: 'ri-price-tag-3-line', u: '{{ route('cost.categories') }}', k: 'costs' },
     @endcan
-    @can('products.manage')
-    { l: 'Products', i: 'ri-box-3-line', u: '{{ route('products.index') }}', k: 'catalogue inventory' },
-    { l: 'Add Product', i: 'ri-add-line', u: '{{ route('products.create') }}', k: 'new product' },
-    { l: 'Categories', i: 'ri-folder-line', u: '{{ route('categories.index') }}', k: 'category' },
-    { l: 'Brands', i: 'ri-bookmark-line', u: '{{ route('brands.index') }}', k: 'brand' },
-    { l: 'Units', i: 'ri-ruler-line', u: '{{ route('units.index') }}', k: 'unit measure' },
+    @can('hs.manage')
+    { l: 'HS Codes', i: 'ri-box-3-line', u: '{{ route('hs.codes') }}', k: 'tariff customs duty hs code' },
+    @endcan
+    @can('warehouses.manage')
     { l: 'Warehouses', i: 'ri-store-2-line', u: '{{ route('warehouses.index') }}', k: 'warehouse stock' },
     @endcan
-    @can('contacts.manage')
-    { l: 'Suppliers', i: 'ri-user-2-line', u: '{{ route('suppliers.index') }}', k: 'vendor' },
-    { l: 'Customers', i: 'ri-user-3-line', u: '{{ route('customers.index') }}', k: 'client buyer' },
+    @can('customers.manage')
+    { l: 'Customers', i: 'ri-user-3-line', u: '{{ route('customers.index') }}', k: 'client buyer contact' },
     { l: 'Customer Groups', i: 'ri-group-line', u: '{{ route('customer.groups') }}', k: 'groups' },
     @endcan
     @can('accounts.manage')
