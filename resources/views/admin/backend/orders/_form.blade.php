@@ -48,7 +48,9 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Shipping Mark</label>
-            <input type="text" class="form-control" name="shipping_mark" value="{{ old('shipping_mark', $order?->shipping_mark) }}">
+            <input type="text" class="form-control" id="shippingMark" name="shipping_mark"
+                   value="{{ old('shipping_mark', $order?->shipping_mark) }}" placeholder="from the customer">
+            <small class="text-muted">Filled from the customer — overwrite it for a one-off mark.</small>
         </div>
         <div class="col-md-3">
             <label class="form-label">Transport Mode</label>
@@ -381,6 +383,24 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('addPaymentBtn').addEventListener('click', () => addPayment());
     ['discountType', 'discountValue', 'costRate', 'sellRate'].forEach(id => document.getElementById(id).addEventListener('input', recalc));
     document.getElementById('discountType').addEventListener('change', recalc);
+
+    // Picking a customer stamps their shipping mark on the order. A mark already
+    // saved on this order stands; clearing the box opens it up to the customer's again.
+    const shippingMark = document.getElementById('shippingMark');
+    if (shippingMark.value.trim()) { shippingMark.dataset.touched = '1'; }
+
+    shippingMark.addEventListener('input', function () {
+        if (shippingMark.value.trim()) {
+            shippingMark.dataset.touched = '1';
+        } else {
+            delete shippingMark.dataset.touched;
+        }
+    });
+
+    document.addEventListener('customer:selected', function (e) {
+        if (shippingMark.dataset.touched) { return; }
+        shippingMark.value = e.detail.shippingMark || '';
+    });
 
     const items = @json($order?->items ?? []);
     const payments = @json($order?->payments ?? []);

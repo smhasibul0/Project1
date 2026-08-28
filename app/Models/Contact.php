@@ -33,6 +33,9 @@ class Contact extends Model
     /** Prefix of the human-readable customer code (CO0001, CO0002, …). */
     private const CODE_PREFIX = 'CO';
 
+    /** Prefix every shipping mark carries: RTC/MOM, RTC/KARI, … */
+    public const SHIPPING_MARK_PREFIX = 'RTC';
+
     protected static function booted(): void
     {
         static::creating(function (Contact $contact) {
@@ -52,6 +55,40 @@ class Contact extends Model
         $next = $last ? ((int) substr($last, strlen(self::CODE_PREFIX))) + 1 : 1;
 
         return self::CODE_PREFIX.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Propose a shipping mark for a customer: the prefix plus the first three
+     * letters of their name. If that mark is already another customer's, it
+     * widens to four letters and then counts up, so no two customers share one.
+     */
+    public static function suggestShippingMark(?string $name, ?string $businessName = null, ?int $ignoreId = null): string
+    {
+        $letters = strtoupper(preg_replace('/[^a-z]/i', '', $name ?: $businessName ?: '') ?? '');
+
+        if ($letters === '') {
+            $letters = 'CUS';
+        }
+
+        $isTaken = fn (string $mark): bool => static::where('shipping_mark', $mark)
+            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+
+        foreach ([3, 4] as $length) {
+            $candidate = self::SHIPPING_MARK_PREFIX.'/'.substr($letters, 0, $length);
+
+            if (! $isTaken($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $base = self::SHIPPING_MARK_PREFIX.'/'.substr($letters, 0, 4);
+
+        for ($suffix = 2; $isTaken($base.$suffix); $suffix++) {
+            // Walk up until an unused mark turns up.
+        }
+
+        return $base.$suffix;
     }
 
     public function customerGroup(): BelongsTo

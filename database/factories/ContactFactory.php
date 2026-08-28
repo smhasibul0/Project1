@@ -20,6 +20,7 @@ class ContactFactory extends Factory
         return [
             'business_name' => fake()->company(),
             'name' => fake()->name(),
+            'shipping_mark' => Contact::SHIPPING_MARK_PREFIX.'/'.strtoupper(fake()->unique()->lexify('????')),
             'email' => fake()->unique()->safeEmail(),
             'mobile' => fake()->numerify('01#########'),
             'tax_number' => fake()->numerify('TIN#######'),

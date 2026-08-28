@@ -34,6 +34,7 @@
                             <tr>
                                 <th class="dt-noexport">Action</th>
                                 <th>Customer ID</th>
+                                <th>Shipping Mark</th>
                                 <th>Added On</th>
                                 <th>Name</th>
                                 <th>Address</th>
@@ -120,6 +121,7 @@
                                     </div>
                                 </td>
                                 <td><span class="badge bg-light text-dark">{{ $contact->contact_code ?: '—' }}</span></td>
+                                <td><span class="badge bg-primary-subtle text-primary">{{ $contact->shipping_mark ?: '—' }}</span></td>
                                 <td>{{ $contact->created_at?->format('d M Y') }}</td>
                                 <td>{{ $contact->name }}</td>
                                 <td>{{ collect([$contact->address_line_1, $contact->city, $contact->country])->filter()->implode(', ') ?: '—' }}</td>
@@ -174,9 +176,16 @@
                     </div>
 
                     <div class="col-md-6">
+                        <label class="form-label">Shipping Mark</label>
+                        <input type="text" class="form-control shipping-mark-input" name="shipping_mark" data-field="shipping_mark"
+                               placeholder="filled in from the name">
+                        <small class="text-muted shipping-mark-hint">Suggested from the customer's name — edit it if you prefer another.</small>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">Tax / VAT Number</label>
                         <input type="text" class="form-control" name="tax_number" data-field="tax_number">
                     </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Mobile</label>
                         <input type="text" class="form-control" name="mobile" data-field="mobile">
@@ -290,6 +299,7 @@
                 <table class="table table-sm mb-0">
                     <tbody>
                         <tr><th style="width:38%">Customer ID</th><td data-view="contact_code"></td></tr>
+                        <tr><th>Shipping Mark</th><td data-view="shipping_mark"></td></tr>
                         <tr><th>Name</th><td data-view="name"></td></tr>
                         <tr><th>Business Name</th><td data-view="business_name"></td></tr>
                         <tr><th>Email</th><td data-view="email"></td></tr>
@@ -360,6 +370,41 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
+    // ----- Shipping mark: suggest one from the name, leave it editable -----
+    // The suggestion is asked of the server because uniqueness is a database question.
+    document.querySelectorAll('#addContactForm, #editContactForm').forEach(function (form) {
+        const mark = form.querySelector('.shipping-mark-input');
+        const name = form.querySelector('[data-field="name"]');
+        const business = form.querySelector('[data-field="business_name"]');
+        const id = () => (form.action.match(/\/(\d+)$/) || [])[1] || '';
+        let timer = null;
+
+        // Once it's typed in by hand, stop proposing over the top of it.
+        mark.addEventListener('input', function () { mark.dataset.touched = '1'; });
+
+        function suggest() {
+            if (mark.dataset.touched || (!name.value.trim() && !business.value.trim())) { return; }
+
+            clearTimeout(timer);
+            timer = setTimeout(async function () {
+                const query = new URLSearchParams({
+                    name: name.value, business_name: business.value, ignore: id(),
+                });
+                try {
+                    const response = await fetch('{{ route('customer.shipping.mark') }}?' + query, {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    const data = await response.json();
+                    if (!mark.dataset.touched) { mark.value = data.shipping_mark; }
+                } catch (e) {
+                    // No suggestion is no problem — the field can be filled in by hand.
+                }
+            }, 300);
+        }
+
+        [name, business].forEach(field => field.addEventListener('input', suggest));
+    });
+
     // Create-login modal: fill the form from the clicked customer row.
     document.getElementById('createLoginModal').addEventListener('show.bs.modal', function (e) {
         const btn = e.relatedTarget;
@@ -394,6 +439,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 field.value = (c[key] ?? '') === null ? '' : (c[key] ?? '');
             }
         });
+
+        // A customer who already has a mark keeps it; renaming them won't move it.
+        const mark = form.querySelector('.shipping-mark-input');
+        if (c.shipping_mark) { mark.dataset.touched = '1'; } else { delete mark.dataset.touched; }
+    });
+
+    // A fresh Add form starts open to suggestions again.
+    document.getElementById('addContactModal').addEventListener('show.bs.modal', function () {
+        delete document.querySelector('#addContactForm .shipping-mark-input').dataset.touched;
     });
 
     // ----- View modal: read-only details -----

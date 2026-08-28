@@ -35,9 +35,10 @@
             <div class="cust-item"
                  data-id="{{ $c->id }}"
                  data-label="{{ $c->name }}{{ $c->business_name ? ' ('.$c->business_name.')' : '' }}"
+                 data-shipping-mark="{{ $c->shipping_mark }}"
                  data-search="{{ strtolower(trim(($c->contact_code ?? '').' '.$c->name.' '.($c->business_name ?? '').' '.($c->mobile ?? ''))) }}">
                 <div class="nm">{{ $c->name }}@if($c->business_name) <span class="text-muted fw-normal">· {{ $c->business_name }}</span>@endif</div>
-                <div class="mt">{{ $c->contact_code ?: '—' }}@if($c->mobile) · {{ $c->mobile }}@endif</div>
+                <div class="mt">{{ $c->contact_code ?: '—' }}@if($c->shipping_mark) · {{ $c->shipping_mark }}@endif @if($c->mobile) · {{ $c->mobile }}@endif</div>
             </div>
         @endforeach
     </div>
@@ -79,12 +80,26 @@
         open();
     });
 
+    // Let the page around this picker react to who was chosen — the order form
+    // fills the shipping mark from it.
+    function announce(item) {
+        wrap.dispatchEvent(new CustomEvent('customer:selected', {
+            bubbles: true,
+            detail: {
+                id: item ? item.dataset.id : '',
+                label: item ? item.dataset.label : '',
+                shippingMark: item ? (item.dataset.shippingMark || '') : '',
+            },
+        }));
+    }
+
     items.forEach(function (it) {
         it.addEventListener('click', function () {
             value.value = it.dataset.id;
             search.value = it.dataset.label;
             toggleClear();
             close();
+            announce(it);
         });
     });
 
@@ -93,6 +108,7 @@
         search.value = '';
         toggleClear();
         search.focus();
+        announce(null);
     });
 
     document.addEventListener('click', function (e) {

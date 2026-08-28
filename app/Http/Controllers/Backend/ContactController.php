@@ -7,9 +7,11 @@ use App\Models\Contact;
 use App\Models\CustomerGroup;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class ContactController extends Controller
 {
@@ -26,10 +28,29 @@ class ContactController extends Controller
         ]);
     }
 
+    /**
+     * Propose a shipping mark while a customer is being typed in (AJAX). The
+     * uniqueness check needs the database, so the suggestion comes from here
+     * rather than being built in the browser.
+     */
+    public function shippingMarkSuggestion(Request $request): JsonResponse
+    {
+        return response()->json([
+            'shipping_mark' => Contact::suggestShippingMark(
+                $request->input('name'),
+                $request->input('business_name'),
+                $request->integer('ignore') ?: null,
+            ),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $this->validated($request);
         $data['name'] = $data['name'] ?? $data['business_name'];
+        // Left blank, the customer takes the mark we suggested for them.
+        $data['shipping_mark'] = ($data['shipping_mark'] ?? null)
+            ?: Contact::suggestShippingMark($data['name'], $data['business_name'] ?? null);
         $data['is_active'] = $request->has('is_active') ? 1 : 0;
         $data['opening_balance'] = $request->opening_balance ?? 0;
         $data['added_by'] = Auth::id();
@@ -43,8 +64,10 @@ class ContactController extends Controller
     {
         $contact = Contact::findOrFail($id);
 
-        $data = $this->validated($request);
+        $data = $this->validated($request, $contact->id);
         $data['name'] = $data['name'] ?? $data['business_name'];
+        $data['shipping_mark'] = ($data['shipping_mark'] ?? null)
+            ?: Contact::suggestShippingMark($data['name'], $data['business_name'] ?? null, $contact->id);
         $data['is_active'] = $request->has('is_active') ? 1 : 0;
         $data['opening_balance'] = $request->opening_balance ?? 0;
 
@@ -102,12 +125,16 @@ class ContactController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?int $id = null): array
     {
         return $request->validate([
             // A customer needs at least one label: a person name or a business name.
             'name' => 'nullable|string|max:255|required_without:business_name',
             'business_name' => 'nullable|string|max:255|required_without:name',
+            'shipping_mark' => [
+                'nullable', 'string', 'max:255',
+                Rule::unique('contacts', 'shipping_mark')->ignore($id),
+            ],
             'email' => 'nullable|email|max:255',
             'mobile' => 'nullable|string|max:50',
             'alternate_contact' => 'nullable|string|max:50',

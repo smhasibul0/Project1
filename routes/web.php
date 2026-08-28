@@ -136,6 +136,7 @@ Route::middleware(['auth', 'admin', 'can:accounts.manage'])->group(function () {
 // Customers & customer groups
 Route::middleware(['auth', 'admin', 'can:customers.manage'])->group(function () {
     Route::get('/customers', [ContactController::class, 'customers'])->name('customers.index');
+    Route::get('/customers/shipping-mark', [ContactController::class, 'shippingMarkSuggestion'])->name('customer.shipping.mark');
     Route::post('/contacts', [ContactController::class, 'store'])->name('contact.store');
     Route::put('/contacts/{id}', [ContactController::class, 'update'])->name('contact.update');
     Route::patch('/contacts/{id}/toggle-active', [ContactController::class, 'toggleActive'])->name('contact.toggle');

@@ -49,6 +49,71 @@ test('a customer gets an auto-generated CO code and stores lead_by', function ()
     expect($contact->lead_by)->toBe('Trade Show Referral');
 });
 
+test('a new customer gets a shipping mark from their name', function () {
+    $this->actingAs($this->user)->post(route('contact.store'), ['name' => 'Momin Traders']);
+
+    expect(Contact::firstOrFail()->shipping_mark)->toBe('RTC/MOM');
+});
+
+test('shipping marks stay unique when names collide', function () {
+    Contact::factory()->create(['name' => 'Momin Traders', 'shipping_mark' => 'RTC/MOM']);
+
+    // Three letters taken, so it widens to four.
+    expect(Contact::suggestShippingMark('Mominul Haque'))->toBe('RTC/MOMI');
+
+    // Both taken, so it counts up from the four-letter form.
+    Contact::factory()->create(['name' => 'Momtaz Ltd', 'shipping_mark' => 'RTC/MOMT']);
+    expect(Contact::suggestShippingMark('Momtahina Enterprise'))->toBe('RTC/MOMT2');
+
+    $this->actingAs($this->user)->post(route('contact.store'), ['name' => 'Momtahin Corp']);
+    expect(Contact::where('name', 'Momtahin Corp')->value('shipping_mark'))->toBe('RTC/MOMT2');
+
+    // And again, so two customers never share a mark.
+    $this->actingAs($this->user)->post(route('contact.store'), ['name' => 'Momtahir Sons']);
+    expect(Contact::where('name', 'Momtahir Sons')->value('shipping_mark'))->toBe('RTC/MOMT3');
+    expect(Contact::pluck('shipping_mark')->duplicates())->toBeEmpty();
+});
+
+test('a shipping mark typed in by hand is kept, and cannot duplicate another customer', function () {
+    $this->actingAs($this->user)->post(route('contact.store'), [
+        'name' => 'Karim Brothers',
+        'shipping_mark' => 'RTC/KB-01',
+    ]);
+    expect(Contact::firstOrFail()->shipping_mark)->toBe('RTC/KB-01');
+
+    $this->actingAs($this->user)->post(route('contact.store'), [
+        'name' => 'Kabir Steel',
+        'shipping_mark' => 'RTC/KB-01',
+    ])->assertSessionHasErrors('shipping_mark');
+
+    expect(Contact::count())->toBe(1);
+});
+
+test('a customer keeps their shipping mark when their name changes', function () {
+    $contact = Contact::factory()->create(['name' => 'Momin Traders', 'shipping_mark' => 'RTC/MOM']);
+
+    $this->actingAs($this->user)->put(route('contact.update', $contact->id), [
+        'name' => 'Zahir Traders',
+        'shipping_mark' => 'RTC/MOM',
+    ])->assertSessionHasNoErrors();
+
+    expect($contact->fresh()->shipping_mark)->toBe('RTC/MOM');
+});
+
+test('the shipping mark suggestion endpoint answers as a customer is typed in', function () {
+    Contact::factory()->create(['shipping_mark' => 'RTC/MOM']);
+
+    $this->actingAs($this->user)
+        ->getJson(route('customer.shipping.mark', ['name' => 'Momin Traders']))
+        ->assertOk()
+        ->assertJson(['shipping_mark' => 'RTC/MOMI']);
+
+    // A name with no letters in it still gets something usable.
+    $this->actingAs($this->user)
+        ->getJson(route('customer.shipping.mark', ['name' => '12345']))
+        ->assertJson(['shipping_mark' => 'RTC/CUS']);
+});
+
 test('customer codes increment sequentially', function () {
     Contact::factory()->customer()->create();
     Contact::factory()->customer()->create();

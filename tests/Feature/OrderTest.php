@@ -90,6 +90,15 @@ test('an order can be created from an accepted quotation', function () {
     expect($quotation->fresh()->status)->toBe('converted');
 });
 
+test('an order converted from a quotation carries the customer shipping mark', function () {
+    $this->customer->update(['shipping_mark' => 'RTC/MOM']);
+    $quotation = Quotation::factory()->create(['status' => 'accepted', 'customer_id' => $this->customer->id]);
+
+    $this->actingAs($this->user)->post(route('order.from.quotation', $quotation->id));
+
+    expect(Order::firstOrFail()->shipping_mark)->toBe('RTC/MOM');
+});
+
 test('a quotation can be converted whatever status it is in', function () {
     $quotation = Quotation::factory()->create(['status' => 'draft', 'customer_id' => $this->customer->id]);
 

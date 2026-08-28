@@ -45,7 +45,7 @@ class OrderController extends Controller
      */
     public function fromQuotation($quotationId)
     {
-        $quotation = Quotation::with(['items', 'expenses'])->findOrFail($quotationId);
+        $quotation = Quotation::with(['customer', 'items', 'expenses'])->findOrFail($quotationId);
 
         if ($quotation->status === 'converted') {
             $existing = Order::where('quotation_id', $quotation->id)->latest('id')->first();
@@ -61,6 +61,7 @@ class OrderController extends Controller
                 'customer_id' => $quotation->customer_id,
                 'transportation_mode_id' => $quotation->transportation_mode_id,
                 'country_of_loading' => $quotation->country_of_loading,
+                'shipping_mark' => $quotation->customer?->shipping_mark,
                 'goods_status' => 'pending',
                 'delivery_status' => 'pending',
                 // The quoted rates carry over as the order's rates.
