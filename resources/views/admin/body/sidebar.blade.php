@@ -243,6 +243,30 @@
                 </li>
                 @endcan
 
+                <!-- Fixed assets -->
+                @can('assets.manage')
+                <li>
+                    <a href="#sidebarAssets" data-bs-toggle="collapse">
+                        <i data-feather="package"></i>
+                        <span> Asset Management </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarAssets">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('assets.index') }}" class="tp-link">Asset Register</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('asset.depreciation') }}" class="tp-link">Depreciation</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('asset.categories') }}" class="tp-link">Asset Categories</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
                 <!-- Payment accounts -->
                 @can('accounts.manage')
                 <li>

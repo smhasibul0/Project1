@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Backend\AccountTypeController;
+use App\Http\Controllers\Backend\AssetCategoryController;
+use App\Http\Controllers\Backend\AssetController;
+use App\Http\Controllers\Backend\AssetDepreciationController;
 use App\Http\Controllers\Backend\CompanySettingController;
 use App\Http\Controllers\Backend\ContactController;
 use App\Http\Controllers\Backend\ContainerController;
@@ -271,6 +274,29 @@ Route::middleware(['auth', 'admin', 'can:office.expenses.manage'])->group(functi
     Route::post('/office-cost-types', [OfficeCostTypeController::class, 'store'])->name('office.cost.type.store');
     Route::put('/office-cost-types/{id}', [OfficeCostTypeController::class, 'update'])->name('office.cost.type.update');
     Route::delete('/office-cost-types/{id}', [OfficeCostTypeController::class, 'destroy'])->name('office.cost.type.delete');
+});
+
+// Fixed assets — the register of what the company owns, plus the monthly
+// depreciation posted against it.
+Route::middleware(['auth', 'admin', 'can:assets.manage'])->group(function () {
+    Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
+    Route::post('/assets', [AssetController::class, 'store'])->name('asset.store');
+    Route::put('/assets/{id}', [AssetController::class, 'update'])->name('asset.update');
+    Route::post('/assets/{id}/dispose', [AssetController::class, 'dispose'])->name('asset.dispose');
+    Route::post('/assets/{id}/restore', [AssetController::class, 'restore'])->name('asset.restore');
+    Route::delete('/assets/{id}', [AssetController::class, 'destroy'])->name('asset.delete');
+
+    // Depreciation is posted a month at a time, and can be reversed the same way.
+    Route::get('/asset-depreciation', [AssetDepreciationController::class, 'index'])->name('asset.depreciation');
+    Route::post('/asset-depreciation/generate', [AssetDepreciationController::class, 'generate'])->name('asset.depreciation.generate');
+    Route::delete('/asset-depreciation/month', [AssetDepreciationController::class, 'destroyMonth'])->name('asset.depreciation.month.delete');
+    Route::delete('/asset-depreciation/{id}', [AssetDepreciationController::class, 'destroy'])->name('asset.depreciation.delete');
+
+    // Categories carry the depreciation defaults new assets start from.
+    Route::get('/asset-categories', [AssetCategoryController::class, 'index'])->name('asset.categories');
+    Route::post('/asset-categories', [AssetCategoryController::class, 'store'])->name('asset.category.store');
+    Route::put('/asset-categories/{id}', [AssetCategoryController::class, 'update'])->name('asset.category.update');
+    Route::delete('/asset-categories/{id}', [AssetCategoryController::class, 'destroy'])->name('asset.category.delete');
 });
 
 // LC — Letters of Credit (opened against the shipper's proforma invoice for an order)

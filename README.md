@@ -9,7 +9,7 @@ metre with every taka of duty, cost and profit tracked along the way.**
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![Pest](https://img.shields.io/badge/Pest-3-8A2BE2?logo=pest&logoColor=white)](https://pestphp.com)
-[![Tests](https://img.shields.io/badge/tests-261%20passing-3fb950)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-328%20passing-3fb950)](#-testing)
 [![Code Style](https://img.shields.io/badge/code%20style-Pint-FF2D20)](https://laravel.com/docs/pint)
 
 </div>

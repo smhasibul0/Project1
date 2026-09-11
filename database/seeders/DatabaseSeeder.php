@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             CostCategorySeeder::class,
             ExpenseCategorySeeder::class,
             OfficeCostTypeSeeder::class,
+            AssetCategorySeeder::class,
         ]);
 
         User::factory()->create([
