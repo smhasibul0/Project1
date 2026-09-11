@@ -32,6 +32,7 @@ class RolePermissionSeeder extends Seeder
             'Orders' => [
                 'orders.manage' => 'Manage orders & tracking',
                 'orders.update-status' => 'Update order tracking status only',
+                'orders.scan' => 'Scan carton QR codes & count them through each stage',
             ],
             'Order Costs' => [
                 'costs.manage' => 'Manage order costs',
@@ -76,15 +77,17 @@ class RolePermissionSeeder extends Seeder
         // Admin gets everything (also bypasses gates, but sync for a complete matrix).
         $admin->permissions()->sync(Permission::pluck('id'));
 
-        // Customer & Warehouse: no admin-panel permissions (their own portals gate access by role).
+        // Customer: no admin-panel permissions (their portal gates access by role).
         $customer->permissions()->sync([]);
-        $warehouse->permissions()->sync([]);
+
+        // Warehouse: no admin panel either, but they scan cartons in and out.
+        $warehouse->permissions()->sync(Permission::where('key', 'orders.scan')->pluck('id'));
 
         // Staff / Agent: operational modules, no finance.
         $staff->permissions()->sync(
             Permission::whereIn('key', [
                 'customers.manage', 'hs.manage', 'warehouses.manage', 'quotations.manage',
-                'orders.manage', 'orders.update-status', 'lc.manage', 'containers.manage',
+                'orders.manage', 'orders.update-status', 'orders.scan', 'lc.manage', 'containers.manage',
             ])->pluck('id')
         );
 

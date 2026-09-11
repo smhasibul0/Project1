@@ -22,6 +22,7 @@ use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ScanController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\Warehouse\DashboardController as WarehouseDashboardController;
 use App\Http\Controllers\Warehouse\ExpenseController as WarehouseExpenseController;
@@ -35,8 +36,20 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Public order tracking (no login required)
-Route::get('/track', [TrackController::class, 'index'])->name('order.track');
+// Public order tracking (no login required). The token in the link is the only
+// way in — there is no lookup by order number, which would be guessable. This is
+// also what the QR code on a carton opens: strangers see the timeline, staff who
+// can scan get the panel for counting cartons through the next stage.
+Route::get('/track/{token}', [TrackController::class, 'show'])->name('order.track');
+
+// Carton scanning. Recording runs through the camera scanner — the key that
+// authorises it is handed out when a carton's QR is decoded, so nothing can be
+// written down from a desk.
+Route::middleware(['auth', 'can:orders.scan'])->group(function () {
+    Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
+    Route::get('/scan/{token}', [ScanController::class, 'lookup'])->name('scan.lookup');
+    Route::post('/track/{token}/scan', [TrackController::class, 'scan'])->name('order.scan');
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'admin', 'verified'])->name('dashboard');
@@ -216,6 +229,7 @@ Route::middleware(['auth', 'admin', 'can:orders.view'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->name('order.invoice');
+    Route::get('/orders/{id}/label', [OrderController::class, 'label'])->name('order.label');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('order.status');
 });
 

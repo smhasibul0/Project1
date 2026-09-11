@@ -152,6 +152,11 @@
                                 <a href="{{ route('orders.create') }}" class="tp-link">Add Order</a>
                             </li>
                             @endcan
+                            @can('orders.scan')
+                            <li>
+                                <a href="{{ route('scan.index') }}" class="tp-link">Scan Cartons</a>
+                            </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>

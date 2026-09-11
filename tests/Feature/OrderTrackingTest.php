@@ -97,13 +97,34 @@ test('the public tracking page shows an order status and timeline without login'
     $order = makeOrder(['goods_status' => 'shipped']);
     $order->logStatus('shipped', 'On the vessel');
 
-    $this->get(route('order.track', ['order_no' => $order->order_no]))
+    $this->get(route('order.track', $order->track_token))
         ->assertOk()
         ->assertSee($order->order_no)
         ->assertSee('Shipped')
         ->assertSee('On the vessel');
 });
 
-test('the public tracking page loads its search form', function () {
-    $this->get(route('order.track'))->assertOk()->assertSee('Track Your Order');
+test('every order gets its own random tracking token', function () {
+    $first = makeOrder();
+    $second = makeOrder();
+
+    expect($first->track_token)->toHaveLength(32);
+    expect($first->track_token)->not->toBe($second->track_token);
+    // Nothing about the token follows from the order number.
+    expect($first->track_token)->not->toContain($first->order_no);
+});
+
+test('a tracking link cannot be edited into another order', function () {
+    $mine = makeOrder(['goods_status' => 'shipped']);
+    $theirs = makeOrder(['goods_status' => 'at_port']);
+
+    // My link shows my shipment and says nothing about anyone else's.
+    $this->get(route('order.track', $mine->track_token))
+        ->assertOk()
+        ->assertSee($mine->order_no)
+        ->assertDontSee($theirs->order_no);
+
+    // The order number is not a way in, and neither is a made-up token.
+    $this->get('/track/'.$theirs->order_no)->assertNotFound();
+    $this->get('/track/'.str_repeat('a', 32))->assertNotFound();
 });

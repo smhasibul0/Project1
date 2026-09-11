@@ -17,6 +17,7 @@
                 <small class="text-muted">{{ $order->customer->name ?? '—' }}</small>
             </div>
             <div class="text-end">
+                <a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-dark btn-sm"><i class="ri-qr-code-line me-1"></i> QR Labels</a>
                 <a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-text-line me-1"></i> Invoice</a>
                 @can('orders.manage')<a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
                 <a href="{{ route('orders.index') }}" class="btn btn-secondary btn-sm">Back</a>
@@ -94,9 +95,40 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Tracking Timeline</h6>
-                        <a href="{{ route('order.track', ['order_no' => $order->order_no]) }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="ri-external-link-line me-1"></i> Public link</a>
+                        <div class="d-flex gap-1">
+                            <a href="{{ route('order.track', $order->track_token) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open the customer's tracking page">
+                                <i class="ri-external-link-line me-1"></i> Public link
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-secondary copy-track-link"
+                                    data-link="{{ route('order.track', $order->track_token) }}" title="Copy the link to send to the customer">
+                                <i class="ri-file-copy-line"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
+                        {{-- The carton QR: what the customer sticks on every package. --}}
+                        @php
+                            $trackUrl = route('order.track', $order->track_token);
+                            $orderQr = preg_replace('/^<\?xml[^>]*\?>\s*/', '', (string) QrCode::format('svg')
+                                ->size(300)->margin(1)->errorCorrection('M')->generate($trackUrl));
+                        @endphp
+                        <div class="d-flex gap-3 align-items-center border rounded p-3 mb-3 flex-wrap">
+                            <div style="width:120px; flex:none;">{!! $orderQr !!}</div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold fs-5">{{ $order->shipping_mark ?: $order->order_no }}</div>
+                                <div class="text-muted small mb-2">
+                                    Scanning this opens the tracking page. Staff who are signed in can count
+                                    cartons through each stage from it.
+                                </div>
+                                <a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-sm btn-dark">
+                                    <i class="ri-printer-line me-1"></i> Print carton labels
+                                </a>
+                                <span class="text-muted small ms-1">
+                                    {{ rtrim(rtrim(number_format($order->totalCartons(), 2), '0'), '.') ?: '0' }} carton(s)
+                                </span>
+                            </div>
+                        </div>
+
                         <ul class="list-unstyled mb-0 order-timeline">
                             @forelse($order->tracking as $t)
                             <li class="d-flex gap-2 pb-3">
@@ -396,6 +428,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Copy the customer's tracking link to the clipboard.
+    document.querySelectorAll('.copy-track-link').forEach(btn => btn.addEventListener('click', async function () {
+        try {
+            await navigator.clipboard.writeText(btn.dataset.link);
+            toastr.success('Tracking link copied — send it to the customer.');
+        } catch (e) {
+            Swal.fire({ title: 'Tracking link', input: 'text', inputValue: btn.dataset.link, confirmButtonColor: '#6366f1' });
+        }
+    }));
+
     document.querySelectorAll('.delete-cost-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
         Swal.fire({ title: 'Delete this cost?', text: 'Any linked account payment will be reversed.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete', confirmButtonColor: '#ef4444' })

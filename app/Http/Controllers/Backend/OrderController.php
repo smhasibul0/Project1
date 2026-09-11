@@ -15,7 +15,6 @@ use App\Models\Quotation;
 use App\Models\Transaction;
 use App\Models\TransportationMode;
 use App\Models\Warehouse;
-use App\Models\WarehouseStock;
 use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
 use Carbon\Carbon;
@@ -164,6 +163,23 @@ class OrderController extends Controller
     }
 
     /**
+     * Printable carton label: the QR the customer sticks on every package.
+     *
+     * Scanning it opens the public tracking page — the timeline for the customer,
+     * and the carton-counting panel for staff who are signed in.
+     */
+    public function label($id)
+    {
+        $order = Order::with('customer')->findOrFail($id);
+
+        return view('admin.backend.orders.label', [
+            'order' => $order,
+            'company' => CompanySetting::current(),
+            'trackUrl' => route('order.track', $order->track_token),
+        ]);
+    }
+
+    /**
      * Printable customer invoice, rendered from the order + company settings.
      */
     public function invoice($id)
@@ -240,7 +256,7 @@ class OrderController extends Controller
 
         // Receive the goods into the chosen warehouse's inventory (once).
         if ($status === 'at_bd_warehouse' && $order->warehouse_id) {
-            $this->receiveIntoWarehouse($order->fresh('items'), (int) $order->warehouse_id);
+            $order->fresh('items')->receiveIntoWarehouse((int) $order->warehouse_id, Auth::id());
         }
 
         if ($status === 'delivered' && $order->goods_handover_date && $order->delivered_date) {
@@ -252,46 +268,6 @@ class OrderController extends Controller
         $order->logStatus($status, $data['note'] ?? null, Auth::id());
 
         return redirect()->back()->with('success', 'Status updated to '.$order->statusLabel().'.');
-    }
-
-    /**
-     * Turn an arrived order's items into stock lots in the given warehouse. Idempotent:
-     * an order that already has received stock is skipped so re-marking the status
-     * doesn't double-count inventory.
-     */
-    private function receiveIntoWarehouse(Order $order, int $warehouseId): void
-    {
-        if ($order->warehouseStocks()->exists()) {
-            return;
-        }
-
-        DB::transaction(function () use ($order, $warehouseId) {
-            foreach ($order->items as $item) {
-                $qty = (float) $item->quantity;
-                if ($qty <= 0) {
-                    continue;
-                }
-
-                $stock = WarehouseStock::create([
-                    'warehouse_id' => $warehouseId,
-                    'order_id' => $order->id,
-                    'order_item_id' => $item->id,
-                    'item_description' => $item->item_description ?: 'Goods',
-                    'received_qty' => $qty,
-                    'received_date' => now()->toDateString(),
-                    'added_by' => Auth::id(),
-                ]);
-
-                $stock->movements()->create([
-                    'warehouse_id' => $warehouseId,
-                    'type' => 'received',
-                    'quantity' => $qty,
-                    'reference' => $order->order_no,
-                    'moved_date' => now()->toDateString(),
-                    'moved_by' => Auth::id(),
-                ]);
-            }
-        });
     }
 
     /**

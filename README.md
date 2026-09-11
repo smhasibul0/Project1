@@ -9,7 +9,7 @@ metre with every taka of duty, cost and profit tracked along the way.**
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![Pest](https://img.shields.io/badge/Pest-3-8A2BE2?logo=pest&logoColor=white)](https://pestphp.com)
-[![Tests](https://img.shields.io/badge/tests-231%20passing-3fb950)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-261%20passing-3fb950)](#-testing)
 [![Code Style](https://img.shields.io/badge/code%20style-Pint-FF2D20)](https://laravel.com/docs/pint)
 
 </div>
@@ -51,6 +51,41 @@ flowchart LR
 Every status change is written to a tracking timeline, and reaching **At BD Warehouse**
 automatically receives the order's items into warehouse inventory as stock lots.
 
+Each order carries a random tracking token, and its public link is built from that
+rather than from the order number — order numbers run in sequence, so a link built on
+one could be edited into somebody else's shipment. Copy the link from the order page
+and send it to the customer.
+
+**Carton QR labels.** The QR sits in the order's **Tracking Timeline** card, and on the
+customer's tracking page — either of you can print it, so nothing has to be emailed
+across. *Print carton labels* runs off one label per carton: the QR with the shipping
+mark under it. The customer sticks them on the packages before handover.
+
+Scanning a label opens the tracking page — and that page shows two different things
+depending on who is scanning:
+
+| Who scans | What they get |
+|---|---|
+| Anyone — the customer, a courier, a stranger | Status and timeline, nothing else |
+| Signed-in staff with `orders.scan` | The same, plus a panel to count cartons through the next stage |
+
+The panel shows how many cartons are expected and how many have been counted at each
+point. **Recording is done in the scanner** (*Orders → Scan Cartons*, or the warehouse
+menu): the camera reads the carton's QR, and only then can a count be entered — received
+at the China warehouse, loaded into a container (picked from those still open), arrived
+at port, received into a BD warehouse. Counts add up, so a consignment arriving in two
+lorries is no trouble. Loading cartons into a container also puts the order in that
+container and re-splits its costs.
+
+Reading a carton hands out a one-shot key that the recording is checked against, so a
+scan can't be typed in from a desk and one read of a code can't be counted twice.
+
+> [!IMPORTANT]
+> **The scanner needs HTTPS.** Browsers only grant camera access over `https` (or on
+> `localhost`), and there is deliberately no way to record a count without the camera.
+> Over plain `http` the page says so plainly instead of failing quietly. The scanner
+> library is served from `public/backend/assets/libs/`, so it works without internet.
+
 ---
 
 ## ✨ Four surfaces, one system
@@ -60,7 +95,7 @@ automatically receives the order's items into warehouse inventory as stock lots.
 | **Admin panel** | `/dashboard` | Admin, Staff, Accountant | The full pipeline — customers, HS codes, quotations, orders, costs, LC, containers, finance, reports |
 | **Customer portal** | `/portal` | Customers | Submit requests, accept or reject quotes, follow orders, view payments and dues |
 | **Warehouse portal** | `/warehouse` | Warehouse managers | Inventory, incoming orders, expenses, staff and payroll — scoped to their own warehouse |
-| **Public tracking** | `/track` | Anyone | Enter an order number for status and timeline — no financials, no login |
+| **Public tracking** | `/track/{token}` | Anyone with the link | Status and timeline for one shipment — no financials, no login |
 
 Admins can step into any warehouse's portal via **Warehouse → Warehouse List → Manage**,
 without needing a separate warehouse login.
@@ -235,7 +270,7 @@ second upload of a rates sheet (HS code + those columns), or are keyed in per co
 ## 🧪 Testing
 
 ```bash
-composer test                      # full suite (231 tests)
+composer test                      # full suite (261 tests)
 php artisan test --compact --filter=WarehousePortalTest
 ```
 

@@ -13,7 +13,8 @@
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "phpoffice/phpspreadsheet": "^5.9"
+        "phpoffice/phpspreadsheet": "^5.9",
+        "simplesoftwareio/simple-qrcode": "^4.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

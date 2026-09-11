@@ -52,6 +52,15 @@
                     </a>
                 </li>
 
+                @can('orders.scan')
+                <li>
+                    <a href="{{ route('scan.index') }}" class="tp-link">
+                        <i data-feather="maximize"></i>
+                        <span> Scan Cartons </span>
+                    </a>
+                </li>
+                @endcan
+
                 <li class="menu-title mt-2">Operations</li>
 
                 <li>

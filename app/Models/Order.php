@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -92,6 +94,12 @@ class Order extends Model
                 $next = $last ? ((int) substr($last, 2)) + 1 : 1;
                 $order->order_no = 'OR'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
             }
+
+            // Order numbers run in sequence, so the public tracking link is built
+            // from this instead — it can't be edited into somebody else's order.
+            if (empty($order->track_token)) {
+                $order->track_token = Str::random(32);
+            }
         });
 
         // LCs are maintained independently — deleting an order releases its LCs
@@ -137,6 +145,69 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function scans(): HasMany
+    {
+        return $this->hasMany(OrderScan::class)->latest('id');
+    }
+
+    /**
+     * How many cartons this order should amount to, taken from its item lines.
+     */
+    public function totalCartons(): float
+    {
+        return round((float) $this->items->sum('package_quantity'), 2);
+    }
+
+    /**
+     * Cartons already scanned through one point of the journey. Scans add up, so
+     * a consignment arriving in two lorries can be counted as each one turns up.
+     */
+    public function cartonsScannedAt(string $stage): float
+    {
+        return round((float) $this->scans->where('stage', $stage)->sum('cartons'), 2);
+    }
+
+    /**
+     * Turn an arrived order's items into stock lots in the given warehouse. Idempotent:
+     * an order that already has received stock is skipped so re-marking the status
+     * doesn't double-count inventory.
+     */
+    public function receiveIntoWarehouse(int $warehouseId, ?int $userId = null): void
+    {
+        if ($this->warehouseStocks()->exists()) {
+            return;
+        }
+
+        DB::transaction(function () use ($warehouseId, $userId) {
+            foreach ($this->items as $item) {
+                $qty = (float) $item->quantity;
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $stock = WarehouseStock::create([
+                    'warehouse_id' => $warehouseId,
+                    'order_id' => $this->id,
+                    'order_item_id' => $item->id,
+                    'item_description' => $item->item_description ?: 'Goods',
+                    'received_qty' => $qty,
+                    'received_date' => now()->toDateString(),
+                    'added_by' => $userId,
+                ]);
+
+                $stock->movements()->create([
+                    'warehouse_id' => $warehouseId,
+                    'type' => 'received',
+                    'quantity' => $qty,
+                    'reference' => $this->order_no,
+                    'moved_date' => now()->toDateString(),
+                    'moved_by' => $userId,
+                ]);
+            }
+        });
     }
 
     public function costs(): HasMany

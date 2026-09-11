@@ -36,7 +36,7 @@ test('admin page renders', function (string $routeName) {
 })->with('pages');
 
 test('the public track page renders', function () {
-    $this->get(route('order.track'))->assertOk();
+    $this->get(route('order.track', Order::factory()->create()->track_token))->assertOk();
 });
 
 test('detail, edit and print pages render for a seeded record', function () {
