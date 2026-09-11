@@ -120,6 +120,7 @@
                             <tbody>
                                 <tr><td class="ps-3">Gross profit from orders</td><td class="text-end pe-3">৳ {{ number_format($totals['profit'], 2) }}</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Warehouse expenses</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['warehouse_expenses'], 2) }})</td></tr>
+                                <tr><td class="ps-3 text-muted">Less: Office expenses</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['office_expenses'], 2) }})</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Staff salaries</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['salaries'], 2) }})</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Standalone LC charges</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['standalone_lc'], 2) }})</td></tr>
                             </tbody>
@@ -132,7 +133,7 @@
                         </table>
                     </div>
                 </div>
-                <small class="text-muted d-block mb-4">Operating expenses are warehouse overheads &amp; salaries in the selected date range, across all warehouses.</small>
+                <small class="text-muted d-block mb-4">Operating expenses are warehouse overheads, office running costs &amp; salaries in the selected date range, across all warehouses.</small>
             </div>
         </div>
     </div>

@@ -11,6 +11,8 @@ use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\ExpenseCategoryController;
 use App\Http\Controllers\Backend\HsCodeController;
 use App\Http\Controllers\Backend\LcController;
+use App\Http\Controllers\Backend\OfficeCostTypeController;
+use App\Http\Controllers\Backend\OfficeExpenseController;
 use App\Http\Controllers\Backend\OrderController;
 use App\Http\Controllers\Backend\PackingTypeController;
 use App\Http\Controllers\Backend\PaymentAccountController;
@@ -251,6 +253,24 @@ Route::middleware(['auth', 'admin', 'can:expenses.manage'])->group(function () {
     Route::post('/expense-categories', [ExpenseCategoryController::class, 'store'])->name('expense.category.store');
     Route::put('/expense-categories/{id}', [ExpenseCategoryController::class, 'update'])->name('expense.category.update');
     Route::delete('/expense-categories/{id}', [ExpenseCategoryController::class, 'destroy'])->name('expense.category.delete');
+});
+
+// Office running costs — company-level fixed & variable expenses, settled by
+// one or more payments drawn from the payment accounts.
+Route::middleware(['auth', 'admin', 'can:office.expenses.manage'])->group(function () {
+    Route::get('/office-expenses', [OfficeExpenseController::class, 'index'])->name('office.expenses');
+    Route::post('/office-expenses', [OfficeExpenseController::class, 'store'])->name('office.expense.store');
+    Route::post('/office-expenses/generate', [OfficeExpenseController::class, 'generate'])->name('office.expense.generate');
+    Route::put('/office-expenses/{id}', [OfficeExpenseController::class, 'update'])->name('office.expense.update');
+    Route::delete('/office-expenses/{id}', [OfficeExpenseController::class, 'destroy'])->name('office.expense.delete');
+    Route::post('/office-expenses/{id}/payments', [OfficeExpenseController::class, 'storePayment'])->name('office.expense.payments.store');
+    Route::delete('/office-expenses/{id}/payments/{paymentId}', [OfficeExpenseController::class, 'destroyPayment'])->name('office.expense.payments.delete');
+
+    // Cost types carry the fixed/variable nature every expense inherits.
+    Route::get('/office-cost-types', [OfficeCostTypeController::class, 'index'])->name('office.cost.types');
+    Route::post('/office-cost-types', [OfficeCostTypeController::class, 'store'])->name('office.cost.type.store');
+    Route::put('/office-cost-types/{id}', [OfficeCostTypeController::class, 'update'])->name('office.cost.type.update');
+    Route::delete('/office-cost-types/{id}', [OfficeCostTypeController::class, 'destroy'])->name('office.cost.type.delete');
 });
 
 // LC — Letters of Credit (opened against the shipper's proforma invoice for an order)

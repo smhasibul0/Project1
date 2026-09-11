@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Lc;
 use App\Models\LcCost;
+use App\Models\OfficeExpense;
 use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\StaffSalaryPayment;
@@ -74,6 +75,13 @@ class ReportController extends Controller
             ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
             ->sum('amount'), 2);
 
+        // Office running costs accrue on their expense date, the same basis as
+        // warehouse overheads — not when they happen to be paid.
+        $officeExpenses = round((float) OfficeExpense::query()
+            ->when($from, fn ($q) => $q->whereDate('expense_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('expense_date', '<=', $to))
+            ->sum('amount'), 2);
+
         $salaries = round((float) StaffSalaryPayment::query()
             ->when($from, fn ($q) => $q->whereDate('payment_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('payment_date', '<=', $to))
@@ -94,9 +102,10 @@ class ReportController extends Controller
 
         $operating = [
             'warehouse_expenses' => $warehouseExpenses,
+            'office_expenses' => $officeExpenses,
             'salaries' => $salaries,
             'standalone_lc' => $standaloneLcCharges,
-            'total' => round($warehouseExpenses + $salaries + $standaloneLcCharges, 2),
+            'total' => round($warehouseExpenses + $officeExpenses + $salaries + $standaloneLcCharges, 2),
         ];
         $netProfit = round($totalProfit - $operating['total'], 2);
 
@@ -190,6 +199,7 @@ class ReportController extends Controller
             'lc_cost' => 'LC charges paid',
             'container_cost' => 'Container costs paid',
             'warehouse_expense' => 'Warehouse expenses paid',
+            'office_expense' => 'Office expenses paid',
             'staff_salary' => 'Staff salaries paid',
         ];
 

@@ -222,6 +222,27 @@
                 </li>
                 @endcan
 
+                <!-- Office running costs -->
+                @can('office.expenses.manage')
+                <li>
+                    <a href="#sidebarOfficeExpenses" data-bs-toggle="collapse">
+                        <i data-feather="home"></i>
+                        <span> Office Expenses </span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse" id="sidebarOfficeExpenses">
+                        <ul class="nav-second-level">
+                            <li>
+                                <a href="{{ route('office.expenses') }}" class="tp-link">Monthly Expenses</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('office.cost.types') }}" class="tp-link">Cost Types</a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                @endcan
+
                 <!-- Payment accounts -->
                 @can('accounts.manage')
                 <li>
