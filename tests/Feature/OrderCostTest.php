@@ -5,8 +5,6 @@ use App\Models\CostCategory;
 use App\Models\Order;
 use App\Models\OrderCost;
 use App\Models\PaymentAccount;
-use App\Models\Permission;
-use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,15 +25,15 @@ beforeEach(function () {
 });
 
 /**
- * An accountant-style user: has costs.manage but not orders.manage.
+ * An accountant-style user: may open orders and post costs against them, but may not
+ * create, edit or delete an order.
  */
 function accountantUser(): User
 {
-    $permission = Permission::firstOrCreate(['key' => 'costs.manage'], ['name' => 'Manage order costs', 'group' => 'Order Costs']);
-    $role = Role::firstOrCreate(['slug' => 'accountant'], ['name' => 'Accountant']);
-    $role->permissions()->syncWithoutDetaching([$permission->id]);
-
-    return User::factory()->create(['role_id' => $role->id]);
+    return userWithPermissions(
+        ['orders.view', 'costs.view', 'costs.create', 'costs.delete'],
+        'accountant',
+    );
 }
 
 test('a cost is recorded against an order and folds into profit', function () {

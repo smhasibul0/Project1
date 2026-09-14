@@ -33,7 +33,7 @@
                                 <td>
                                     <div class="d-flex gap-1">
                                         <a href="{{ route('warehouse.inventory.show', $s->id) }}" class="btn btn-sm btn-outline-secondary" title="History"><i class="ri-eye-line"></i></a>
-                                        @if($s->onHand() > 0)
+                                        @if($s->onHand() > 0 && auth()->user()->can('warehouse.inventory.dispatch'))
                                         <button type="button" class="btn btn-sm btn-outline-primary dispatch-btn" title="Dispatch"
                                                 data-action="{{ route('warehouse.inventory.dispatch', $s->id) }}"
                                                 data-item="{{ $s->item_description }}"
@@ -59,6 +59,7 @@
 </div>
 
 {{-- Dispatch modal --}}
+@can('warehouse.inventory.dispatch')
 <div class="modal fade" id="dispatchModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -91,9 +92,11 @@
         </div>
     </div>
 </div>
+@endcan
 @endsection
 
 @section('warehouse_scripts')
+@can('warehouse.inventory.dispatch')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const modal = new bootstrap.Modal(document.getElementById('dispatchModal'));
@@ -110,4 +113,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }));
 });
 </script>
+@endcan
 @endsection

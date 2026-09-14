@@ -21,9 +21,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Customer Groups</h5>
+                @can('customer-groups.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addGroupModal">
                     <i class="ri-add-line me-1"></i> Add Group
                 </button>
+                @endcan
             </div>
 
             <div class="card-body">
@@ -55,17 +57,21 @@
                                 <td>{{ $group->description ?: '—' }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        @can('customer-groups.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-group-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editGroupModal"
                                                 data-group="{{ json_encode($group) }}" title="Edit">
                                             <i class="ri-edit-line"></i>
                                         </button>
+                                        @endcan
+                                        @can('customer-groups.delete')
                                         <form action="{{ route('customer.group.delete', $group->id) }}" method="POST" class="m-0">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-group-btn" title="Delete">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
                                         </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -83,7 +89,15 @@
 </div>
 
 {{-- ===================== ADD / EDIT MODALS ===================== --}}
-@foreach(['add' => 'addGroupModal', 'edit' => 'editGroupModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $groupModals = array_filter([
+        'add' => auth()->user()->can('customer-groups.create') ? 'addGroupModal' : null,
+        'edit' => auth()->user()->can('customer-groups.edit') ? 'editGroupModal' : null,
+    ]);
+@endphp
+
+@foreach($groupModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -133,14 +147,16 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     const editModal = document.getElementById('editGroupModal');
-    editModal.addEventListener('show.bs.modal', function (e) {
-        const g = JSON.parse(e.relatedTarget.dataset.group);
-        const form = document.getElementById('editGroupForm');
-        form.action = '{{ url('customer-groups') }}/' + g.id;
-        form.querySelectorAll('[data-field]').forEach(function (field) {
-            field.value = (g[field.dataset.field] ?? '') === null ? '' : (g[field.dataset.field] ?? '');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (e) {
+            const g = JSON.parse(e.relatedTarget.dataset.group);
+            const form = document.getElementById('editGroupForm');
+            form.action = '{{ url('customer-groups') }}/' + g.id;
+            form.querySelectorAll('[data-field]').forEach(function (field) {
+                field.value = (g[field.dataset.field] ?? '') === null ? '' : (g[field.dataset.field] ?? '');
+            });
         });
-    });
+    }
 
     document.querySelectorAll('.delete-group-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {

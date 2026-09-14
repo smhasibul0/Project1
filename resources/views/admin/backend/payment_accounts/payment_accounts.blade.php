@@ -36,12 +36,14 @@
                     <i class="ri-bank-card-line"></i> Accounts
                 </button>
             </li>
+            @can('account-types.view')
             <li class="nav-item" role="presentation">
                 <button class="nav-link d-flex align-items-center gap-1" id="account-types-tab"
                     data-bs-toggle="tab" data-bs-target="#account-types" type="button" role="tab">
                     <i class="ri-list-unordered"></i> Account Types
                 </button>
             </li>
+            @endcan
         </ul>
 
         <div class="tab-content" id="accountTabsContent">
@@ -51,9 +53,11 @@
                 <div class="card">
                     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <h5 class="mb-0">Payment Accounts</h5>
+                        @can('accounts.create')
                         <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addAccountModal">
                             <i class="ri-add-line me-1"></i> Add
                         </button>
+                        @endcan
                     </div>
 
                     <div class="card-body p-0">
@@ -85,6 +89,7 @@
                                         <td>{{ $account->addedBy->name ?? '-' }}</td>
                                         <td>
                                             <div class="d-flex flex-wrap gap-1 acct-actions">
+                                                @can('accounts.edit')
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-primary edit-account-btn"
                                                         data-bs-toggle="modal" data-bs-target="#editAccountModal"
@@ -98,22 +103,28 @@
                                                         title="Edit">
                                                     <i class="ri-edit-line"></i> Edit
                                                 </button>
+                                                @endcan
                                                 <a href="{{ route('payment.account.book', $account->id) }}"
                                                    class="btn btn-sm btn-outline-warning" title="Account Book">
                                                     <i class="ri-book-line"></i> Book
                                                 </a>
+                                                @can('accounts.fund-transfer')
                                                 <button class="btn btn-sm btn-outline-info"
                                                         data-bs-toggle="modal" data-bs-target="#fundTransferModal"
                                                         data-account-id="{{ $account->id }}"
                                                         data-account-name="{{ $account->name }}" title="Fund Transfer">
                                                     <i class="ri-exchange-line"></i> Transfer
                                                 </button>
+                                                @endcan
+                                                @can('accounts.deposit')
                                                 <button class="btn btn-sm btn-outline-success"
                                                         data-bs-toggle="modal" data-bs-target="#depositModal"
                                                         data-account-id="{{ $account->id }}"
                                                         data-account-name="{{ $account->name }}" title="Deposit">
                                                     <i class="ri-money-dollar-circle-line"></i> Deposit
                                                 </button>
+                                                @endcan
+                                                @can('accounts.toggle')
                                                 <form action="{{ route('payment.account.toggle', $account->id) }}" method="POST" class="m-0">
                                                     @csrf @method('PATCH')
                                                     <button type="button"
@@ -123,6 +134,7 @@
                                                         <i class="ri-{{ $account->is_active ? 'forbid-line' : 'check-line' }}"></i> {{ $account->is_active ? 'Deactivate' : 'Activate' }}
                                                     </button>
                                                 </form>
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
@@ -139,17 +151,20 @@
             </div>
 
             {{-- ===================== ACCOUNT TYPES TAB ===================== --}}
+            @can('account-types.view')
             <div class="tab-pane fade" id="account-types" role="tabpanel">
             <div class="card">
 
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Account Types</h5>
 
+                    @can('account-types.create')
                     <button class="btn btn-primary rounded-pill px-4"
                         data-bs-toggle="modal"
                         data-bs-target="#addAccountTypeModal">
                         <i class="ri-add-line me-1"></i> Add
                     </button>
+                    @endcan
                 </div>
 
                 <div class="card-body p-0">
@@ -173,6 +188,7 @@
 
                                     <td>
                                         <div class="d-flex align-items-center gap-1 flex-wrap">
+                                            @can('account-types.edit')
                                             <button type="button"
                                                     class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 edit-account-type-btn"
                                                     data-bs-toggle="modal" data-bs-target="#editAccountTypeModal"
@@ -181,7 +197,9 @@
                                                     data-description="{{ $type->description }}">
                                                 <i class="ri-edit-line"></i> Edit
                                             </button>
+                                            @endcan
 
+                                            @can('account-types.delete')
                                             <form action="{{ route('account.type.delete', $type->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
@@ -189,6 +207,7 @@
                                                     <i class="ri-delete-bin-line"></i> Delete
                                                 </button>
                                             </form>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>
@@ -212,12 +231,14 @@
 
             </div>
         </div>
+        @endcan
 
         </div>{{-- end tab-content --}}
     </div>
 </div>
 
 {{-- ===================== ADD ACCOUNT MODAL ===================== --}}
+@can('accounts.create')
 <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -281,7 +302,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== EDIT ACCOUNT MODAL ===================== --}}
+@can('accounts.edit')
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -342,7 +366,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== FUND TRANSFER MODAL ===================== --}}
+@can('accounts.fund-transfer')
 <div class="modal fade" id="fundTransferModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -413,7 +440,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== DEPOSIT MODAL ===================== --}}
+@can('accounts.deposit')
 <div class="modal fade" id="depositModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -477,7 +507,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== ADD ACCOUNT TYPE MODAL ===================== --}}
+@can('account-types.create')
 <div class="modal fade" id="addAccountTypeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -506,7 +539,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== EDIT ACCOUNT TYPE MODAL ===================== --}}
+@can('account-types.edit')
 <div class="modal fade" id="editAccountTypeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -536,6 +572,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 <script>
 $(document).ready(function () {

@@ -26,30 +26,15 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
 
         // Resolve every ability against the user's role permissions. Admin bypasses all.
-        // Ability strings ARE the permission keys (e.g. "orders.manage"), so `@can('orders.manage')`
-        // and route middleware `can:orders.manage` both flow through here.
+        // Ability strings ARE the permission keys from App\Support\PermissionCatalog, so
+        // `@can('orders.create')` and route middleware `can:orders.create` both flow
+        // through here — there are no composite or hard-coded abilities.
         Gate::before(function (User $user, string $ability) {
             if ($user->isAdmin()) {
                 return true;
             }
 
             return $user->hasPermission($ability) ? true : null;
-        });
-
-        // Composite: anyone who can fully manage, just update-status, or manage costs
-        // (accountants add costs on the order page) may view orders.
-        Gate::define('orders.view', function (User $user) {
-            return $user->hasPermission('orders.manage')
-                || $user->hasPermission('orders.update-status')
-                || $user->hasPermission('costs.manage');
-        });
-
-        // Payment account balances are admin-only. Warehouse managers and other
-        // staff pick an account to pay from without seeing what it holds; the
-        // Gate::before hook above grants admins every ability, so this closure
-        // only ever runs for non-admins.
-        Gate::define('accounts.view-balance', function (User $user) {
-            return false;
         });
     }
 }

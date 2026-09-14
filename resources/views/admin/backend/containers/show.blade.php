@@ -39,9 +39,13 @@
                 <small class="text-muted">{{ $container->container_number ?: ($container->shipment_type === 'lcl' ? 'Consolidator container (LCL)' : '—') }}{{ $container->container_size ? ' · '.$container->container_size : '' }}</small>
             </div>
             <div class="text-end">
+                @can('containers.lists.print')
                 <a href="{{ route('container.packing.list', $container->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-list-3-line me-1"></i> Packing List</a>
                 <a href="{{ route('container.loading.list', $container->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-list-2-line me-1"></i> Loading List</a>
+                @endcan
+                @can('containers.edit')
                 <a href="{{ route('container.edit', $container->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
+                @endcan
                 <a href="{{ route('container.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
@@ -85,6 +89,7 @@
         </div>
 
         {{-- Status update --}}
+        @can('containers.update-status')
         <div class="card">
             <div class="card-header"><h6 class="mb-0">Update Shipment Status</h6></div>
             <div class="card-body">
@@ -103,12 +108,15 @@
                 </form>
             </div>
         </div>
+        @endcan
 
         {{-- Assigned orders + allocation --}}
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0">Assigned Orders ({{ $container->orders->count() }})</h6>
+                @can('containers.orders.assign')
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addOrderModal"><i class="ri-add-line me-1"></i> Assign Order</button>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -131,10 +139,12 @@
                                 <td class="text-end">{{ rtrim(rtrim(number_format($o->pivot->cbm, 4), '0'), '.') }}</td>
                                 <td class="text-end">৳ {{ number_format($share($o), 2) }}</td>
                                 <td class="text-end">
+                                    @can('containers.orders.remove')
                                     <form action="{{ route('container.order.delete', [$container->id, $o->id]) }}" method="POST" class="m-0">
                                         @csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 confirm-remove"><i class="ri-close-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty
@@ -160,7 +170,9 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0">Container Costs ({{ $container->costs->count() }}) <small class="text-muted">— distributed to orders by {{ $allocationBases[$container->allocation_basis] ?? $container->allocation_basis }}</small></h6>
+                @can('containers.costs.create')
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostModal"><i class="ri-add-line me-1"></i> Add Cost</button>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -178,10 +190,12 @@
                                 <td>@if($c->attachment)<a href="{{ asset('upload/containers/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
                                 <td class="text-end">৳ {{ number_format($c->amount, 2) }}</td>
                                 <td class="text-end">
+                                    @can('containers.costs.delete')
                                     <form action="{{ route('container.cost.delete', [$container->id, $c->id]) }}" method="POST" class="m-0">
                                         @csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 confirm-remove"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty
@@ -200,6 +214,7 @@
         <div class="card">
             <div class="card-header"><h6 class="mb-0">Documents ({{ $container->documents->count() }})</h6></div>
             <div class="card-body">
+                @can('containers.documents.upload')
                 <form action="{{ route('container.document.store', $container->id) }}" method="POST" enctype="multipart/form-data" class="row g-2 align-items-end mb-3">
                     @csrf
                     <div class="col-md-4">
@@ -220,6 +235,7 @@
                         <button type="submit" class="btn btn-primary w-100"><i class="ri-upload-2-line me-1"></i> Upload</button>
                     </div>
                 </form>
+                @endcan
 
                 <div class="table-responsive">
                     <table class="table table-sm mb-0 align-middle">
@@ -231,10 +247,12 @@
                                 <td>{{ $d->provided_by ?: '—' }}</td>
                                 <td><a href="{{ asset('upload/containers/'.$d->file) }}" target="_blank"><i class="ri-attachment-line me-1"></i>View</a></td>
                                 <td class="text-end">
+                                    @can('containers.documents.delete')
                                     <form action="{{ route('container.document.delete', [$container->id, $d->id]) }}" method="POST" class="m-0">
                                         @csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 confirm-remove"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty
@@ -249,6 +267,7 @@
 </div>
 
 {{-- ===================== Assign Order modal ===================== --}}
+@can('containers.orders.assign')
 <div class="modal fade" id="addOrderModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -326,7 +345,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- ===================== Add Cost modal ===================== --}}
+@can('containers.costs.create')
 <div class="modal fade" id="addCostModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -380,6 +402,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 @php
     $assignOrderItems = $assignableOrders->mapWithKeys(fn ($o) => [$o->id => $o->items->map(fn ($it) => [

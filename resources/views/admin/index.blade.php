@@ -65,7 +65,7 @@
                 <h4 class="fs-20 fw-bold m-0">Dashboard</h4>
                 <small class="text-muted">Overview of orders, revenue &amp; shipments · {{ now()->format('d M Y') }}</small>
             </div>
-            @can('orders.manage')
+            @can('orders.create')
             <a href="{{ route('orders.create') }}" class="btn btn-add"><i class="ri-add-line me-1"></i> Add Order</a>
             @endcan
         </div>
@@ -130,6 +130,7 @@
 
         {{-- ===== Recent Orders + Side ===== --}}
         <div class="row g-3 mt-1">
+            @can('orders.view')
             <div class="col-xl-8">
                 <div class="dash-card h-100">
                     <div class="hd"><div><h5>Recent Orders</h5></div><a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill">View all</a></div>
@@ -154,6 +155,7 @@
                     </div>
                 </div>
             </div>
+            @endcan
             <div class="col-xl-4">
                 <div class="dash-card mb-3">
                     <div class="p-3">

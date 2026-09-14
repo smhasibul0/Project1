@@ -87,7 +87,7 @@
                             <small class="text-muted d-block mt-2">JPG/PNG/WebP, up to 2 MB · used across the whole site</small>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Save Settings</button>
+                    @can('settings.edit')<button type="submit" class="btn btn-primary w-100">Save Settings</button>@endcan
                 </div>
             </div>
         </form>

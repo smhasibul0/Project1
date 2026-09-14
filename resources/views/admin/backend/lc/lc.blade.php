@@ -26,9 +26,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">LC List</h5>
+                @can('lc.create')
                 <a href="{{ route('lc.create') }}" class="btn btn-primary rounded-pill px-4">
                     <i class="ri-add-line me-1"></i> Add LC
                 </a>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="lcTable" export-name="letters-of-credit">
@@ -63,10 +65,13 @@
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('lc.show', $lc->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            @can('lc.edit')
                                             <li><a class="dropdown-item" href="{{ route('lc.edit', $lc->id) }}"><i class="ri-edit-line me-2"></i>Edit</a></li>
+                                            @endcan
                                             @if($lc->pi_document)
                                             <li><a class="dropdown-item" href="{{ asset('upload/lc/'.$lc->pi_document) }}" target="_blank"><i class="ri-attachment-line me-2"></i>PI Document</a></li>
                                             @endif
+                                            @can('lc.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('lc.delete', $lc->id) }}" method="POST" class="m-0">
@@ -74,6 +79,7 @@
                                                     <button type="button" class="dropdown-item text-danger delete-btn"><i class="ri-delete-bin-line me-2"></i>Delete</button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>

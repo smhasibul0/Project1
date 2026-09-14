@@ -26,9 +26,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Container List</h5>
+                @can('containers.create')
                 <a href="{{ route('container.create') }}" class="btn btn-primary rounded-pill px-4">
                     <i class="ri-add-line me-1"></i> Add Container
                 </a>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="containersTable" export-name="containers">
@@ -58,9 +60,14 @@
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('container.show', $c->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            @can('containers.edit')
                                             <li><a class="dropdown-item" href="{{ route('container.edit', $c->id) }}"><i class="ri-edit-line me-2"></i>Edit</a></li>
+                                            @endcan
+                                            @can('containers.lists.print')
                                             <li><a class="dropdown-item" href="{{ route('container.packing.list', $c->id) }}" target="_blank"><i class="ri-file-list-3-line me-2"></i>Packing List</a></li>
                                             <li><a class="dropdown-item" href="{{ route('container.loading.list', $c->id) }}" target="_blank"><i class="ri-file-list-2-line me-2"></i>Loading List</a></li>
+                                            @endcan
+                                            @can('containers.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('container.delete', $c->id) }}" method="POST" class="m-0">
@@ -68,6 +75,7 @@
                                                     <button type="button" class="dropdown-item text-danger delete-btn"><i class="ri-delete-bin-line me-2"></i>Delete</button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>

@@ -9,9 +9,11 @@
                 <small class="text-muted">Warehouse operating-expense types (parent → sub-category), e.g. Utilities → Electricity.</small>
             </div>
             <div class="text-end">
+                @can('expense-categories.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal" id="addParentBtn">
                     <i class="ri-add-line me-1"></i> Add Category
                 </button>
+                @endcan
             </div>
         </div>
 
@@ -29,9 +31,9 @@
                                 <td><span class="badge bg-{{ $parent->is_active ? 'success' : 'secondary' }}">{{ $parent->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary add-sub-btn" data-parent="{{ $parent->id }}" data-parent-name="{{ $parent->name }}" title="Add sub-category"><i class="ri-add-line"></i></button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($parent->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>
-                                        <form action="{{ route('expense.category.delete', $parent->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>
+                                        @can('expense-categories.create')<button type="button" class="btn btn-sm btn-outline-secondary add-sub-btn" data-parent="{{ $parent->id }}" data-parent-name="{{ $parent->name }}" title="Add sub-category"><i class="ri-add-line"></i></button>@endcan
+                                        @can('expense-categories.edit')<button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($parent->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>@endcan
+                                        @can('expense-categories.delete')<form action="{{ route('expense.category.delete', $parent->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </div>
                                 </td>
                             </tr>
@@ -41,8 +43,8 @@
                                 <td><span class="badge bg-{{ $child->is_active ? 'success' : 'secondary' }}-subtle text-{{ $child->is_active ? 'success' : 'secondary' }}">{{ $child->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
-                                        <button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($child->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>
-                                        <form action="{{ route('expense.category.delete', $child->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>
+                                        @can('expense-categories.edit')<button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($child->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>@endcan
+                                        @can('expense-categories.delete')<form action="{{ route('expense.category.delete', $child->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </div>
                                 </td>
                             </tr>
@@ -59,6 +61,7 @@
 </div>
 
 {{-- Add modal (category or sub-category) --}}
+@can('expense-categories.create')
 <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -87,7 +90,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Edit modal --}}
+@can('expense-categories.edit')
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -115,19 +121,23 @@
     </div>
 </div>
 
+@endcan
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
+    // The add dialog and its buttons only exist for roles that may create a category.
+    const addModalEl = document.getElementById('addModal');
+    const addModal = addModalEl ? new bootstrap.Modal(addModalEl) : null;
 
     // "Add Category" (top button) → parent; per-row "+" → sub-category of that parent.
-    document.getElementById('addParentBtn').addEventListener('click', function () {
+    document.getElementById('addParentBtn')?.addEventListener('click', function () {
         document.getElementById('addParentId').value = '';
         document.getElementById('addModalTitle').textContent = 'Add Category';
     });
     document.querySelectorAll('.add-sub-btn').forEach(btn => btn.addEventListener('click', function () {
         document.getElementById('addParentId').value = btn.dataset.parent;
         document.getElementById('addModalTitle').textContent = 'Add sub-category to ' + btn.dataset.parentName;
-        addModal.show();
+        addModal?.show();
     }));
 
     document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', function () {

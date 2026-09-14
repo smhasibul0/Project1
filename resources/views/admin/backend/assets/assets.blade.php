@@ -13,13 +13,17 @@
                     <i class="ri-line-chart-line me-1"></i> Depreciation
                 </a>
                 @if($categories->isEmpty())
+                @can('asset-categories.view')
                 <a href="{{ route('asset.categories') }}" class="btn btn-primary rounded-pill px-4">
                     <i class="ri-add-line me-1"></i> Add Category First
                 </a>
+                @endcan
                 @else
+                @can('assets.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#assetModal">
                     <i class="ri-add-line me-1"></i> Add Asset
                 </button>
+                @endcan
                 @endif
             </div>
         </div>
@@ -93,25 +97,35 @@
                                                     <i class="ri-eye-line me-1"></i> View
                                                 </button>
                                             </li>
+                                            @can('assets.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editAsset{{ $asset->id }}">
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
+                                            @if($asset->status === 'in_use')
+                                            @can('assets.dispose')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
-                                                @if($asset->status === 'in_use')
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#disposeAsset{{ $asset->id }}">
                                                     <i class="ri-logout-box-r-line me-1"></i> Dispose / Write off
                                                 </button>
-                                                @else
+                                            </li>
+                                            @endcan
+                                            @else
+                                            @can('assets.restore')
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
                                                 <form action="{{ route('asset.restore', $asset->id) }}" method="POST" class="m-0">@csrf
                                                     <button type="submit" class="dropdown-item">
                                                         <i class="ri-arrow-go-back-line me-1"></i> Put back on books
                                                     </button>
                                                 </form>
-                                                @endif
                                             </li>
+                                            @endcan
+                                            @endif
+                                            @can('assets.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('asset.delete', $asset->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
@@ -120,6 +134,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -152,6 +167,7 @@
 </div>
 
 {{-- Add Asset --}}
+@can('assets.create')
 <div class="modal fade" id="assetModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -172,6 +188,8 @@
         </div>
     </div>
 </div>
+
+@endcan
 
 {{-- Per-asset modals: view, edit, dispose --}}
 @foreach($assets as $asset)
@@ -236,6 +254,7 @@
     </div>
 </div>
 
+@can('assets.edit')
 <div class="modal fade" id="editAsset{{ $asset->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -257,6 +276,9 @@
     </div>
 </div>
 
+@endcan
+
+@can('assets.dispose')
 <div class="modal fade" id="disposeAsset{{ $asset->id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -297,6 +319,7 @@
         </div>
     </div>
 </div>
+@endcan
 @endforeach
 
 <script>

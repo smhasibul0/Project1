@@ -193,21 +193,74 @@ class ReportController extends Controller
     }
 
     /**
-     * Cash flow from the ledger over a date range: money in (credits) vs out (debits),
-     * broken down by source.
+     * Cash flow from the ledger over a date range: every money-in (credit) and money-out
+     * (debit) entry across the payment accounts, with the account balance and the combined
+     * balance of all accounts after each entry, plus totals broken down by source.
      */
     public function cashFlow(Request $request)
     {
         [$from, $to] = $this->dateRange($request);
         $accountId = $request->input('payment_account_id');
+        $type = $request->input('transaction_type');
+        $source = $request->input('source');
 
         $transactions = Transaction::query()
+            ->with(['account', 'addedBy'])
             ->when($from, fn ($q) => $q->whereDate('created_at', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('created_at', '<=', $to))
             ->when($accountId, fn ($q) => $q->where('payment_account_id', $accountId))
+            ->when($type, fn ($q) => $q->where('type', $type))
+            ->when($source, fn ($q) => $q->where('source', $source))
+            ->orderByDesc('created_at')->orderByDesc('id')
             ->get();
 
-        $labels = [
+        // Pre-select the from/to accounts of each fund transfer in the edit modal.
+        Transaction::attachTransferAccounts($transactions);
+
+        // The per-account balance after an entry is already stored on the row as
+        // running_balance; the combined balance across all accounts is derived here.
+        $combined = $this->combinedRunningBalances();
+        foreach ($transactions as $transaction) {
+            $transaction->total_balance = $combined[$transaction->id] ?? null;
+        }
+
+        $labels = $this->sourceLabels();
+
+        $rows = $transactions->groupBy('source')->map(function ($group, $source) use ($labels) {
+            return (object) [
+                'source' => $labels[$source] ?? ucfirst(str_replace('_', ' ', (string) $source)),
+                'in' => round((float) $group->sum('credit'), 2),
+                'out' => round((float) $group->sum('debit'), 2),
+            ];
+        })->values();
+
+        $totalIn = round((float) $transactions->sum('credit'), 2);
+        $totalOut = round((float) $transactions->sum('debit'), 2);
+
+        return view('admin.backend.reports.cash_flow', [
+            'transactions' => $transactions,
+            'rows' => $rows,
+            'totalIn' => $totalIn,
+            'totalOut' => $totalOut,
+            'net' => round($totalIn - $totalOut, 2),
+            'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
+            'sourceLabels' => $labels,
+            'from' => $from,
+            'to' => $to,
+            'accountId' => $accountId,
+            'type' => $type,
+            'source' => $source,
+        ]);
+    }
+
+    /**
+     * Human-readable names for the ledger's transaction sources.
+     *
+     * @return array<string, string>
+     */
+    private function sourceLabels(): array
+    {
+        return [
             'order_payment' => 'Order payments received',
             'deposit' => 'Deposits',
             'fund_transfer' => 'Fund transfers',
@@ -222,28 +275,35 @@ class ReportController extends Controller
             'loan_given' => 'Loans handed out',
             'loan_receipt' => 'Loan repayments received',
         ];
+    }
 
-        $rows = $transactions->groupBy('source')->map(function ($group, $source) use ($labels) {
-            return (object) [
-                'source' => $labels[$source] ?? ucfirst(str_replace('_', ' ', (string) $source)),
-                'in' => round((float) $group->sum('credit'), 2),
-                'out' => round((float) $group->sum('debit'), 2),
-            ];
-        })->values();
+    /**
+     * Combined balance of every payment account after each ledger entry, keyed by transaction id.
+     *
+     * Derived the way the account book derives its per-account running balance: today's total
+     * wound back by the net of the whole ledger to an opening baseline, then rolled forward
+     * chronologically. The whole ledger is walked because entries outside the reported range
+     * still move the balance.
+     *
+     * @return array<int, float>
+     */
+    private function combinedRunningBalances(): array
+    {
+        $ledger = Transaction::query()
+            ->orderBy('created_at')->orderBy('id')
+            ->get(['id', 'credit', 'debit']);
 
-        $totalIn = round((float) $transactions->sum('credit'), 2);
-        $totalOut = round((float) $transactions->sum('debit'), 2);
+        $net = round((float) $ledger->sum('credit') - (float) $ledger->sum('debit'), 2);
+        $running = round((float) PaymentAccount::sum('balance') - $net, 2);
 
-        return view('admin.backend.reports.cash_flow', [
-            'rows' => $rows,
-            'totalIn' => $totalIn,
-            'totalOut' => $totalOut,
-            'net' => round($totalIn - $totalOut, 2),
-            'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
-            'from' => $from,
-            'to' => $to,
-            'accountId' => $accountId,
-        ]);
+        $balances = [];
+
+        foreach ($ledger as $entry) {
+            $running = round($running + (float) $entry->credit - (float) $entry->debit, 2);
+            $balances[$entry->id] = $running;
+        }
+
+        return $balances;
     }
 
     /**

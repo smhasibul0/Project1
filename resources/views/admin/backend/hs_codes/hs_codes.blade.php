@@ -18,6 +18,7 @@
         </div>
 
         {{-- ===================== Excel import ===================== --}}
+        @can('hs.import')
         <div class="card">
             <div class="card-header"><h5 class="mb-0">Import from Excel</h5></div>
             <div class="card-body">
@@ -47,6 +48,7 @@
                 </div>
             </div>
         </div>
+        @endcan
 
         {{-- ===================== Tariff list ===================== --}}
         <div class="card">
@@ -61,9 +63,11 @@
                             <a href="{{ route('hs.codes') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                         @endif
                     </form>
+                    @can('hs.create')
                     <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addModal">
                         <i class="ri-add-line me-1"></i> Add HS Code
                     </button>
+                    @endcan
                 </div>
             </div>
             <div class="card-body p-0">
@@ -93,6 +97,7 @@
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu">
+                                            @can('hs.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item edit-btn"
                                                         data-bs-toggle="modal" data-bs-target="#editModal"
@@ -100,6 +105,8 @@
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
+                                            @can('hs.delete')
                                             <li>
                                                 <form action="{{ route('hs.code.delete', $hsCode->id) }}" method="POST" class="m-0">
                                                     @csrf @method('DELETE')
@@ -108,6 +115,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -147,7 +155,15 @@
 </div>
 
 {{-- ===================== Add / edit ===================== --}}
-@foreach(['add' => 'addModal', 'edit' => 'editModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $pageModals = array_filter([
+        'add' => auth()->user()->can('hs.create') ? 'addModal' : null,
+        'edit' => auth()->user()->can('hs.edit') ? 'editModal' : null,
+    ]);
+@endphp
+
+@foreach($pageModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -197,7 +213,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
+    document.getElementById('editModal')?.addEventListener('show.bs.modal', function (e) {
         const row = JSON.parse(e.relatedTarget.dataset.row);
         const form = document.getElementById('editForm');
         form.action = '{{ url('hs-codes') }}/' + row.id;

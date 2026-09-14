@@ -2,9 +2,6 @@
 
 use App\Models\Contact;
 use App\Models\Order;
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -71,10 +68,7 @@ test('marking delivered sets delivery status, date and computes delivery days', 
 });
 
 test('warehouse staff can update status but cannot create or edit orders', function () {
-    $perm = Permission::firstOrCreate(['key' => 'orders.update-status'], ['name' => 'Update status', 'group' => 'Orders']);
-    $role = Role::create(['name' => 'Warehouse Staff', 'slug' => 'warehouse-staff']);
-    $role->permissions()->attach($perm);
-    $staff = User::factory()->create(['role_id' => $role->id]);
+    $staff = userWithPermissions(['orders.view', 'orders.update-status'], 'warehouse-staff');
 
     $order = makeOrder();
 

@@ -21,9 +21,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Customer List</h5>
+                @can('customers.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addContactModal">
                     <i class="ri-add-line me-1"></i> Add Customer
                 </button>
+                @endcan
             </div>
 
             <div class="card-body p-0">
@@ -68,23 +70,28 @@
                                                     <i class="ri-eye-line me-2"></i>View
                                                 </button>
                                             </li>
+                                            @can('customers.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact="{{ json_encode($contact) }}">
                                                     <i class="ri-edit-line me-2"></i>Edit
                                                 </button>
                                             </li>
+                                            @endcan
                                             <li>
                                                 @if($contact->user)
                                                     <span class="dropdown-item text-success" style="cursor:default;"><i class="ri-user-follow-line me-2"></i>Login: {{ $contact->user->email }}</span>
                                                 @else
+                                                    @can('customers.create-login')
                                                     <button type="button" class="dropdown-item create-login-btn" data-bs-toggle="modal" data-bs-target="#createLoginModal"
                                                             data-id="{{ $contact->id }}"
                                                             data-name="{{ $contact->name ?: $contact->business_name }}"
                                                             data-email="{{ $contact->email }}">
                                                         <i class="ri-user-add-line me-2"></i>Create Login
                                                     </button>
+                                                    @endcan
                                                 @endif
                                             </li>
+                                            @can('customers.toggle')
                                             <li>
                                                 <form action="{{ route('contact.toggle', $contact->id) }}" method="POST" class="m-0">
                                                     @csrf @method('PATCH')
@@ -93,6 +100,8 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
+                                            @can('customers.delete')
                                             <li>
                                                 <form action="{{ route('contact.delete', $contact->id) }}" method="POST" class="m-0">
                                                     @csrf @method('DELETE')
@@ -101,6 +110,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <a class="dropdown-item coming-soon" href="#" data-feature="Ledger">
@@ -151,7 +161,15 @@
 </div>
 
 {{-- ===================== ADD / EDIT MODALS ===================== --}}
-@foreach(['add' => 'addContactModal', 'edit' => 'editContactModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $contactModals = array_filter([
+        'add' => auth()->user()->can('customers.create') ? 'addContactModal' : null,
+        'edit' => auth()->user()->can('customers.edit') ? 'editContactModal' : null,
+    ]);
+@endphp
+
+@foreach($contactModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -333,6 +351,7 @@
 </div>
 
 {{-- ===================== Create Login modal ===================== --}}
+@can('customers.create-login')
 <div class="modal fade" id="createLoginModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -366,6 +385,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -405,15 +425,19 @@ document.addEventListener('DOMContentLoaded', function () {
         [name, business].forEach(field => field.addEventListener('input', suggest));
     });
 
-    // Create-login modal: fill the form from the clicked customer row.
-    document.getElementById('createLoginModal').addEventListener('show.bs.modal', function (e) {
-        const btn = e.relatedTarget;
-        if (!btn) { return; }
-        document.getElementById('createLoginForm').action = '{{ url('customers') }}/' + btn.dataset.id + '/create-login';
-        document.getElementById('clName').textContent = btn.dataset.name || 'this customer';
-        document.getElementById('clEmail').value = btn.dataset.email || '';
-        document.getElementById('clUsername').value = btn.dataset.email || '';
-    });
+    // Create-login modal: fill the form from the clicked customer row. Only rendered for
+    // roles that may issue a portal login.
+    const createLoginModal = document.getElementById('createLoginModal');
+    if (createLoginModal) {
+        createLoginModal.addEventListener('show.bs.modal', function (e) {
+            const btn = e.relatedTarget;
+            if (!btn) { return; }
+            document.getElementById('createLoginForm').action = '{{ url('customers') }}/' + btn.dataset.id + '/create-login';
+            document.getElementById('clName').textContent = btn.dataset.name || 'this customer';
+            document.getElementById('clEmail').value = btn.dataset.email || '';
+            document.getElementById('clUsername').value = btn.dataset.email || '';
+        });
+    }
 
     // Render Actions dropdowns with a fixed Popper strategy so the responsive-table
     // overflow doesn't clip the open menu.
@@ -426,27 +450,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ----- Edit modal: pre-fill from the row's JSON blob -----
-    document.getElementById('editContactModal').addEventListener('show.bs.modal', function (e) {
-        const c = JSON.parse(e.relatedTarget.dataset.contact);
-        const form = document.getElementById('editContactForm');
-        form.action = '{{ url('contacts') }}/' + c.id;
+    const editContactModal = document.getElementById('editContactModal');
+    if (editContactModal) {
+        editContactModal.addEventListener('show.bs.modal', function (e) {
+            const c = JSON.parse(e.relatedTarget.dataset.contact);
+            const form = document.getElementById('editContactForm');
+            form.action = '{{ url('contacts') }}/' + c.id;
 
-        form.querySelectorAll('[data-field]').forEach(function (field) {
-            const key = field.dataset.field;
-            if (field.type === 'checkbox') {
-                field.checked = !!Number(c[key]);
-            } else {
-                field.value = (c[key] ?? '') === null ? '' : (c[key] ?? '');
-            }
+            form.querySelectorAll('[data-field]').forEach(function (field) {
+                const key = field.dataset.field;
+                if (field.type === 'checkbox') {
+                    field.checked = !!Number(c[key]);
+                } else {
+                    field.value = (c[key] ?? '') === null ? '' : (c[key] ?? '');
+                }
+            });
+
+            // A customer who already has a mark keeps it; renaming them won't move it.
+            const mark = form.querySelector('.shipping-mark-input');
+            if (c.shipping_mark) { mark.dataset.touched = '1'; } else { delete mark.dataset.touched; }
         });
+    }
 
-        // A customer who already has a mark keeps it; renaming them won't move it.
-        const mark = form.querySelector('.shipping-mark-input');
-        if (c.shipping_mark) { mark.dataset.touched = '1'; } else { delete mark.dataset.touched; }
-    });
-
-    // A fresh Add form starts open to suggestions again.
-    document.getElementById('addContactModal').addEventListener('show.bs.modal', function () {
+    // A fresh Add form starts open to suggestions again (only rendered if the role may add one).
+    document.getElementById('addContactModal')?.addEventListener('show.bs.modal', function () {
         delete document.querySelector('#addContactForm .shipping-mark-input').dataset.touched;
     });
 

@@ -20,9 +20,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Warehouses</h5>
+                @can('warehouses.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
                     <i class="ri-add-line me-1"></i> Add Warehouse
                 </button>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="warehousesTable" export-name="warehouses">
@@ -47,7 +49,9 @@
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
-                                            @if(auth()->user()->isAdmin())
+                                            {{-- Stepping into a warehouse's own screens stays admin-only:
+                                                 EnsureWarehouseAccess turns anyone else away. --}}
+                                            @if(auth()->user()->isAdmin() && auth()->user()->can('warehouses.enter'))
                                             <li>
                                                 <a href="{{ route('warehouse.manage', $warehouse->id) }}" class="dropdown-item">
                                                     <i class="ri-settings-3-line me-1"></i> Manage
@@ -55,6 +59,7 @@
                                             </li>
                                             <li><hr class="dropdown-divider"></li>
                                             @endif
+                                            @can('warehouses.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item edit-btn"
                                                         data-bs-toggle="modal" data-bs-target="#editModal"
@@ -62,6 +67,8 @@
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
+                                            @can('warehouses.delete')
                                             <li>
                                                 <form action="{{ route('warehouse.delete', $warehouse->id) }}" method="POST" class="m-0">
                                                     @csrf @method('DELETE')
@@ -70,6 +77,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -95,7 +103,15 @@
     </div>
 </div>
 
-@foreach(['add' => 'addModal', 'edit' => 'editModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $pageModals = array_filter([
+        'add' => auth()->user()->can('warehouses.create') ? 'addModal' : null,
+        'edit' => auth()->user()->can('warehouses.edit') ? 'editModal' : null,
+    ]);
+@endphp
+
+@foreach($pageModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -155,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
+    document.getElementById('editModal')?.addEventListener('show.bs.modal', function (e) {
         const r = JSON.parse(e.relatedTarget.dataset.row);
         const form = document.getElementById('editForm');
         form.action = '{{ url('warehouses') }}/' + r.id;

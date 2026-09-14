@@ -96,19 +96,8 @@ class PaymentAccountController extends Controller
 
         $transactions = $query->get();
 
-        // Resolve the current from/to accounts of each fund transfer so the edit modal can
-        // pre-select them (both legs share a transfer_group; debit = from, credit = to).
-        $groups = $transactions->where('source', 'fund_transfer')->pluck('transfer_group')->filter()->unique();
-        if ($groups->isNotEmpty()) {
-            $legs = Transaction::whereIn('transfer_group', $groups)->get()->groupBy('transfer_group');
-            foreach ($transactions as $transaction) {
-                if ($transaction->source === 'fund_transfer' && isset($legs[$transaction->transfer_group])) {
-                    $pair = $legs[$transaction->transfer_group];
-                    $transaction->from_account_id = optional($pair->firstWhere('type', 'debit'))->payment_account_id;
-                    $transaction->to_account_id = optional($pair->firstWhere('type', 'credit'))->payment_account_id;
-                }
-            }
-        }
+        // Pre-select the from/to accounts of each fund transfer in the edit modal.
+        Transaction::attachTransferAccounts($transactions);
 
         // Accounts available as transfer source/destination in the edit modal.
         $accounts = PaymentAccount::where('is_active', 1)->orderBy('name')->get();

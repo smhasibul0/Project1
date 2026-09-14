@@ -43,7 +43,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Incoming Orders</h6>
-                        <a href="{{ route('warehouse.orders.index') }}" class="btn btn-sm btn-link">View all</a>
+                        @can('warehouse.orders.view')<a href="{{ route('warehouse.orders.index') }}" class="btn btn-sm btn-link">View all</a>@endcan
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 align-middle">
@@ -69,7 +69,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Recent Receipts</h6>
-                        <a href="{{ route('warehouse.inventory.index') }}" class="btn btn-sm btn-link">Inventory</a>
+                        @can('warehouse.inventory.view')<a href="{{ route('warehouse.inventory.index') }}" class="btn btn-sm btn-link">Inventory</a>@endcan
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 align-middle">

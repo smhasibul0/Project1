@@ -23,9 +23,11 @@
                         <a href="{{ route('office.cost.types') }}" class="btn btn-outline-secondary">Clear</a>
                     @endif
                 </form>
+                @can('office.cost-types.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
                     <i class="ri-add-line me-1"></i> Add Cost Type
                 </button>
+                @endcan
             </div>
         </div>
 
@@ -68,10 +70,14 @@
                                         <td class="text-end text-muted">{{ $type->expenses_count }}</td>
                                         <td class="text-end">
                                             <div class="d-flex gap-1 justify-content-end">
+                                                @can('office.cost-types.edit')
                                                 <button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($type->only(['id', 'name', 'expense_category_id', 'nature', 'monthly_amount', 'is_active']) + ['category_parent_id' => $type->category?->parent_id ?? $type->expense_category_id]) }}"><i class="ri-edit-line"></i></button>
+                                                @endcan
+                                                @can('office.cost-types.delete')
                                                 <form action="{{ route('office.cost.type.delete', $type->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                                     <button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-used="{{ $type->expenses_count }}"><i class="ri-delete-bin-line"></i></button>
                                                 </form>
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
@@ -90,6 +96,7 @@
 </div>
 
 {{-- Add modal --}}
+@can('office.cost-types.create')
 <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -118,7 +125,7 @@
                             </select>
                         </div>
                     </div>
-                    <small class="text-muted">Every expense booked against this type reports under this category.@can('expenses.manage') <a href="{{ route('expense.categories') }}" target="_blank">Manage categories</a>@endcan</small>
+                    <small class="text-muted">Every expense booked against this type reports under this category.@can('expense-categories.view') <a href="{{ route('expense.categories') }}" target="_blank">Manage categories</a>@endcan</small>
 
                     <label class="form-label mt-3">Nature <span class="text-danger">*</span></label>
                     <select class="form-control nature-select" name="nature" data-monthly="addMonthlyWrap" required>
@@ -148,7 +155,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Edit modal --}}
+@can('office.cost-types.edit')
 <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -205,6 +215,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

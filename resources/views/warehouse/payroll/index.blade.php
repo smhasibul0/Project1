@@ -67,7 +67,7 @@
                                     </button>
                                 </td>
                                 <td>
-                                    <a href="{{ route('warehouse.staff.show', $s->id) }}">{{ $s->name }}</a>
+                                    @can('warehouse.staff.view')<a href="{{ route('warehouse.staff.show', $s->id) }}">{{ $s->name }}</a>@else{{ $s->name }}@endcan
                                     @unless($s->is_active)<span class="badge bg-secondary ms-1">Inactive</span>@endunless
                                 </td>
                                 <td>{{ $s->designation ?: '—' }}</td>
@@ -100,7 +100,7 @@
 @php
     $monthPayments = $s->salaryPayments->where('salary_month', $month);
     $due = $s->dueForMonth($month);
-    $canPay = $due > 0 || (float) $s->monthly_salary <= 0;
+    $canPay = ($due > 0 || (float) $s->monthly_salary <= 0) && auth()->user()->can('warehouse.staff.salary.create');
 @endphp
 <div class="modal fade" id="payrollModal{{ $s->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -131,9 +131,11 @@
                                 <td>{{ $p->note ?: '—' }}</td>
                                 <td class="text-end">
                                     @if($p->attachment)<a href="{{ asset('upload/salaries/'.$p->attachment) }}" target="_blank" class="me-1"><i class="ri-attachment-2"></i></a>@endif
+                                    @can('warehouse.staff.salary.delete')
                                     <form action="{{ route('warehouse.staff.salary.delete', [$s->id, $p->id]) }}" method="POST" class="d-inline m-0">@csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete payment"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @endforeach

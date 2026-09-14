@@ -9,7 +9,7 @@
                 <h4 class="fs-18 fw-semibold m-0">Staff &amp; Salary</h4>
                 <small class="text-muted">{{ $warehouse->name }} — monthly payroll ৳ {{ number_format($monthlyPayroll, 2) }}.</small>
             </div>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="ri-add-line me-1"></i> Add Staff</button>
+            @can('warehouse.staff.create')<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="ri-add-line me-1"></i> Add Staff</button>@endcan
         </div>
 
         <div class="card">
@@ -33,8 +33,8 @@
                                 <td>
                                     <div class="d-flex gap-1">
                                         <a href="{{ route('warehouse.staff.show', $s->id) }}" class="btn btn-sm btn-outline-secondary" title="View"><i class="ri-eye-line"></i></a>
-                                        <button type="button" class="btn btn-sm btn-outline-primary edit-btn" title="Edit" data-row="{{ json_encode($s->only(['id','name','designation','phone','email','join_date','monthly_salary','note','is_active'])) }}"><i class="ri-edit-line"></i></button>
-                                        <form action="{{ route('warehouse.staff.delete', $s->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"><i class="ri-delete-bin-line"></i></button></form>
+                                        @can('warehouse.staff.edit')<button type="button" class="btn btn-sm btn-outline-primary edit-btn" title="Edit" data-row="{{ json_encode($s->only(['id','name','designation','phone','email','join_date','monthly_salary','note','is_active'])) }}"><i class="ri-edit-line"></i></button>@endcan
+                                        @can('warehouse.staff.delete')<form action="{{ route('warehouse.staff.delete', $s->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </div>
                                 </td>
                                 <td class="fw-semibold">{{ $s->name }}</td>
@@ -53,7 +53,15 @@
     </div>
 </div>
 
-@foreach(['add' => 'addModal', 'edit' => 'editModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $staffModals = array_filter([
+        'add' => auth()->user()->can('warehouse.staff.create') ? 'addModal' : null,
+        'edit' => auth()->user()->can('warehouse.staff.edit') ? 'editModal' : null,
+    ]);
+@endphp
+
+@foreach($staffModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

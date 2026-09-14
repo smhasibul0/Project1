@@ -43,7 +43,7 @@
                                 <td>
                                     <div class="d-flex gap-1">
                                         <a href="{{ route('quotation.show', $q->id) }}" class="btn btn-sm btn-outline-secondary py-0" title="View"><i class="ri-eye-line"></i></a>
-                                        <a href="{{ route('quotation.edit', $q->id) }}" class="btn btn-sm btn-outline-primary py-0"><i class="ri-price-tag-3-line me-1"></i>Quote</a>
+                                        @can('quotations.edit')<a href="{{ route('quotation.edit', $q->id) }}" class="btn btn-sm btn-outline-primary py-0"><i class="ri-price-tag-3-line me-1"></i>Quote</a>@endcan
                                     </div>
                                 </td>
                                 <td><span class="badge bg-light text-dark">{{ $q->quotation_no }}</span></td>

@@ -20,9 +20,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Users</h5>
+                @can('users.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
                     <i class="ri-add-line me-1"></i> Add User
                 </button>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="usersTable" export-name="users">
@@ -57,23 +59,29 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        @can('users.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-user-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"
                                                 data-user="{{ json_encode($user->only(['id','first_name','last_name','username','email','phone','role_id','contact_id','warehouse_id','status'])) }}" title="Edit">
                                             <i class="ri-edit-line"></i>
                                         </button>
+                                        @endcan
+                                        @can('users.toggle')
                                         <form action="{{ route('user.toggle', $user->id) }}" method="POST" class="m-0">
                                             @csrf @method('PATCH')
                                             <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ $user->status === 'active' ? 'Deactivate' : 'Activate' }}">
                                                 <i class="ri-shut-down-line"></i>
                                             </button>
                                         </form>
+                                        @endcan
+                                        @can('users.delete')
                                         <form action="{{ route('user.delete', $user->id) }}" method="POST" class="m-0">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-user-btn" title="Delete">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
                                         </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -86,7 +94,15 @@
     </div>
 </div>
 
-@foreach(['add' => 'addModal', 'edit' => 'editModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $modals = array_filter([
+        'add' => auth()->user()->can('users.create') ? 'addModal' : null,
+        'edit' => auth()->user()->can('users.edit') ? 'editModal' : null,
+    ]);
+@endphp
+
+@foreach($modals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -190,17 +206,21 @@ document.addEventListener('DOMContentLoaded', function () {
         sel.addEventListener('change', () => toggleContactField(sel));
     });
 
-    document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
-        const u = JSON.parse(e.relatedTarget.dataset.user);
-        const form = document.getElementById('editForm');
-        form.action = '{{ url('users') }}/' + u.id;
-        form.querySelectorAll('[data-field]').forEach(function (f) {
-            if (f.type === 'checkbox') { f.checked = u.status === 'active'; }
-            else { f.value = (u[f.dataset.field] ?? '') === null ? '' : (u[f.dataset.field] ?? ''); }
+    // The edit dialog is only rendered for roles that may edit a user.
+    const editModal = document.getElementById('editModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (e) {
+            const u = JSON.parse(e.relatedTarget.dataset.user);
+            const form = document.getElementById('editForm');
+            form.action = '{{ url('users') }}/' + u.id;
+            form.querySelectorAll('[data-field]').forEach(function (f) {
+                if (f.type === 'checkbox') { f.checked = u.status === 'active'; }
+                else { f.value = (u[f.dataset.field] ?? '') === null ? '' : (u[f.dataset.field] ?? ''); }
+            });
+            form.querySelector('[name="password"]').value = '';
+            toggleContactField(form.querySelector('.role-select'));
         });
-        form.querySelector('[name="password"]').value = '';
-        toggleContactField(form.querySelector('.role-select'));
-    });
+    }
 
     document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');

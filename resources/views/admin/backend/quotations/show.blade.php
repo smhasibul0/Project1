@@ -13,7 +13,7 @@
                     <span class="badge bg-success">Converted to Order</span>
                 @else
                     {{-- Any quotation can be turned into an order; accepted is just the usual point. --}}
-                    @can('orders.manage')
+                    @can('orders.create')
                     <form action="{{ route('order.from.quotation', $quotation->id) }}" method="POST" class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-success btn-sm"><i class="ri-arrow-right-line me-1"></i> Convert to Order</button>
@@ -22,21 +22,29 @@
 
                     {{-- Customer wants to negotiate -> re-quote or deny --}}
                     @if($quotation->status === 'negotiating')
+                        @can('quotations.edit')
                         <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-price-tag-3-line me-1"></i> Re-quote</a>
+                        @endcan
+                        @can('quotations.deny')
                         <form action="{{ route('quotation.deny', $quotation->id) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-outline-danger btn-sm deny-btn"><i class="ri-close-line me-1"></i> Deny</button>
                         </form>
+                        @endcan
                     @endif
 
                     {{-- Still requested / draft -> respond/edit --}}
                     @if(in_array($quotation->status, ['requested', 'draft', 'quoted', 'rejected']))
+                        @can('quotations.edit')
                         <a href="{{ route('quotation.edit', $quotation->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> {{ $quotation->status === 'requested' ? 'Respond' : 'Edit' }}</a>
+                        @endcan
                     @endif
                 @endif
+                @can('quotations.print')
                 <a href="{{ route('quotation.print', $quotation->id) }}" target="_blank" class="btn btn-outline-primary btn-sm">
                     <i class="ri-file-pdf-2-line me-1"></i> Export PDF
                 </a>
+                @endcan
                 <a href="{{ route('quotations.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>

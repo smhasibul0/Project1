@@ -9,7 +9,7 @@ metre with every taka of duty, cost and profit tracked along the way.**
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![Pest](https://img.shields.io/badge/Pest-3-8A2BE2?logo=pest&logoColor=white)](https://pestphp.com)
-[![Tests](https://img.shields.io/badge/tests-328%20passing-3fb950)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-3fb950)](#-testing)
 [![Code Style](https://img.shields.io/badge/code%20style-Pint-FF2D20)](https://laravel.com/docs/pint)
 
 </div>
@@ -135,7 +135,8 @@ without needing a separate warehouse login.
 - Fund transfers, deposits, no-overdraft guard
 - Three cost buckets feeding order profit
 - Multiple payments per order
-- Profit & Loss, Receivables, Balance Sheet, Cash Flow
+- Cash Flow: every ledger entry, per-account and combined balance
+- Profit & Loss, Receivables, Balance Sheet
 
 </td><td valign="top">
 
@@ -185,20 +186,48 @@ and deleting the record reverses all of it.
 
 ## 🔐 Roles & permissions
 
-Permissions are database-driven and editable in the admin roles matrix. `Gate::before`
-resolves every ability against the user's role, with Admin bypassing all checks.
+**153 permissions across 27 modules — one per action.** Not "can manage orders", but
+*view*, *create*, *edit*, *delete*, *update status*, *record payments*, *print invoices*,
+*print labels*, *scan cartons* — each its own switch. Reports are granted one at a time,
+so a role can read the P&L without seeing the cash flow.
+
+`App\Support\PermissionCatalog` is the single source of truth: the seeder, the migration
+and the Roles screen all read from it. `Gate::before` resolves every ability against the
+user's role, and Admin bypasses everything.
+
+**Enforcement runs at two levels.** Every route carries its own `can:` middleware — route
+groups only carry `['auth', 'admin']` — so nothing is reachable by URL. And every button,
+menu item and dialog is wrapped in the matching `@can`, so unticking an action takes its
+button off the page instead of leaving it there to 403.
+
+Roles are edited in **Access Control → Roles → Permissions**: a searchable matrix grouped
+by module, with a per-module checkbox that goes indeterminate on a partial selection, a
+running count, and each row showing what the permission does plus the key it maps to.
 
 | Role | Scope |
 |---|---|
 | **Admin** | Everything, including account balances and settings |
 | **Staff / Agent** | Customers, HS codes, quotations, orders, LC, containers — no finance |
-| **Accountant** | Costs, payment accounts, payments, reports, expense categories |
+| **Accountant** | Costs, payment accounts, reports, office costs, loans, assets |
 | **Customer** | Customer portal only, scoped to their own contact record |
 | **Warehouse** | Warehouse portal only, scoped to their assigned warehouse |
 
-> **Account balances are admin-only.** Other roles can pay from an account without ever
-> seeing what it holds — every selector renders through the `<x-account-options>`
-> component, which is gated on `accounts.view-balance`.
+These are starting points, not fixed sets — trim or extend any of them in the matrix.
+
+> **Account balances are their own permission.** `accounts.view-balance` is deliberately
+> left out of every default role, so staff can pay from an account without ever seeing
+> what it holds. Every selector renders through the `<x-account-options>` component, which
+> is gated on it. Grant it only on purpose.
+
+> [!NOTE]
+> `/dashboard` requires `dashboard.view`. A new role without it hits a 403 straight after
+> login — it is the first entry in the matrix.
+
+**Adding a module or an action:** add the key to `PermissionCatalog::all()`, put
+`->middleware('can:<key>')` on the route, wrap the button in `@can('<key>')`, and grant it
+in `RolePermissionSeeder`. `PermissionCatalogTest` fails the build if a route asks for a
+key that isn't in the catalog, or if a catalog key is never enforced anywhere — so a dead
+or misspelled permission can't survive a commit.
 
 ---
 
@@ -270,7 +299,7 @@ second upload of a rates sheet (HS code + those columns), or are keyed in per co
 ## 🧪 Testing
 
 ```bash
-composer test                      # full suite (261 tests)
+composer test                      # full suite (367 tests)
 php artisan test --compact --filter=WarehousePortalTest
 ```
 
@@ -298,8 +327,9 @@ app/
 │   │   └── Warehouse/      Warehouse portal (inventory, expenses, staff, payroll)
 │   └── Middleware/         EnsureAdminAccess · EnsureCustomerAccess · EnsureWarehouseAccess
 ├── Models/                 Order is the hub; costs, payments and stock hang off it
-├── Providers/              Gate definitions (orders.view, accounts.view-balance)
-└── Support/                CurrentWarehouse · PackingListParser · HsCodeSheetImporter
+├── Providers/              The single Gate::before that resolves every permission
+└── Support/                PermissionCatalog — the 153-permission catalog
+                            CurrentWarehouse · PackingListParser · HsCodeSheetImporter
                             DutyCalculator · NumberToWords
 
 resources/views/
@@ -318,6 +348,7 @@ tests/Feature/              Pest feature tests, one file per module
 - Follow the structure and naming of neighbouring files — check a sibling before inventing a pattern.
 - Every change ships with a test; run the affected suite before committing.
 - Action columns come **first** in every table, as a dropdown.
+- Gate the route *and* the button: `->middleware('can:x')` plus `@can('x')` around the control.
 - Never render `$account->balance` directly — always use `<x-account-options>`.
 - Money is BDT (৳) throughout; multi-currency is not yet implemented.
 - Run `vendor/bin/pint --dirty` before finalising.

@@ -12,6 +12,7 @@ use App\Models\WarehouseExpense;
 use App\Models\WarehouseExpensePayment;
 use App\Models\WarehouseStaff;
 use App\Models\WarehouseStock;
+use App\Support\PermissionCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 
@@ -19,9 +20,12 @@ uses(RefreshDatabase::class);
 
 function warehouseUser(Warehouse $warehouse): User
 {
-    $role = Role::firstOrCreate(['slug' => 'warehouse'], ['name' => 'Warehouse', 'is_system' => true]);
-
-    return User::factory()->create(['role_id' => $role->id, 'warehouse_id' => $warehouse->id]);
+    // The warehouse role holds its own portal permissions, exactly as the seeder grants them.
+    return userWithPermissions(
+        array_merge(PermissionCatalog::group('Warehouse Portal'), ['orders.scan']),
+        'warehouse',
+        ['warehouse_id' => $warehouse->id],
+    );
 }
 
 function orderWithItems(Warehouse $warehouse): Order

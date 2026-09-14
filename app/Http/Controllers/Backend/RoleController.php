@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Support\PermissionCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class RoleController extends Controller
@@ -13,9 +15,35 @@ class RoleController extends Controller
     public function index()
     {
         $roles = Role::with('permissions')->withCount('users')->orderByDesc('is_system')->orderBy('name')->get();
-        $permissions = Permission::orderBy('group')->orderBy('name')->get()->groupBy('group');
 
-        return view('admin.backend.roles.roles', compact('roles', 'permissions'));
+        return view('admin.backend.roles.roles', [
+            'roles' => $roles,
+            'permissions' => $this->matrix(),
+            'permissionCount' => Permission::count(),
+        ]);
+    }
+
+    /**
+     * The permission matrix in catalog order (not alphabetical), each row carrying the id the
+     * form posts, the ability key it maps to, and what it lets the role do.
+     *
+     * @return Collection<string, Collection<int, object>>
+     */
+    private function matrix()
+    {
+        $ids = Permission::pluck('id', 'key');
+
+        return collect(PermissionCatalog::all())
+            ->map(fn (array $module) => collect($module)
+                ->map(fn (array $meta, string $key) => (object) [
+                    'id' => $ids[$key] ?? null,
+                    'key' => $key,
+                    'name' => $meta[0],
+                    'description' => $meta[1],
+                ])
+                ->filter(fn (object $permission) => $permission->id !== null)
+                ->values())
+            ->filter(fn ($module) => $module->isNotEmpty());
     }
 
     public function store(Request $request)

@@ -115,9 +115,11 @@
                 @endforeach
             </div>
 
+            @can('orders.scan')
             <a class="scan-cta" href="{{ route('scan.index') }}">
                 <i class="ri-qr-scan-2-line"></i> Scan a carton to record
             </a>
+            @endcan
             <p class="muted" style="margin:.6rem 0 0; font-size:.82rem;">
                 Counting is done by reading the QR on the carton with the camera, so what's
                 recorded always matches goods somebody is standing in front of.

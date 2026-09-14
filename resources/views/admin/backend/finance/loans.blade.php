@@ -27,9 +27,11 @@
                 <a href="{{ route('loans.index', $isBorrowed ? 'lent' : 'borrowed') }}" class="btn btn-outline-primary">
                     <i class="ri-arrow-left-right-line me-1"></i> {{ $isBorrowed ? 'Money Lent' : 'Money Borrowed' }}
                 </a>
+                @can('loans.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#loanModal">
                     <i class="ri-add-line me-1"></i> {{ $isBorrowed ? 'Record Borrowing' : 'Record Lending' }}
                 </button>
+                @endcan
             </div>
         </div>
 
@@ -99,11 +101,14 @@
                                                     <i class="ri-eye-line me-1"></i> View
                                                 </button>
                                             </li>
+                                            @can('loans.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editLoan{{ $loan->id }}">
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
+                                            @can('loans.payments.create')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 @if($loan->outstanding() > 0 && $loan->status === 'active')
@@ -114,11 +119,15 @@
                                                 <span class="dropdown-item disabled text-muted"><i class="ri-checkbox-circle-line me-1"></i> Nothing outstanding</span>
                                                 @endif
                                             </li>
+                                            @endcan
+                                            @can('loans.close')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#closeLoan{{ $loan->id }}">
                                                     <i class="ri-archive-line me-1"></i> Change Status
                                                 </button>
                                             </li>
+                                            @endcan
+                                            @can('loans.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('loan.delete', $loan->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
@@ -127,6 +136,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -164,6 +174,7 @@
 </div>
 
 {{-- Record a new loan --}}
+@can('loans.create')
 <div class="modal fade" id="loanModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -184,6 +195,8 @@
         </div>
     </div>
 </div>
+
+@endcan
 
 @foreach($loans as $loan)
 
@@ -227,9 +240,11 @@
                                 <td>{{ $payment->paymentAccount->name ?? '—' }}</td>
                                 <td>{{ $payment->note ?: '—' }}</td>
                                 <td class="text-end">
+                                    @can('loans.payments.delete')
                                     <form action="{{ route('loan.payments.delete', [$loan->id, $payment->id]) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger delete-payment-btn"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty
@@ -247,6 +262,7 @@
 </div>
 
 {{-- Edit --}}
+@can('loans.edit')
 <div class="modal fade" id="editLoan{{ $loan->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -268,7 +284,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Record a payment --}}
+@can('loans.payments.create')
 <div class="modal fade" id="payLoan{{ $loan->id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -317,7 +336,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Change status --}}
+@can('loans.close')
 <div class="modal fade" id="closeLoan{{ $loan->id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -350,6 +372,7 @@
         </div>
     </div>
 </div>
+@endcan
 @endforeach
 
 <script>

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
 
 class RolePermissionSeeder extends Seeder
@@ -14,63 +15,18 @@ class RolePermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        // Permission catalog, grouped by module (one "manage" permission per module).
-        $catalog = [
-            'Access Control' => [
-                'users.manage' => 'Manage users',
-                'roles.manage' => 'Manage roles & permissions',
-            ],
-            'Customers' => [
-                'customers.manage' => 'Manage customers & customer groups',
-            ],
-            'HS Codes' => [
-                'hs.manage' => 'Manage HS codes & the customs tariff',
-            ],
-            'Quotations' => [
-                'quotations.manage' => 'Manage quotation requests & quotes',
-            ],
-            'Orders' => [
-                'orders.manage' => 'Manage orders & tracking',
-                'orders.update-status' => 'Update order tracking status only',
-                'orders.scan' => 'Scan carton QR codes & count them through each stage',
-            ],
-            'Order Costs' => [
-                'costs.manage' => 'Manage order costs',
-            ],
-            'LC' => [
-                'lc.manage' => 'Manage letters of credit',
-            ],
-            'Containers' => [
-                'containers.manage' => 'Manage containers & shipments',
-            ],
-            'Finance' => [
-                'accounts.manage' => 'Manage payment accounts',
-                'payments.manage' => 'Manage payments',
-                'reports.view' => 'View reports',
-                'office.expenses.manage' => 'Manage office running costs',
-                'loans.manage' => 'Manage borrowing & lending',
-                'assets.manage' => 'Manage fixed assets & depreciation',
-            ],
-            'Warehouse' => [
-                'warehouses.manage' => 'Manage warehouses',
-                'expenses.manage' => 'Manage warehouse expense categories',
-            ],
-            'Settings' => [
-                'settings.manage' => 'Manage company & invoice settings',
-            ],
-        ];
-
-        foreach ($catalog as $group => $permissions) {
-            foreach ($permissions as $key => $name) {
+        // The permission catalog is defined once, in App\Support\PermissionCatalog.
+        foreach (PermissionCatalog::all() as $group => $permissions) {
+            foreach ($permissions as $key => [$name]) {
                 Permission::updateOrCreate(['key' => $key], ['name' => $name, 'group' => $group]);
             }
         }
 
-        // Retired with the product catalogue and the supplier directory — the
-        // business only ships other people's goods.
-        Permission::whereIn('key', ['products.manage', 'contacts.manage'])->delete();
+        // Anything no longer in the catalog (the old coarse "manage" keys, the product and
+        // supplier permissions retired with those modules) is dropped.
+        Permission::whereNotIn('key', PermissionCatalog::keys())->delete();
 
-        // Roles (Admin & Customer are system roles that can't be deleted).
+        // Roles (Admin, Customer & Warehouse are system roles that can't be deleted).
         $admin = Role::updateOrCreate(['slug' => 'admin'], ['name' => 'Admin', 'is_system' => true, 'description' => 'Full access to everything']);
         $customer = Role::updateOrCreate(['slug' => 'customer'], ['name' => 'Customer', 'is_system' => true, 'description' => 'Portal access only']);
         $warehouse = Role::updateOrCreate(['slug' => 'warehouse'], ['name' => 'Warehouse', 'is_system' => true, 'description' => 'Warehouse portal access only']);
@@ -83,26 +39,44 @@ class RolePermissionSeeder extends Seeder
         // Customer: no admin-panel permissions (their portal gates access by role).
         $customer->permissions()->sync([]);
 
-        // Warehouse: no admin panel either, but they scan cartons in and out.
-        $warehouse->permissions()->sync(Permission::where('key', 'orders.scan')->pluck('id'));
+        // Warehouse: its own portal, and scanning cartons in and out.
+        $this->grant($warehouse, array_merge(
+            PermissionCatalog::group('Warehouse Portal'),
+            ['orders.scan'],
+        ));
 
         // Staff / Agent: operational modules, no finance.
-        $staff->permissions()->sync(
-            Permission::whereIn('key', [
-                'customers.manage', 'hs.manage', 'warehouses.manage', 'quotations.manage',
-                'orders.manage', 'orders.update-status', 'orders.scan', 'lc.manage', 'containers.manage',
-            ])->pluck('id')
-        );
+        $this->grant($staff, array_merge(
+            ['dashboard.view', 'warehouses.view', 'warehouses.enter'],
+            PermissionCatalog::groups([
+                'Customers', 'Customer Groups', 'HS Codes & Tariff', 'Quotations',
+                'Transportation Modes', 'Packing Types', 'Orders',
+                'Letters of Credit', 'Containers & Shipments',
+            ]),
+        ));
 
-        // Accountant: finance & costs.
-        $accountant->permissions()->sync(
-            Permission::whereIn('key', [
-                'costs.manage', 'accounts.manage', 'payments.manage', 'reports.view', 'expenses.manage',
-                'office.expenses.manage', 'assets.manage', 'loans.manage',
-            ])->pluck('id')
-        );
+        // Accountant: finance, costs & reports — plus read-only access to orders so the
+        // cost and payment panels on an order are reachable. Account balances are granted
+        // deliberately, not by default.
+        $this->grant($accountant, array_merge(
+            ['dashboard.view', 'orders.view', 'orders.invoice', 'orders.payments.create'],
+            array_diff(PermissionCatalog::group('Payment Accounts'), ['accounts.view-balance']),
+            PermissionCatalog::groups([
+                'Order Costs', 'Cost Categories', 'Account Types', 'Office Running Costs',
+                'Office Cost Types', 'Borrowing & Lending', 'Fixed Assets', 'Asset Depreciation',
+                'Asset Categories', 'Warehouse Expense Categories', 'Reports',
+            ]),
+        ));
 
         // Existing users without a role become Admins (so nobody is locked out).
         User::whereNull('role_id')->update(['role_id' => $admin->id]);
+    }
+
+    /**
+     * @param  array<int, string>  $keys
+     */
+    private function grant(Role $role, array $keys): void
+    {
+        $role->permissions()->sync(Permission::whereIn('key', $keys)->pluck('id'));
     }
 }

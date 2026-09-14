@@ -1,12 +1,12 @@
 @php
-    $canQuotes = auth()->user()->can('quotations.manage');
+    $canQuotes = auth()->user()->can('quotations.view');
     $canOrders = auth()->user()->can('orders.view');
     $pendingRequests = $canQuotes ? \App\Models\Quotation::where('status', 'requested')->count() : 0;
     $duesQuery = \App\Models\Order::where('due_amount', '>', 0);
     $ordersWithDue = $canOrders ? (clone $duesQuery)->count() : 0;
     $totalDue = $ordersWithDue ? (float) (clone $duesQuery)->sum('due_amount') : 0;
     $notifCount = $pendingRequests + $ordersWithDue;
-    $duesUrl = auth()->user()->can('reports.view') ? route('reports.receivables') : route('orders.index');
+    $duesUrl = auth()->user()->can('reports.receivables') ? route('reports.receivables') : route('orders.index');
 @endphp
 <div class="topbar-custom">
     <div class="container-xxl">
@@ -82,7 +82,7 @@
                             <i class="mdi mdi-account-circle-outline fs-16 align-middle"></i>
                             <span>My Account</span>
                         </a>
-                        @can('settings.manage')
+                        @can('settings.view')
                         <a href="{{ route('settings.company') }}" class="dropdown-item notify-item">
                             <i class="mdi mdi-cog-outline fs-16 align-middle"></i>
                             <span>Company Settings</span>
@@ -114,61 +114,83 @@
 
 <script>
 window.__adminSearch = [
+    @can('dashboard.view')
     { l: 'Dashboard', i: 'ri-home-5-line', u: '{{ route('dashboard') }}', k: 'home overview' },
+    @endcan
     @can('orders.view')
     { l: 'Orders', i: 'ri-clipboard-line', u: '{{ route('orders.index') }}', k: 'order list shipment' },
     @endcan
-    @can('orders.manage')
+    @can('orders.create')
     { l: 'Add Order', i: 'ri-add-line', u: '{{ route('orders.create') }}', k: 'new order create' },
     @endcan
-    @can('quotations.manage')
+    @can('quotations.view')
     { l: 'Quotations', i: 'ri-file-list-3-line', u: '{{ route('quotations.index') }}', k: 'quote' },
     { l: 'Quotation Requests', i: 'ri-inbox-line', u: '{{ route('quotation.requests') }}', k: 'requests customer pending' },
+    @endcan
+    @can('quotations.create')
     { l: 'Add Quotation', i: 'ri-add-line', u: '{{ route('quotations.create') }}', k: 'new quote' },
+    @endcan
+    @can('transportation-modes.view')
     { l: 'Transportation Modes', i: 'ri-truck-line', u: '{{ route('transportation.modes') }}', k: 'transport sea air' },
+    @endcan
+    @can('packing-types.view')
     { l: 'Packing Types', i: 'ri-archive-line', u: '{{ route('packing.types') }}', k: 'packing carton' },
     @endcan
-    @can('lc.manage')
+    @can('lc.view')
     { l: 'LC', i: 'ri-bank-card-line', u: '{{ route('lc.index') }}', k: 'letter of credit' },
+    @endcan
+    @can('lc.create')
     { l: 'Add LC', i: 'ri-add-line', u: '{{ route('lc.create') }}', k: 'new lc' },
     @endcan
-    @can('containers.manage')
+    @can('containers.view')
     { l: 'Containers', i: 'ri-ship-line', u: '{{ route('container.index') }}', k: 'shipment container' },
+    @endcan
+    @can('containers.create')
     { l: 'Add Container', i: 'ri-add-line', u: '{{ route('container.create') }}', k: 'new container' },
     @endcan
-    @can('costs.manage')
+    @can('cost-categories.view')
     { l: 'Cost Categories', i: 'ri-price-tag-3-line', u: '{{ route('cost.categories') }}', k: 'costs' },
     @endcan
-    @can('hs.manage')
+    @can('hs.view')
     { l: 'HS Codes', i: 'ri-box-3-line', u: '{{ route('hs.codes') }}', k: 'tariff customs duty hs code' },
     @endcan
-    @can('warehouses.manage')
+    @can('warehouses.view')
     { l: 'Warehouses', i: 'ri-store-2-line', u: '{{ route('warehouses.index') }}', k: 'warehouse stock' },
     @endcan
-    @can('customers.manage')
+    @can('customers.view')
     { l: 'Customers', i: 'ri-user-3-line', u: '{{ route('customers.index') }}', k: 'client buyer contact' },
+    @endcan
+    @can('customer-groups.view')
     { l: 'Customer Groups', i: 'ri-group-line', u: '{{ route('customer.groups') }}', k: 'groups' },
     @endcan
-    @can('accounts.manage')
+    @can('accounts.view')
     { l: 'Payment Accounts', i: 'ri-bank-line', u: '{{ route('payment.accounts') }}', k: 'cash bank account' },
     @endcan
-    @can('expenses.manage')
+    @can('expense-categories.view')
     { l: 'Expense Categories', i: 'ri-price-tag-3-line', u: '{{ route('expense.categories') }}', k: 'warehouse expenses rent utilities' },
     @endcan
-    @can('reports.view')
+    @can('reports.profit-loss')
     { l: 'Profit & Loss', i: 'ri-line-chart-line', u: '{{ route('reports.profit-loss') }}', k: 'report pnl profit' },
+    @endcan
+    @can('reports.receivables')
     { l: 'Receivables', i: 'ri-time-line', u: '{{ route('reports.receivables') }}', k: 'report dues aging' },
+    @endcan
+    @can('reports.cash-flow')
     { l: 'Cash Flow', i: 'ri-exchange-line', u: '{{ route('reports.cash-flow') }}', k: 'report cash' },
+    @endcan
+    @can('reports.balance-sheet')
     { l: 'Balance Sheet', i: 'ri-scales-3-line', u: '{{ route('reports.balance-sheet') }}', k: 'report balance' },
+    @endcan
+    @can('reports.warehouse-summary')
     { l: 'Warehouse Operations', i: 'ri-store-2-line', u: '{{ route('reports.warehouse-summary') }}', k: 'report warehouse expenses staff inventory' },
     @endcan
-    @can('users.manage')
+    @can('users.view')
     { l: 'Users', i: 'ri-team-line', u: '{{ route('users.index') }}', k: 'staff access' },
     @endcan
-    @can('roles.manage')
+    @can('roles.view')
     { l: 'Roles & Permissions', i: 'ri-shield-user-line', u: '{{ route('roles.index') }}', k: 'permissions access' },
     @endcan
-    @can('settings.manage')
+    @can('settings.view')
     { l: 'Company Settings', i: 'ri-settings-3-line', u: '{{ route('settings.company') }}', k: 'settings logo brand' },
     @endcan
 ];

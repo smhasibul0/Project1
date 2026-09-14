@@ -42,8 +42,8 @@ test('a customer is bounced from the admin panel to their portal', function () {
 
 test('hasPermission reflects the assigned role, admin bypasses', function () {
     expect(userWithRole('admin')->hasPermission('anything.at.all'))->toBeTrue();
-    expect(userWithRole('accountant')->hasPermission('payments.manage'))->toBeTrue();
-    expect(userWithRole('accountant')->hasPermission('customers.manage'))->toBeFalse();
+    expect(userWithRole('accountant')->hasPermission('accounts.view'))->toBeTrue();
+    expect(userWithRole('accountant')->hasPermission('customers.view'))->toBeFalse();
 });
 
 test('admin can create a user and assign a role', function () {
@@ -68,7 +68,7 @@ test('admin can create a user and assign a role', function () {
 test('admin can change what a role can do', function () {
     $admin = userWithRole('admin');
     $staff = Role::where('slug', 'staff')->firstOrFail();
-    $permIds = Permission::whereIn('key', ['customers.manage', 'orders.manage'])->pluck('id')->all();
+    $permIds = Permission::whereIn('key', ['customers.view', 'orders.view'])->pluck('id')->all();
 
     $this->actingAs($admin)->put(route('role.update', $staff->id), [
         'name' => 'Staff / Agent',
@@ -76,7 +76,7 @@ test('admin can change what a role can do', function () {
     ])->assertRedirect();
 
     expect($staff->fresh()->permissions->pluck('key')->sort()->values()->all())
-        ->toBe(['customers.manage', 'orders.manage']);
+        ->toBe(['customers.view', 'orders.view']);
 });
 
 test('the admin role permissions cannot be narrowed', function () {

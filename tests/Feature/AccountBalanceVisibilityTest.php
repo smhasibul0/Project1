@@ -1,8 +1,6 @@
 <?php
 
 use App\Models\PaymentAccount;
-use App\Models\Role;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseStaff;
 
@@ -48,8 +46,7 @@ test('an admin still sees account balances in payment selectors', function () {
 
 test('a non-admin admin-panel user does not see the cash and bank dashboard tile', function () {
     balanceAccount();
-    $role = Role::create(['slug' => 'ops', 'name' => 'Ops']);
-    $staffUser = User::factory()->create(['role_id' => $role->id]);
+    $staffUser = userWithPermissions(['dashboard.view'], 'ops');
 
     $this->actingAs($staffUser)->get(route('dashboard'))
         ->assertOk()

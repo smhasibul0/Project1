@@ -9,7 +9,7 @@
                 <h4 class="fs-18 fw-semibold m-0">Expenses</h4>
                 <small class="text-muted">Operating expenses for {{ $warehouse->name }} — total ৳ {{ number_format($total, 2) }}@if($totalDue > 0), due ৳ {{ number_format($totalDue, 2) }}@endif.</small>
             </div>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expenseModal"><i class="ri-add-line me-1"></i> Add Expense</button>
+            @can('warehouse.expenses.create')<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#expenseModal"><i class="ri-add-line me-1"></i> Add Expense</button>@endcan
         </div>
 
         <div class="card">
@@ -43,12 +43,15 @@
                                                     <i class="ri-eye-line me-1"></i> View
                                                 </button>
                                             </li>
+                                            @can('warehouse.expenses.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editModal{{ $e->id }}">
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
                                             <li><hr class="dropdown-divider"></li>
+                                            @can('warehouse.expenses.payments.create')
                                             <li>
                                                 @if($e->dueTotal() > 0)
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addPayModal{{ $e->id }}">
@@ -58,12 +61,14 @@
                                                 <span class="dropdown-item disabled text-muted"><i class="ri-checkbox-circle-line me-1"></i> Fully Paid</span>
                                                 @endif
                                             </li>
+                                            @endcan
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#payModal{{ $e->id }}">
                                                     <i class="ri-money-dollar-circle-line me-1"></i> View Payments
                                                     <span class="badge bg-secondary-subtle text-secondary ms-1">{{ $e->payments->count() }}</span>
                                                 </button>
                                             </li>
+                                            @can('warehouse.expenses.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('warehouse.expenses.delete', $e->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
@@ -72,6 +77,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -103,6 +109,7 @@
 </div>
 
 {{-- Add Expense modal --}}
+@can('warehouse.expenses.create')
 <div class="modal fade" id="expenseModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -188,6 +195,8 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Per-expense modals: view, edit, add payment, view payments --}}
 @foreach($expenses as $e)
 @php $expenseTitle = ($e->category->name ?? 'Expense').' ('.$e->expense_date?->format('d M Y').')'; @endphp
@@ -252,6 +261,7 @@
 </div>
 
 {{-- Edit --}}
+@can('warehouse.expenses.edit')
 <div class="modal fade" id="editModal{{ $e->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -309,8 +319,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Add payment --}}
-@if($e->dueTotal() > 0)
+@if($e->dueTotal() > 0 && auth()->user()->can('warehouse.expenses.payments.create'))
 <div class="modal fade" id="addPayModal{{ $e->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -394,9 +406,11 @@
                                 <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
                                 <td>{{ $p->note ?: '—' }}</td>
                                 <td class="text-end">
+                                    @can('warehouse.expenses.payments.delete')
                                     <form action="{{ route('warehouse.expenses.payments.delete', [$e->id, $p->id]) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger delete-payment-btn" title="Delete payment"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @endforeach

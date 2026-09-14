@@ -17,9 +17,9 @@
                 <small class="text-muted">{{ $order->customer->name ?? '—' }}</small>
             </div>
             <div class="text-end">
-                <a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-dark btn-sm"><i class="ri-qr-code-line me-1"></i> QR Labels</a>
-                <a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-text-line me-1"></i> Invoice</a>
-                @can('orders.manage')<a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
+                @can('orders.label')<a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-dark btn-sm"><i class="ri-qr-code-line me-1"></i> QR Labels</a>@endcan
+                @can('orders.invoice')<a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-text-line me-1"></i> Invoice</a>@endcan
+                @can('orders.edit')<a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
                 <a href="{{ route('orders.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
@@ -120,9 +120,11 @@
                                     Scanning this opens the tracking page. Staff who are signed in can count
                                     cartons through each stage from it.
                                 </div>
+                                @can('orders.label')
                                 <a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-sm btn-dark">
                                     <i class="ri-printer-line me-1"></i> Print carton labels
                                 </a>
+                                @endcan
                                 <span class="text-muted small ms-1">
                                     {{ rtrim(rtrim(number_format($order->totalCartons(), 2), '0'), '.') ?: '0' }} carton(s)
                                 </span>
@@ -190,11 +192,12 @@
         </div>
 
         <div class="row g-3">
+            @can('costs.view')
             <div class="col-lg-7">
                 <div class="card h-100">
                     <div class="card-header d-flex align-items-center justify-content-between">
                         <h6 class="mb-0">Order Costs ({{ $order->costs->count() }})</h6>
-                        @can('costs.manage')
+                        @can('costs.create')
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addCostModal"><i class="ri-add-line me-1"></i> Add Cost</button>
                         @endcan
                     </div>
@@ -202,7 +205,7 @@
                         <div class="table-responsive">
                             <table class="table table-sm mb-0 align-middle">
                                 <thead>
-                                    <tr><th>Category</th><th>Title</th><th>Date</th><th>Account</th><th>Doc</th><th class="text-end">Amount</th>@can('costs.manage')<th></th>@endcan</tr>
+                                    <tr><th>Category</th><th>Title</th><th>Date</th><th>Account</th><th>Doc</th><th class="text-end">Amount</th>@can('costs.delete')<th></th>@endcan</tr>
                                 </thead>
                                 <tbody>
                                     @forelse($order->costs as $c)
@@ -213,7 +216,7 @@
                                         <td>{{ $c->paymentAccount->name ?? '—' }}</td>
                                         <td>@if($c->attachment)<a href="{{ asset('upload/costs/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
                                         <td class="text-end">৳ {{ number_format($c->amount, 2) }}</td>
-                                        @can('costs.manage')
+                                        @can('costs.delete')
                                         <td class="text-end">
                                             <form action="{{ route('order.cost.delete', [$order->id, $c->id]) }}" method="POST" class="m-0">
                                                 @csrf @method('DELETE')
@@ -227,13 +230,14 @@
                                     @endforelse
                                 </tbody>
                                 <tfoot>
-                                    <tr class="table-light fw-semibold"><td colspan="5">Total Costs</td><td class="text-end">৳ {{ number_format($order->total_expense, 2) }}</td>@can('costs.manage')<td></td>@endcan</tr>
+                                    <tr class="table-light fw-semibold"><td colspan="5">Total Costs</td><td class="text-end">৳ {{ number_format($order->total_expense, 2) }}</td>@can('costs.delete')<td></td>@endcan</tr>
                                 </tfoot>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
+            @endcan
             <div class="col-lg-5">
                 <div class="card h-100">
                     <div class="card-header"><h6 class="mb-0">Financials</h6></div>
@@ -318,7 +322,7 @@
                                 <small class="text-muted d-block">{{ \App\Models\Container::allocationBases()[$ct->allocation_basis] ?? 'By CBM (volume)' }}</small>
                             </td>
                             <td><span class="badge bg-secondary">{{ $ct->statusLabel() }}</span></td>
-                            <td class="text-end">@can('containers.manage')<a href="{{ route('container.show', $ct->id) }}" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a>@endcan</td>
+                            <td class="text-end">@can('containers.view')<a href="{{ route('container.show', $ct->id) }}" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a>@endcan</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -335,11 +339,11 @@
         @endif
 
         {{-- Letters of Credit --}}
-        @can('lc.manage')
+        @can('lc.view')
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0">Letters of Credit ({{ $order->lcs->count() }})</h6>
-                <a href="{{ route('lc.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-primary"><i class="ri-add-line me-1"></i> Create LC</a>
+                @can('lc.create')<a href="{{ route('lc.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-primary"><i class="ri-add-line me-1"></i> Create LC</a>@endcan
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0 align-middle">
@@ -369,7 +373,7 @@
 </div>
 
 {{-- ===================== Add Cost modal ===================== --}}
-@can('costs.manage')
+@can('costs.create')
 <div class="modal fade" id="addCostModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">

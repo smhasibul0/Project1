@@ -22,7 +22,7 @@
                 </small>
             </div>
             <div class="text-end">
-                <a href="{{ route('lc.edit', $lc->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>
+                @can('lc.edit')<a href="{{ route('lc.edit', $lc->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
                 <a href="{{ route('lc.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
@@ -59,6 +59,7 @@
         </div>
 
         {{-- Quick status update --}}
+        @can('lc.update-status')
         <div class="card">
             <div class="card-header"><h6 class="mb-0">Update LC Status</h6></div>
             <div class="card-body">
@@ -82,6 +83,7 @@
                 </form>
             </div>
         </div>
+        @endcan
 
         <div class="row g-3">
             <div class="col-lg-6">
@@ -110,7 +112,9 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h6 class="mb-0">LC Charges ({{ $lc->costs->count() }}) <small class="text-muted">— added to the order's cost alongside bank charges</small></h6>
+                @can('lc.costs.create')
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addLcCostModal"><i class="ri-add-line me-1"></i> Add Charge</button>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -129,10 +133,12 @@
                                 <td>@if($c->attachment)<a href="{{ asset('upload/lc/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
                                 <td class="text-end">{{ number_format($c->amount, 2) }}</td>
                                 <td class="text-end">
+                                    @can('lc.costs.delete')
                                     <form action="{{ route('lc.cost.delete', [$lc->id, $c->id]) }}" method="POST" class="m-0">
                                         @csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 confirm-remove"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @endforeach
@@ -148,6 +154,7 @@
 </div>
 
 {{-- ===================== Add LC Charge modal ===================== --}}
+@can('lc.costs.create')
 <div class="modal fade" id="addLcCostModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -201,6 +208,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

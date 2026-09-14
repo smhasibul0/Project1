@@ -21,9 +21,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Quotation List</h5>
+                @can('quotations.create')
                 <a href="{{ route('quotations.create') }}" class="btn btn-primary rounded-pill px-4">
                     <i class="ri-add-line me-1"></i> Add Quotation
                 </a>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="quotationsTable" export-name="quotations">
@@ -50,9 +52,13 @@
                                         <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('quotation.show', $q->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            @can('quotations.print')
                                             <li><a class="dropdown-item" href="{{ route('quotation.print', $q->id) }}" target="_blank"><i class="ri-file-pdf-2-line me-2"></i>Export PDF</a></li>
+                                            @endcan
+                                            @can('quotations.edit')
                                             <li><a class="dropdown-item" href="{{ route('quotation.edit', $q->id) }}"><i class="ri-edit-line me-2"></i>{{ $q->status === 'requested' ? 'Respond' : 'Edit' }}</a></li>
-                                            @can('orders.manage')
+                                            @endcan
+                                            @can('orders.create')
                                             @if($q->status !== 'converted')
                                             <li>
                                                 <form action="{{ route('order.from.quotation', $q->id) }}" method="POST" class="m-0">
@@ -73,13 +79,16 @@
                                             @endif
                                             @endcan
                                             @if($q->status === 'negotiating')
+                                            @can('quotations.deny')
                                             <li>
                                                 <form action="{{ route('quotation.deny', $q->id) }}" method="POST" class="m-0">
                                                     @csrf
                                                     <button type="submit" class="dropdown-item"><i class="ri-close-line me-2"></i>Deny</button>
                                                 </form>
                                             </li>
+                                            @endcan
                                             @endif
+                                            @can('quotations.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('quotation.delete', $q->id) }}" method="POST" class="m-0">
@@ -87,6 +96,7 @@
                                                     <button type="button" class="dropdown-item text-danger delete-btn"><i class="ri-delete-bin-line me-2"></i>Delete</button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>

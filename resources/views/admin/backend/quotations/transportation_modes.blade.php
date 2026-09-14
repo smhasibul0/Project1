@@ -19,9 +19,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Transportation Modes</h5>
+                @can('transportation-modes.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
                     <i class="ri-add-line me-1"></i> Add Mode
                 </button>
+                @endcan
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -36,13 +38,17 @@
                                 <td>{{ $mode->name }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        @can('transportation-modes.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"
                                                 data-row="{{ json_encode($mode) }}"><i class="ri-edit-line"></i></button>
+                                                @endcan
+                                        @can('transportation-modes.delete')
                                         <form action="{{ route('transportation.mode.delete', $mode->id) }}" method="POST" class="m-0">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button>
                                         </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -57,7 +63,15 @@
     </div>
 </div>
 
-@foreach(['add' => 'addModal', 'edit' => 'editModal'] as $mode => $modalId)
+@php
+    // Only build the dialogs this role is allowed to submit.
+    $pageModals = array_filter([
+        'add' => auth()->user()->can('transportation-modes.create') ? 'addModal' : null,
+        'edit' => auth()->user()->can('transportation-modes.edit') ? 'editModal' : null,
+    ]);
+@endphp
+
+@foreach($pageModals as $mode => $modalId)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -84,7 +98,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
+    document.getElementById('editModal')?.addEventListener('show.bs.modal', function (e) {
         const r = JSON.parse(e.relatedTarget.dataset.row);
         const form = document.getElementById('editForm');
         form.action = '{{ url('transportation-modes') }}/' + r.id;

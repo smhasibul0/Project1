@@ -15,7 +15,7 @@
                 <li class="d-none d-lg-flex align-items-center">
                     <span class="badge bg-primary-subtle text-primary fs-13"><i class="ri-store-2-line me-1"></i>{{ $activeWarehouse->name ?? 'Warehouse' }}</span>
                 </li>
-                @if($isManaging)
+                @if($isManaging && auth()->user()->can('warehouses.enter'))
                 <li class="d-flex align-items-center ms-2">
                     <a href="{{ route('warehouse.manage.exit') }}" class="btn btn-sm btn-outline-danger">
                         <i class="ri-logout-box-line me-1"></i> Exit to Admin

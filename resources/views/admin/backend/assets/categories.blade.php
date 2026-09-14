@@ -10,9 +10,11 @@
             </div>
             <div class="text-end">
                 <a href="{{ route('assets.index') }}" class="btn btn-outline-primary me-2"><i class="ri-archive-2-line me-1"></i> Register</a>
+                @can('asset-categories.create')
                 <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategory">
                     <i class="ri-add-line me-1"></i> Add Category
                 </button>
+                @endcan
             </div>
         </div>
 
@@ -44,13 +46,17 @@
                                 <td class="text-end text-muted">{{ $category->assets_count }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        @can('asset-categories.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-row="{{ json_encode($category->only(['id', 'name', 'default_method', 'default_useful_life_years', 'default_rate', 'is_active'])) }}">
                                             <i class="ri-edit-line"></i>
                                         </button>
+                                        @endcan
+                                        @can('asset-categories.delete')
                                         <form action="{{ route('asset.category.delete', $category->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-used="{{ $category->assets_count }}"><i class="ri-delete-bin-line"></i></button>
                                         </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -66,6 +72,7 @@
 </div>
 
 {{-- Add --}}
+@can('asset-categories.create')
 <div class="modal fade" id="addCategory" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -110,6 +117,9 @@
 </div>
 
 {{-- Edit --}}
+@endcan
+
+@can('asset-categories.edit')
 <div class="modal fade" id="editCategory" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -153,6 +163,7 @@
         </div>
     </div>
 </div>
+@endcan
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

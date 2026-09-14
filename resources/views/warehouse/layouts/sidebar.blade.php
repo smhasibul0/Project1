@@ -31,26 +31,32 @@
 
                 <li class="menu-title">Warehouse</li>
 
+                @can('warehouse.dashboard.view')
                 <li>
                     <a href="{{ route('warehouse.dashboard') }}" class="tp-link {{ request()->routeIs('warehouse.dashboard') ? 'active' : '' }}">
                         <i data-feather="home"></i>
                         <span> Dashboard </span>
                     </a>
                 </li>
+                @endcan
 
+                @can('warehouse.inventory.view')
                 <li>
                     <a href="{{ route('warehouse.inventory.index') }}" class="tp-link {{ request()->routeIs('warehouse.inventory.*') ? 'active' : '' }}">
                         <i data-feather="box"></i>
                         <span> Inventory </span>
                     </a>
                 </li>
+                @endcan
 
+                @can('warehouse.orders.view')
                 <li>
                     <a href="{{ route('warehouse.orders.index') }}" class="tp-link {{ request()->routeIs('warehouse.orders.*') ? 'active' : '' }}">
                         <i data-feather="truck"></i>
                         <span> Orders to Arrive </span>
                     </a>
                 </li>
+                @endcan
 
                 @can('orders.scan')
                 <li>
@@ -63,26 +69,32 @@
 
                 <li class="menu-title mt-2">Operations</li>
 
+                @can('warehouse.expenses.view')
                 <li>
                     <a href="{{ route('warehouse.expenses.index') }}" class="tp-link {{ request()->routeIs('warehouse.expenses.*') ? 'active' : '' }}">
                         <i data-feather="credit-card"></i>
                         <span> Expenses </span>
                     </a>
                 </li>
+                @endcan
 
+                @can('warehouse.staff.view')
                 <li>
                     <a href="{{ route('warehouse.staff.index') }}" class="tp-link {{ request()->routeIs('warehouse.staff.*') ? 'active' : '' }}">
                         <i data-feather="users"></i>
                         <span> Staff </span>
                     </a>
                 </li>
+                @endcan
 
+                @can('warehouse.payroll.view')
                 <li>
                     <a href="{{ route('warehouse.payroll.index') }}" class="tp-link {{ request()->routeIs('warehouse.payroll.*') ? 'active' : '' }}">
                         <i data-feather="dollar-sign"></i>
                         <span> Payroll </span>
                     </a>
                 </li>
+                @endcan
 
             </ul>
         </div>

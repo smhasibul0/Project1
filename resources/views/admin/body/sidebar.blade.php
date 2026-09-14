@@ -32,17 +32,19 @@
 
                 <li class="menu-title">Menu</li>
 
+                @can('dashboard.view')
                 <li>
                     <a href="{{ route('dashboard') }}" class="tp-link">
                         <i data-feather="home"></i>
                         <span> Dashboard </span>
                     </a>
                 </li>
+                @endcan
 
                 <li class="menu-title mt-2">General</li>
 
                 <!-- Customers -->
-                @can('customers.manage')
+                @can('customers.view')
                 <li>
                     <a href="#customers" data-bs-toggle="collapse">
                         <i data-feather="users"></i>
@@ -54,9 +56,11 @@
                             <li>
                                 <a href="{{ route('customers.index') }}" class="tp-link">Customer List</a>
                             </li>
+                            @can('customer-groups.view')
                             <li>
                                 <a href="{{ route('customer.groups') }}" class="tp-link">Customer Groups</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
@@ -64,7 +68,7 @@
 
 
                 <!-- HS Codes / customs tariff -->
-                @can('hs.manage')
+                @can('hs.view')
                 <li>
                     <a href="{{ route('hs.codes') }}">
                         <i data-feather="package"></i>
@@ -74,7 +78,7 @@
                 @endcan
 
                 <!-- Warehouse -->
-                @canany(['warehouses.manage', 'expenses.manage'])
+                @canany(['warehouses.view', 'expense-categories.view', 'reports.warehouse-summary'])
                 <li>
                     <a href="#sidebarWarehouse" data-bs-toggle="collapse">
                         <i data-feather="archive"></i>
@@ -83,17 +87,17 @@
                     </a>
                     <div class="collapse" id="sidebarWarehouse">
                         <ul class="nav-second-level">
-                            @can('warehouses.manage')
+                            @can('warehouses.view')
                             <li>
                                 <a href="{{ route('warehouses.index') }}" class="tp-link">Warehouse List</a>
                             </li>
                             @endcan
-                            @can('expenses.manage')
+                            @can('expense-categories.view')
                             <li>
                                 <a href="{{ route('expense.categories') }}" class="tp-link">Expense Categories</a>
                             </li>
                             @endcan
-                            @can('reports.view')
+                            @can('reports.warehouse-summary')
                             <li>
                                 <a href="{{ route('reports.warehouse-summary') }}" class="tp-link">Operations Report</a>
                             </li>
@@ -105,7 +109,7 @@
 
                 
                 <!-- Quotations -->
-                @can('quotations.manage')
+                @can('quotations.view')
                 <li>
                     <a href="#sidebarQuotations" data-bs-toggle="collapse">
                         <i data-feather="file-text"></i>
@@ -120,15 +124,21 @@
                             <li>
                                 <a href="{{ route('quotation.requests') }}" class="tp-link">Quotation Requests</a>
                             </li>
+                            @can('quotations.create')
                             <li>
                                 <a href="{{ route('quotations.create') }}" class="tp-link">Add Quotation</a>
                             </li>
+                            @endcan
+                            @can('transportation-modes.view')
                             <li>
                                 <a href="{{ route('transportation.modes') }}" class="tp-link">Transportation Modes</a>
                             </li>
+                            @endcan
+                            @can('packing-types.view')
                             <li>
                                 <a href="{{ route('packing.types') }}" class="tp-link">Packing Types</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
@@ -147,7 +157,7 @@
                             <li>
                                 <a href="{{ route('orders.index') }}" class="tp-link">List Orders</a>
                             </li>
-                            @can('orders.manage')
+                            @can('orders.create')
                             <li>
                                 <a href="{{ route('orders.create') }}" class="tp-link">Add Order</a>
                             </li>
@@ -163,7 +173,7 @@
                 @endcan
 
                 <!-- LC -->
-                @can('lc.manage')
+                @can('lc.view')
                 <li>
                     <a href="#sidebarLc" data-bs-toggle="collapse">
                         <i data-feather="file-text"></i>
@@ -175,16 +185,18 @@
                             <li>
                                 <a href="{{ route('lc.index') }}" class="tp-link">List LC</a>
                             </li>
+                            @can('lc.create')
                             <li>
                                 <a href="{{ route('lc.create') }}" class="tp-link">Add LC</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
                 @endcan
 
                 <!-- Containers -->
-                @can('containers.manage')
+                @can('containers.view')
                 <li>
                     <a href="#sidebarContainers" data-bs-toggle="collapse">
                         <i data-feather="truck"></i>
@@ -196,16 +208,18 @@
                             <li>
                                 <a href="{{ route('container.index') }}" class="tp-link">List Containers</a>
                             </li>
+                            @can('containers.create')
                             <li>
                                 <a href="{{ route('container.create') }}" class="tp-link">Add Container</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
                 @endcan
 
                 <!-- Order Costs -->
-                @can('costs.manage')
+                @can('cost-categories.view')
                 <li>
                     <a href="#sidebarCosts" data-bs-toggle="collapse">
                         <i data-feather="dollar-sign"></i>
@@ -223,7 +237,7 @@
                 @endcan
 
                 <!-- Office running costs -->
-                @can('office.expenses.manage')
+                @can('office.expenses.view')
                 <li>
                     <a href="#sidebarOfficeExpenses" data-bs-toggle="collapse">
                         <i data-feather="home"></i>
@@ -235,16 +249,18 @@
                             <li>
                                 <a href="{{ route('office.expenses') }}" class="tp-link">Monthly Expenses</a>
                             </li>
+                            @can('office.cost-types.view')
                             <li>
                                 <a href="{{ route('office.cost.types') }}" class="tp-link">Cost Types</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
                 @endcan
 
                 <!-- Fixed assets -->
-                @can('assets.manage')
+                @can('assets.view')
                 <li>
                     <a href="#sidebarAssets" data-bs-toggle="collapse">
                         <i data-feather="package"></i>
@@ -256,19 +272,23 @@
                             <li>
                                 <a href="{{ route('assets.index') }}" class="tp-link">Asset Register</a>
                             </li>
+                            @can('assets.depreciation.view')
                             <li>
                                 <a href="{{ route('asset.depreciation') }}" class="tp-link">Depreciation</a>
                             </li>
+                            @endcan
+                            @can('asset-categories.view')
                             <li>
                                 <a href="{{ route('asset.categories') }}" class="tp-link">Asset Categories</a>
                             </li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
                 @endcan
 
                 <!-- Finance management: accounts, borrowing & lending -->
-                @canany(['accounts.manage', 'loans.manage'])
+                @canany(['accounts.view', 'loans.view', 'reports.balance-sheet', 'reports.cash-flow'])
                 <li>
                     <a href="#sidebarCharts" data-bs-toggle="collapse">
                         <i data-feather="credit-card"></i>
@@ -277,12 +297,12 @@
                     </a>
                     <div class="collapse" id="sidebarCharts">
                         <ul class="nav-second-level">
-                            @can('accounts.manage')
+                            @can('accounts.view')
                             <li>
                                 <a href="{{ route('payment.accounts') }}" class="tp-link">Payment Accounts</a>
                             </li>
                             @endcan
-                            @can('loans.manage')
+                            @can('loans.view')
                             <li>
                                 <a href="{{ route('loans.index', 'borrowed') }}" class="tp-link">Money Borrowed</a>
                             </li>
@@ -290,10 +310,12 @@
                                 <a href="{{ route('loans.index', 'lent') }}" class="tp-link">Money Lent</a>
                             </li>
                             @endcan
-                            @can('reports.view')
+                            @can('reports.balance-sheet')
                             <li>
                                 <a href="{{ route('reports.balance-sheet') }}" class="tp-link">Balance Sheet</a>
                             </li>
+                            @endcan
+                            @can('reports.cash-flow')
                             <li>
                                 <a href="{{ route('reports.cash-flow') }}" class="tp-link">Cash Flow</a>
                             </li>
@@ -304,7 +326,7 @@
                 @endcanany
 
                 <!-- Access Control -->
-                @canany(['users.manage', 'roles.manage'])
+                @canany(['users.view', 'roles.view'])
                 <li class="menu-title mt-2">Access Control</li>
                 <li>
                     <a href="#sidebarAccess" data-bs-toggle="collapse">
@@ -314,12 +336,12 @@
                     </a>
                     <div class="collapse" id="sidebarAccess">
                         <ul class="nav-second-level">
-                            @can('users.manage')
+                            @can('users.view')
                             <li>
                                 <a href="{{ route('users.index') }}" class="tp-link">Users</a>
                             </li>
                             @endcan
-                            @can('roles.manage')
+                            @can('roles.view')
                             <li>
                                 <a href="{{ route('roles.index') }}" class="tp-link">Roles &amp; Permissions</a>
                             </li>
@@ -330,7 +352,7 @@
                 @endcanany
 
                 <!-- Reports -->
-                @can('reports.view')
+                @canany(['reports.profit-loss', 'reports.receivables', 'reports.balance-sheet', 'reports.cash-flow', 'reports.warehouse-summary'])
                 <li>
                     <a href="#sidebarReports" data-bs-toggle="collapse">
                         <i data-feather="bar-chart-2"></i>
@@ -339,16 +361,28 @@
                     </a>
                     <div class="collapse" id="sidebarReports">
                         <ul class="nav-second-level">
+                            @can('reports.profit-loss')
                             <li><a href="{{ route('reports.profit-loss') }}" class="tp-link">Profit &amp; Loss</a></li>
+                            @endcan
+                            @can('reports.receivables')
                             <li><a href="{{ route('reports.receivables') }}" class="tp-link">Receivables</a></li>
+                            @endcan
+                            @can('reports.balance-sheet')
+                            <li><a href="{{ route('reports.balance-sheet') }}" class="tp-link">Balance Sheet</a></li>
+                            @endcan
+                            @can('reports.cash-flow')
+                            <li><a href="{{ route('reports.cash-flow') }}" class="tp-link">Cash Flow</a></li>
+                            @endcan
+                            @can('reports.warehouse-summary')
                             <li><a href="{{ route('reports.warehouse-summary') }}" class="tp-link">Warehouse Operations</a></li>
+                            @endcan
                         </ul>
                     </div>
                 </li>
-                @endcan
+                @endcanany
 
                 <!-- Settings -->
-                @can('settings.manage')
+                @can('settings.view')
                 <li>
                     <a href="{{ route('settings.company') }}">
                         <i data-feather="settings"></i>

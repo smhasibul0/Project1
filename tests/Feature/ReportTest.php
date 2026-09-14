@@ -4,10 +4,8 @@ use App\Models\AccountType;
 use App\Models\Loan;
 use App\Models\Order;
 use App\Models\PaymentAccount;
-use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Transaction;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -137,11 +135,97 @@ test('cash flow totals money in and out from the ledger', function () {
     $response->assertViewHas('net', 300.0);
 });
 
-test('a user without reports.view cannot access reports', function () {
-    $role = Role::firstOrCreate(['slug' => 'no-reports'], ['name' => 'No Reports']);
-    // ensure the permission exists but is NOT attached to this role
-    Permission::firstOrCreate(['key' => 'reports.view'], ['name' => 'View reports', 'group' => 'Finance']);
-    $user = User::factory()->create(['role_id' => $role->id]);
+test('cash flow lists every ledger entry with its account and the combined balance', function () {
+    $type = AccountType::create(['name' => 'Bank']);
+    $cash = PaymentAccount::create(['name' => 'Cash in Hand', 'account_type_id' => $type->id, 'balance' => 300, 'is_active' => true]);
+    $bank = PaymentAccount::create(['name' => 'Quick Shifter Bank Account', 'account_type_id' => $type->id, 'balance' => 700, 'is_active' => true]);
+
+    Transaction::create(['payment_account_id' => $cash->id, 'type' => 'credit', 'source' => 'order_payment', 'amount' => 500, 'credit' => 500, 'debit' => 0, 'running_balance' => 500, 'created_at' => '2026-07-01']);
+    Transaction::create(['payment_account_id' => $cash->id, 'type' => 'debit', 'source' => 'order_cost', 'amount' => 200, 'credit' => 0, 'debit' => 200, 'running_balance' => 300, 'created_at' => '2026-07-02']);
+    Transaction::create(['payment_account_id' => $bank->id, 'type' => 'credit', 'source' => 'deposit', 'amount' => 700, 'credit' => 700, 'debit' => 0, 'running_balance' => 700, 'created_at' => '2026-07-03']);
+
+    $response = $this->actingAs($this->user)->get(route('reports.cash-flow'));
+
+    $response->assertOk();
+    $response->assertSee('Quick Shifter Bank Account');
+    $response->assertSee('Cash in Hand');
+
+    $ledger = $response->viewData('transactions');
+    expect($ledger)->toHaveCount(3);
+    // Newest first, and the combined balance walks the whole ledger: 500 - 200 + 700.
+    expect($ledger->first()->total_balance)->toBe(1000.0);
+    expect($ledger->last()->total_balance)->toBe(500.0);
+    // The per-account balance is the one already stored on the row.
+    expect((float) $ledger->first()->running_balance)->toBe(700.0);
+});
+
+test('cash flow narrows the ledger by account, type and source', function () {
+    $type = AccountType::create(['name' => 'Bank']);
+    $cash = PaymentAccount::create(['name' => 'Cash in Hand', 'account_type_id' => $type->id, 'balance' => 300, 'is_active' => true]);
+    $bank = PaymentAccount::create(['name' => 'Bank A', 'account_type_id' => $type->id, 'balance' => 700, 'is_active' => true]);
+
+    Transaction::create(['payment_account_id' => $cash->id, 'type' => 'credit', 'source' => 'order_payment', 'amount' => 500, 'credit' => 500, 'debit' => 0, 'running_balance' => 500, 'created_at' => '2026-07-01']);
+    Transaction::create(['payment_account_id' => $cash->id, 'type' => 'debit', 'source' => 'order_cost', 'amount' => 200, 'credit' => 0, 'debit' => 200, 'running_balance' => 300, 'created_at' => '2026-07-02']);
+    Transaction::create(['payment_account_id' => $bank->id, 'type' => 'credit', 'source' => 'deposit', 'amount' => 700, 'credit' => 700, 'debit' => 0, 'running_balance' => 700, 'created_at' => '2026-07-03']);
+
+    $byAccount = $this->actingAs($this->user)->get(route('reports.cash-flow', ['payment_account_id' => $cash->id]));
+    expect($byAccount->viewData('transactions'))->toHaveCount(2);
+    $byAccount->assertViewHas('totalIn', 500.0);
+    $byAccount->assertViewHas('totalOut', 200.0);
+
+    $byType = $this->actingAs($this->user)->get(route('reports.cash-flow', ['transaction_type' => 'debit']));
+    expect($byType->viewData('transactions'))->toHaveCount(1);
+    $byType->assertViewHas('totalIn', 0.0);
+
+    $bySource = $this->actingAs($this->user)->get(route('reports.cash-flow', ['source' => 'deposit']));
+    expect($bySource->viewData('transactions'))->toHaveCount(1);
+    $bySource->assertViewHas('totalIn', 700.0);
+
+    $byDate = $this->actingAs($this->user)->get(route('reports.cash-flow', ['from' => '2026-07-02', 'to' => '2026-07-03']));
+    expect($byDate->viewData('transactions'))->toHaveCount(2);
+});
+
+test('cash flow offers edit and delete actions on manual entries only', function () {
+    $type = AccountType::create(['name' => 'Cash']);
+    $account = PaymentAccount::create(['name' => 'Cash', 'account_type_id' => $type->id, 'balance' => 300, 'is_active' => true]);
+
+    $deposit = Transaction::create(['payment_account_id' => $account->id, 'type' => 'credit', 'source' => 'deposit', 'amount' => 500, 'credit' => 500, 'debit' => 0, 'running_balance' => 500, 'description' => 'Deposit', 'created_at' => '2026-07-01']);
+    $system = Transaction::create(['payment_account_id' => $account->id, 'type' => 'debit', 'source' => 'order_cost', 'amount' => 200, 'credit' => 0, 'debit' => 200, 'running_balance' => 300, 'description' => 'Order cost', 'created_at' => '2026-07-02']);
+
+    $response = $this->actingAs($this->user)->get(route('reports.cash-flow'));
+
+    $response->assertOk();
+    $response->assertSee(route('transaction.delete', $deposit->id), false);
+    $response->assertDontSee(route('transaction.delete', $system->id), false);
+});
+
+test('cash flow hides the action column from a role that cannot manage accounts', function () {
+    $viewer = userWithPermissions(['reports.cash-flow'], 'reports-only');
+
+    $type = AccountType::create(['name' => 'Cash']);
+    $account = PaymentAccount::create(['name' => 'Cash', 'account_type_id' => $type->id, 'balance' => 500, 'is_active' => true]);
+    $deposit = Transaction::create(['payment_account_id' => $account->id, 'type' => 'credit', 'source' => 'deposit', 'amount' => 500, 'credit' => 500, 'debit' => 0, 'running_balance' => 500, 'description' => 'Deposit', 'created_at' => '2026-07-01']);
+
+    $response = $this->actingAs($viewer)->get(route('reports.cash-flow'));
+
+    $response->assertOk();
+    $response->assertSee('Total Balance');
+    $response->assertDontSee(route('transaction.delete', $deposit->id), false);
+});
+
+test('each report is granted on its own', function () {
+    // This role may read the P&L and nothing else.
+    $user = userWithPermissions(['reports.profit-loss'], 'pnl-only');
+
+    $this->actingAs($user)->get(route('reports.profit-loss'))->assertOk();
+    $this->actingAs($user)->get(route('reports.receivables'))->assertForbidden();
+    $this->actingAs($user)->get(route('reports.balance-sheet'))->assertForbidden();
+    $this->actingAs($user)->get(route('reports.cash-flow'))->assertForbidden();
+    $this->actingAs($user)->get(route('reports.warehouse-summary'))->assertForbidden();
+});
+
+test('a role with no report permissions cannot access reports', function () {
+    $user = userWithPermissions([], 'no-reports');
 
     $this->actingAs($user)->get(route('reports.profit-loss'))->assertForbidden();
 });

@@ -19,9 +19,11 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">Order List</h5>
+                @can('orders.create')
                 <a href="{{ route('orders.create') }}" class="btn btn-primary rounded-pill px-4">
                     <i class="ri-add-line me-1"></i> Add Order
                 </a>
+                @endcan
             </div>
             <div class="card-body p-0">
                 <x-data-table id="ordersTable" export-name="orders">
@@ -52,7 +54,7 @@
                                             Actions
                                         </button>
                                         <ul class="dropdown-menu">
-                                            @can('orders.manage')
+                                            @can('orders.payments.create')
                                             <li>
                                                 <button type="button" class="dropdown-item pay-btn"
                                                     data-id="{{ $o->id }}"
@@ -66,9 +68,13 @@
                                             </li>
                                             @endcan
                                             <li><a class="dropdown-item" href="{{ route('order.show', $o->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
+                                            @can('orders.invoice')
                                             <li><a class="dropdown-item" href="{{ route('order.invoice', $o->id) }}" target="_blank"><i class="ri-file-text-line me-2"></i>Invoice</a></li>
-                                            @can('orders.manage')
+                                            @endcan
+                                            @can('orders.edit')
                                             <li><a class="dropdown-item" href="{{ route('order.edit', $o->id) }}"><i class="ri-edit-line me-2"></i>Edit</a></li>
+                                            @endcan
+                                            @can('orders.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('order.delete', $o->id) }}" method="POST" class="m-0">
@@ -103,7 +109,7 @@
 </div>
 
 {{-- ===================== Add Payment modal ===================== --}}
-@can('orders.manage')
+@can('orders.payments.create')
 <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">

@@ -20,7 +20,7 @@
                 </form>
                 <a href="{{ route('asset.depreciation', ['month' => $nextMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Next month"><i class="ri-arrow-right-s-line"></i></a>
                 <a href="{{ route('assets.index') }}" class="btn btn-outline-primary ms-2"><i class="ri-archive-2-line me-1"></i> Register</a>
-                @if($pending->isNotEmpty())
+                @if($pending->isNotEmpty() && auth()->user()->can('assets.depreciation.generate'))
                 <form action="{{ route('asset.depreciation.generate') }}" method="POST" class="m-0" id="postForm">
                     @csrf
                     <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
@@ -118,7 +118,7 @@
                 <h5 class="mb-0 fs-15">Posted — {{ $month->format('F Y') }}</h5>
                 <div class="d-flex align-items-center gap-2">
                     <small class="text-muted">{{ $posted->count() }} entr(ies)</small>
-                    @if($posted->isNotEmpty())
+                    @if($posted->isNotEmpty() && auth()->user()->can('assets.depreciation.delete'))
                     <form action="{{ route('asset.depreciation.month.delete') }}" method="POST" class="m-0" id="reverseMonthForm">
                         @csrf @method('DELETE')
                         <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
@@ -147,11 +147,13 @@
                             @foreach($posted as $entry)
                             <tr>
                                 <td>
+                                    @can('assets.depreciation.delete')
                                     <form action="{{ route('asset.depreciation.delete', $entry->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger reverse-btn" title="Reverse this entry">
                                             <i class="ri-arrow-go-back-line"></i>
                                         </button>
                                     </form>
+                                    @endcan
                                 </td>
                                 <td class="fw-semibold">{{ $entry->asset->asset_code ?? '—' }}</td>
                                 <td>{{ $entry->asset->name ?? '—' }}</td>

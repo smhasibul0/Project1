@@ -1,8 +1,5 @@
 <?php
 
-use App\Models\Permission;
-use App\Models\Role;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Models\WarehouseExpense;
 use App\Models\WarehouseStaff;
@@ -61,10 +58,7 @@ test('exiting manage mode clears the session and blocks the portal again', funct
 
 test('manage mode is admin-only even with the warehouse permission', function () {
     $warehouse = Warehouse::factory()->create();
-    $permission = Permission::firstOrCreate(['key' => 'warehouses.manage'], ['name' => 'Manage warehouses', 'group' => 'Warehouse']);
-    $role = Role::create(['slug' => 'staff', 'name' => 'Staff']);
-    $role->permissions()->sync([$permission->id]);
-    $staff = User::factory()->create(['role_id' => $role->id]);
+    $staff = userWithPermissions(['warehouses.view', 'warehouses.enter'], 'staff');
 
     $this->actingAs($staff)->get(route('warehouse.manage', $warehouse->id))->assertForbidden();
     $this->actingAs($staff)->get(route('warehouse.dashboard'))->assertForbidden();

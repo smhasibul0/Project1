@@ -54,11 +54,14 @@
                     </div>
                 @endif
             </div>
+            {{-- Auto-filling the item rows from the sheet is part of building a quote. --}}
+            @can('quotations.create')
             <div class="col-md-4">
                 <button type="button" class="btn btn-outline-primary" id="parsePackingBtn" disabled>
                     <i class="ri-file-excel-2-line me-1"></i> Read &amp; Fill Items
                 </button>
             </div>
+            @endcan
         </div>
         <div id="packingParseResult" class="mt-3 d-none"></div>
     </div>
@@ -549,9 +552,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const parseBtn = document.getElementById('parsePackingBtn');
     const resultBox = document.getElementById('packingParseResult');
 
-    fileInput.addEventListener('change', () => { parseBtn.disabled = !fileInput.files.length; });
+    // The parse button is only rendered for roles that may create a quotation.
+    if (parseBtn) {
+        fileInput.addEventListener('change', () => { parseBtn.disabled = !fileInput.files.length; });
+    }
 
-    parseBtn.addEventListener('click', async function () {
+    parseBtn?.addEventListener('click', async function () {
         const fd = new FormData();
         fd.append('packing_list', fileInput.files[0]);
         fd.append('_token', document.querySelector('input[name="_token"]').value);

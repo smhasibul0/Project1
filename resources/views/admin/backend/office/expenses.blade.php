@@ -20,7 +20,7 @@
                     <input type="month" class="form-control form-control-sm" name="month" value="{{ $month->format('Y-m') }}" onchange="this.form.submit()">
                 </form>
                 <a href="{{ route('office.expenses', ['month' => $nextMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Next month"><i class="ri-arrow-right-s-line"></i></a>
-                @if($pendingFixed->isNotEmpty())
+                @if($pendingFixed->isNotEmpty() && auth()->user()->can('office.expenses.generate'))
                 <form action="{{ route('office.expense.generate') }}" method="POST" class="m-0 ms-2" id="generateForm">
                     @csrf
                     <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
@@ -31,13 +31,17 @@
                 </form>
                 @endif
                 @if($costTypes->isEmpty())
+                @can('office.cost-types.view')
                 <a href="{{ route('office.cost.types') }}" class="btn btn-primary rounded-pill px-4 ms-2">
                     <i class="ri-add-line me-1"></i> Add Cost Type First
                 </a>
+                @endcan
                 @else
+                @can('office.expenses.create')
                 <button class="btn btn-primary rounded-pill px-4 ms-2" data-bs-toggle="modal" data-bs-target="#expenseModal">
                     <i class="ri-add-line me-1"></i> Add Expense
                 </button>
+                @endcan
                 @endif
             </div>
         </div>
@@ -122,12 +126,15 @@
                                                     <i class="ri-eye-line me-1"></i> View
                                                 </button>
                                             </li>
+                                            @can('office.expenses.edit')
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editModal{{ $e->id }}">
                                                     <i class="ri-edit-line me-1"></i> Edit
                                                 </button>
                                             </li>
+                                            @endcan
                                             <li><hr class="dropdown-divider"></li>
+                                            @can('office.expenses.payments.create')
                                             <li>
                                                 @if($e->dueTotal() > 0)
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addPayModal{{ $e->id }}">
@@ -137,12 +144,14 @@
                                                 <span class="dropdown-item disabled text-muted"><i class="ri-checkbox-circle-line me-1"></i> Fully Paid</span>
                                                 @endif
                                             </li>
+                                            @endcan
                                             <li>
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#payModal{{ $e->id }}">
                                                     <i class="ri-money-dollar-circle-line me-1"></i> View Payments
                                                     <span class="badge bg-secondary-subtle text-secondary ms-1">{{ $e->payments->count() }}</span>
                                                 </button>
                                             </li>
+                                            @can('office.expenses.delete')
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
                                                 <form action="{{ route('office.expense.delete', $e->id) }}" method="POST" class="m-0">@csrf @method('DELETE')
@@ -151,6 +160,7 @@
                                                     </button>
                                                 </form>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -187,6 +197,7 @@
 </div>
 
 {{-- Add Expense modal --}}
+@can('office.expenses.create')
 <div class="modal fade" id="expenseModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -264,6 +275,8 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Per-expense modals: view, edit, add payment, view payments --}}
 @foreach($expenses as $e)
 @php $expenseTitle = ($e->costType->name ?? 'Expense').' ('.$e->expense_date?->format('d M Y').')'; @endphp
@@ -326,6 +339,7 @@
 </div>
 
 {{-- Edit --}}
+@can('office.expenses.edit')
 <div class="modal fade" id="editModal{{ $e->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -372,8 +386,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Add payment --}}
-@if($e->dueTotal() > 0)
+@if($e->dueTotal() > 0 && auth()->user()->can('office.expenses.payments.create'))
 <div class="modal fade" id="addPayModal{{ $e->id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -457,9 +473,11 @@
                                 <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
                                 <td>{{ $p->note ?: '—' }}</td>
                                 <td class="text-end">
+                                    @can('office.expenses.payments.delete')
                                     <form action="{{ route('office.expense.payments.delete', [$e->id, $p->id]) }}" method="POST" class="m-0">@csrf @method('DELETE')
                                         <button type="button" class="btn btn-sm btn-outline-danger delete-payment-btn" title="Delete payment"><i class="ri-delete-bin-line"></i></button>
                                     </form>
+                                    @endcan
                                 </td>
                             </tr>
                             @endforeach

@@ -73,7 +73,7 @@
                                     @endforelse
                                 </td>
                                 <td class="text-end pe-3">
-                                    @if($row['due'] > 0 || ($row['salary'] <= 0))
+                                    @if(($row['due'] > 0 || ($row['salary'] <= 0)) && auth()->user()->can('warehouse.staff.salary.create'))
                                     <button type="button" class="btn btn-sm btn-outline-primary pay-month-btn"
                                             data-month="{{ $row['month'] }}" data-amount="{{ $row['due'] > 0 ? $row['due'] : '' }}"
                                             data-bs-toggle="modal" data-bs-target="#salaryModal">
@@ -108,7 +108,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Documents</h6>
-                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#docModal"><i class="ri-upload-2-line me-1"></i> Upload</button>
+                        @can('warehouse.staff.documents.upload')<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#docModal"><i class="ri-upload-2-line me-1"></i> Upload</button>@endcan
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 align-middle">
@@ -118,7 +118,7 @@
                                     <td class="ps-3"><i class="ri-file-text-line me-1 text-muted"></i>{{ $d->title }}<div><small class="text-muted">{{ $d->created_at->format('d M Y') }}{{ $d->uploadedBy ? ' · '.$d->uploadedBy->name : '' }}</small></div></td>
                                     <td class="text-end pe-3">
                                         <a href="{{ asset('upload/staff_documents/'.$d->file) }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="ri-download-2-line"></i></a>
-                                        <form action="{{ route('warehouse.staff.document.delete', [$staff->id, $d->id]) }}" method="POST" class="d-inline m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>
+                                        @can('warehouse.staff.documents.delete')<form action="{{ route('warehouse.staff.document.delete', [$staff->id, $d->id]) }}" method="POST" class="d-inline m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </td>
                                 </tr>
                                 @empty
@@ -135,7 +135,7 @@
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Salary Payments <small class="text-muted">(paid ৳ {{ number_format($salaryTotal, 2) }})</small></h6>
-                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#salaryModal"><i class="ri-add-line me-1"></i> Pay Salary</button>
+                        @can('warehouse.staff.salary.create')<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#salaryModal"><i class="ri-add-line me-1"></i> Pay Salary</button>@endcan
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 align-middle">
@@ -149,7 +149,7 @@
                                     <td>{{ $p->paymentAccount->name ?? '—' }}</td>
                                     <td class="text-end pe-3">
                                         @if($p->attachment)<a href="{{ asset('upload/salaries/'.$p->attachment) }}" target="_blank" class="me-1"><i class="ri-attachment-2"></i></a>@endif
-                                        <form action="{{ route('warehouse.staff.salary.delete', [$staff->id, $p->id]) }}" method="POST" class="d-inline m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>
+                                        @can('warehouse.staff.salary.delete')<form action="{{ route('warehouse.staff.salary.delete', [$staff->id, $p->id]) }}" method="POST" class="d-inline m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </td>
                                 </tr>
                                 @empty
@@ -165,6 +165,7 @@
 </div>
 
 {{-- Upload document modal --}}
+@can('warehouse.staff.documents.upload')
 <div class="modal fade" id="docModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -188,7 +189,10 @@
     </div>
 </div>
 
+@endcan
+
 {{-- Pay salary modal --}}
+@can('warehouse.staff.salary.create')
 <div class="modal fade" id="salaryModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -229,6 +233,7 @@
         </div>
     </div>
 </div>
+@endcan
 @endsection
 
 @section('warehouse_scripts')

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -161,4 +162,19 @@ function fakePackingList(?array $cartons = null): UploadedFile
     (new Xlsx($spreadsheet))->save($path);
 
     return new UploadedFile($path, 'packing-list.xlsx', null, null, true);
+}
+
+/**
+ * A user on a role holding exactly the given permission keys. The keys must exist in
+ * App\Support\PermissionCatalog — the migration writes the whole catalog, so they do.
+ *
+ * @param  array<int, string>  $keys
+ * @param  array<string, mixed>  $attributes
+ */
+function userWithPermissions(array $keys, string $slug = 'test-role', array $attributes = []): User
+{
+    $role = Role::firstOrCreate(['slug' => $slug], ['name' => ucwords(str_replace('-', ' ', $slug))]);
+    $role->permissions()->sync(Permission::whereIn('key', $keys)->pluck('id'));
+
+    return User::factory()->create(array_merge(['role_id' => $role->id], $attributes));
 }
