@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AccountType;
+use App\Models\Loan;
 use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Permission;
@@ -75,6 +76,52 @@ test('balance sheet sums account balances and receivables', function () {
     $response->assertViewHas('total', 1800.0);
 });
 
+test('balance sheet counts money lent as an asset and money borrowed as a liability', function () {
+    $type = AccountType::create(['name' => 'Bank']);
+    PaymentAccount::create(['name' => 'Bank A', 'account_type_id' => $type->id, 'balance' => 1000, 'is_active' => true]);
+
+    $lending = Loan::create([
+        'loan_code' => 'LND-0001', 'direction' => 'lent', 'counterparty' => 'Mr Rahman',
+        'counterparty_type' => 'individual', 'principal' => 800, 'interest_type' => 'none',
+        'start_date' => '2026-01-01', 'status' => 'active',
+    ]);
+    // Part of it has already come back, so only the remainder is still an asset.
+    $lending->payments()->create(['amount' => 300, 'paid_on' => '2026-02-01']);
+
+    Loan::create([
+        'loan_code' => 'BRW-0001', 'direction' => 'borrowed', 'counterparty' => 'City Bank',
+        'counterparty_type' => 'bank', 'principal' => 2000, 'interest_type' => 'fixed',
+        'interest_amount' => 100, 'start_date' => '2026-01-01', 'status' => 'active',
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('reports.balance-sheet'));
+
+    $response->assertOk();
+    $response->assertViewHas('loansReceivable', 500.0);
+    $response->assertViewHas('loansPayable', 2100.0);
+    // 1,000 cash + 500 still owed to us.
+    $response->assertViewHas('total', 1500.0);
+    $response->assertViewHas('netWorth', -600.0);
+});
+
+test('balance sheet ignores loans that are settled or written off', function () {
+    $type = AccountType::create(['name' => 'Bank']);
+    PaymentAccount::create(['name' => 'Bank A', 'account_type_id' => $type->id, 'balance' => 1000, 'is_active' => true]);
+
+    foreach (['settled', 'written_off'] as $status) {
+        Loan::create([
+            'loan_code' => 'BRW-'.$status, 'direction' => 'borrowed', 'counterparty' => 'City Bank',
+            'counterparty_type' => 'bank', 'principal' => 5000, 'interest_type' => 'none',
+            'start_date' => '2026-01-01', 'status' => $status,
+        ]);
+    }
+
+    $response = $this->actingAs($this->user)->get(route('reports.balance-sheet'));
+
+    $response->assertOk();
+    $response->assertViewHas('loansPayable', 0.0);
+    $response->assertViewHas('netWorth', 1000.0);
+});
 test('cash flow totals money in and out from the ledger', function () {
     $type = AccountType::create(['name' => 'Cash']);
     $account = PaymentAccount::create(['name' => 'Cash', 'account_type_id' => $type->id, 'balance' => 0, 'is_active' => true]);

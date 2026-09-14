@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Lc;
 use App\Models\LcCost;
+use App\Models\Loan;
 use App\Models\OfficeExpense;
 use App\Models\Order;
 use App\Models\PaymentAccount;
@@ -168,11 +169,26 @@ class ReportController extends Controller
         $cashBank = round($accounts->sum(fn ($a) => (float) $a->balance), 2);
         $receivables = round((float) Order::sum('due_amount'), 2);
 
+        // Only loans still running carry a balance: a settled one is square and
+        // a written-off one is no longer expected to change hands.
+        $loans = Loan::with('payments')->where('status', 'active')->get();
+        $lendings = $loans->where('direction', 'lent')->sortByDesc('start_date');
+        $borrowings = $loans->where('direction', 'borrowed')->sortByDesc('start_date');
+
+        $loansReceivable = round($lendings->sum(fn (Loan $loan) => $loan->outstanding()), 2);
+        $loansPayable = round($borrowings->sum(fn (Loan $loan) => $loan->outstanding()), 2);
+        $totalAssets = round($cashBank + $receivables + $loansReceivable, 2);
+
         return view('admin.backend.reports.balance_sheet', [
             'grouped' => $grouped,
             'cashBank' => $cashBank,
             'receivables' => $receivables,
-            'total' => round($cashBank + $receivables, 2),
+            'loansReceivable' => $loansReceivable,
+            'loansPayable' => $loansPayable,
+            'lendings' => $lendings,
+            'borrowings' => $borrowings,
+            'total' => $totalAssets,
+            'netWorth' => round($totalAssets - $loansPayable, 2),
         ]);
     }
 
@@ -201,6 +217,10 @@ class ReportController extends Controller
             'warehouse_expense' => 'Warehouse expenses paid',
             'office_expense' => 'Office expenses paid',
             'staff_salary' => 'Staff salaries paid',
+            'loan_received' => 'Loans received',
+            'loan_repayment' => 'Loan repayments made',
+            'loan_given' => 'Loans handed out',
+            'loan_receipt' => 'Loan repayments received',
         ];
 
         $rows = $transactions->groupBy('source')->map(function ($group, $source) use ($labels) {

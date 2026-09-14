@@ -14,6 +14,7 @@ use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\ExpenseCategoryController;
 use App\Http\Controllers\Backend\HsCodeController;
 use App\Http\Controllers\Backend\LcController;
+use App\Http\Controllers\Backend\LoanController;
 use App\Http\Controllers\Backend\OfficeCostTypeController;
 use App\Http\Controllers\Backend\OfficeExpenseController;
 use App\Http\Controllers\Backend\OrderController;
@@ -274,6 +275,20 @@ Route::middleware(['auth', 'admin', 'can:office.expenses.manage'])->group(functi
     Route::post('/office-cost-types', [OfficeCostTypeController::class, 'store'])->name('office.cost.type.store');
     Route::put('/office-cost-types/{id}', [OfficeCostTypeController::class, 'update'])->name('office.cost.type.update');
     Route::delete('/office-cost-types/{id}', [OfficeCostTypeController::class, 'destroy'])->name('office.cost.type.delete');
+});
+
+// Borrowing & lending — money taken from a bank or an individual, and money
+// handed out, with the interest basis each carries.
+Route::middleware(['auth', 'admin', 'can:loans.manage'])->group(function () {
+    Route::get('/finance/{direction}', [LoanController::class, 'index'])
+        ->whereIn('direction', ['borrowed', 'lent'])->name('loans.index');
+    Route::post('/finance/{direction}', [LoanController::class, 'store'])
+        ->whereIn('direction', ['borrowed', 'lent'])->name('loan.store');
+    Route::put('/loans/{id}', [LoanController::class, 'update'])->name('loan.update');
+    Route::post('/loans/{id}/close', [LoanController::class, 'close'])->name('loan.close');
+    Route::delete('/loans/{id}', [LoanController::class, 'destroy'])->name('loan.delete');
+    Route::post('/loans/{id}/payments', [LoanController::class, 'storePayment'])->name('loan.payments.store');
+    Route::delete('/loans/{id}/payments/{paymentId}', [LoanController::class, 'destroyPayment'])->name('loan.payments.delete');
 });
 
 // Fixed assets — the register of what the company owns, plus the monthly

@@ -267,19 +267,29 @@
                 </li>
                 @endcan
 
-                <!-- Payment accounts -->
-                @can('accounts.manage')
+                <!-- Finance management: accounts, borrowing & lending -->
+                @canany(['accounts.manage', 'loans.manage'])
                 <li>
                     <a href="#sidebarCharts" data-bs-toggle="collapse">
                         <i data-feather="credit-card"></i>
-                        <span> Payment Accounts </span>
+                        <span> Finance Management </span>
                         <span class="menu-arrow"></span>
                     </a>
                     <div class="collapse" id="sidebarCharts">
                         <ul class="nav-second-level">
+                            @can('accounts.manage')
                             <li>
-                                <a href="{{ route('payment.accounts') }}" class="tp-link">List Accounts</a>
+                                <a href="{{ route('payment.accounts') }}" class="tp-link">Payment Accounts</a>
                             </li>
+                            @endcan
+                            @can('loans.manage')
+                            <li>
+                                <a href="{{ route('loans.index', 'borrowed') }}" class="tp-link">Money Borrowed</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('loans.index', 'lent') }}" class="tp-link">Money Lent</a>
+                            </li>
+                            @endcan
                             @can('reports.view')
                             <li>
                                 <a href="{{ route('reports.balance-sheet') }}" class="tp-link">Balance Sheet</a>
@@ -291,7 +301,7 @@
                         </ul>
                     </div>
                 </li>
-                @endcan
+                @endcanany
 
                 <!-- Access Control -->
                 @canany(['users.manage', 'roles.manage'])
