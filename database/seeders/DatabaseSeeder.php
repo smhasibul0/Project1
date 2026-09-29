@@ -27,12 +27,19 @@ class DatabaseSeeder extends Seeder
             AssetCategorySeeder::class,
         ]);
 
-        User::factory()->create([
-            'first_name' => 'Test',
-            'last_name' => 'User',
-            'username' => 'testuser',
-            'email' => 'test@example.com',
-        ]);
+        // The first admin login. Built without the factory, which needs Faker — a dev
+        // dependency that a production install (composer install --no-dev) doesn't have.
+        // Only on an empty users table, so re-seeding never brings the default login back.
+        if (User::doesntExist()) {
+            User::create([
+                'first_name' => 'Test',
+                'last_name' => 'User',
+                'username' => 'testuser',
+                'email' => 'test@example.com',
+                'email_verified_at' => now(),
+                'password' => 'password',
+            ]);
+        }
 
         // Roles/permissions last so the seeded user(s) get the Admin role.
         $this->call([

@@ -40,5 +40,5 @@
     <button type="submit" class="btn-accent"><i class="ri-login-box-line me-1"></i> Sign In</button>
 </form>
 
-<div class="foot">Don't have an account? <a href="{{ route('register') }}">Sign up</a></div>
+<div class="foot">Need an account? Ask your administrator.</div>
 @endsection
