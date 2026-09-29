@@ -38,9 +38,9 @@ use App\Http\Controllers\Warehouse\PayrollController as WarehousePayrollControll
 use App\Http\Controllers\Warehouse\StaffController as WarehouseStaffController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// No public home page. The dashboard route already sends a guest to the login screen
+// and customers and warehouse staff on to their own portals.
+Route::get('/', fn () => redirect()->route('dashboard'));
 
 // Public order tracking (no login required). The token in the link is the only
 // way in — there is no lookup by order number, which would be guessable. This is
