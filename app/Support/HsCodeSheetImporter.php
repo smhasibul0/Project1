@@ -31,6 +31,13 @@ class HsCodeSheetImporter
     private const CODE_PATTERN = '/^\d{4}\.?\d{2}(\.?\d{2})?$/';
 
     /**
+     * The steepest ad valorem rate in the tariff is the 500% SD on large cars. A
+     * bigger figure is a specific duty — taka per tonne or per unit — written as a
+     * bare number, as Customs' own export does for sugar, scrap iron and baggage.
+     */
+    private const MAX_AD_VALOREM_RATE = 500;
+
+    /**
      * Normalized header label => field. Matching is exact on the normalized
      * label so "…Customs Duty on Export" never lands on the import column.
      *
@@ -39,7 +46,7 @@ class HsCodeSheetImporter
     private const HEADERS = [
         'code' => ['hscode', 'hscodes', 'hstcode', 'tariffcode', 'code', 'hs'],
         'heading' => ['heading', 'hsheading'],
-        'description' => ['description', 'descriptionofgoods', 'goodsdescription', 'itemdescription', 'descriptionofitem'],
+        'description' => ['description', 'descriptionofgoods', 'goodsdescription', 'itemdescription', 'descriptionofitem', 'tariffdescription', 'tarriffdescription'],
         'statistical_unit' => ['statisticalunit', 'statunit', 'unit'],
         'cd_rate' => ['cd', 'cdrate', 'customsduty', 'customsdutyrate', 'statutoryrateofcustomsdutyonimport', 'rateofcustomsdutyonimport'],
         'sd_rate' => ['sd', 'sdrate', 'supplementaryduty'],
@@ -143,7 +150,7 @@ class HsCodeSheetImporter
         $parents = [];
 
         foreach ($rows as $row) {
-            $codes = $this->codesIn($row, $codeSearchLimit, $dottedOnly);
+            $codes = $this->codesIn($row, $codeSearchLimit, $dottedOnly, $columns['code']);
             $descriptions = $this->linesAt($row, $columns['description'] ?? null);
             $units = $this->linesAt($row, $columns['statistical_unit'] ?? null);
 
@@ -291,7 +298,7 @@ class HsCodeSheetImporter
      * @param  array<int, mixed>  $row
      * @return array<int, string>
      */
-    private function codesIn(array $row, int $limit, bool $dottedOnly): array
+    private function codesIn(array $row, int $limit, bool $dottedOnly, int $codeColumn): array
     {
         $codes = [];
 
@@ -301,6 +308,12 @@ class HsCodeSheetImporter
             }
 
             foreach ($this->lines((string) $value) as $line) {
+                // A code kept in a number cell loses its leading zero: 0101.21.00 is
+                // stored as 1012100. Only the code column is trusted to mean that.
+                if ($index === $codeColumn && preg_match('/^(\d{5}|\d{7})$/', $line)) {
+                    $line = '0'.$line;
+                }
+
                 if (! preg_match(self::CODE_PATTERN, $line)) {
                     continue;
                 }
@@ -312,12 +325,25 @@ class HsCodeSheetImporter
                 }
 
                 if (strlen(HsCode::digits($line)) >= 6) {
-                    $codes[] = $line;
+                    $codes[] = $this->dotted($line);
                 }
             }
         }
 
         return $codes;
+    }
+
+    /**
+     * Write a bare run of digits the way the tariff book prints it, so codes read
+     * the same whichever sheet they came from: 01012100 becomes 0101.21.00.
+     */
+    private function dotted(string $code): string
+    {
+        if (! ctype_digit($code)) {
+            return $code;
+        }
+
+        return implode('.', array_filter([substr($code, 0, 4), substr($code, 4, 2), substr($code, 6, 2)], fn (string $part): bool => $part !== ''));
     }
 
     /**
@@ -564,6 +590,10 @@ class HsCodeSheetImporter
 
         // A duty quoted per stick, per litre or per tonne is not an ad valorem rate.
         if (preg_match('/\b(bdt|tk|taka|usd|per)\b/i', $value)) {
+            return [0.0, true];
+        }
+
+        if ((float) $numeric > self::MAX_AD_VALOREM_RATE) {
             return [0.0, true];
         }
 

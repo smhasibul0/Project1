@@ -70,6 +70,39 @@ test('a rates sheet tops up stored codes and skips ones it does not know', funct
     expect(HsCode::count())->toBe(5);
 });
 
+test('the customs export with codes kept as numbers is imported in full', function () {
+    $response = $this->actingAs($this->user)
+        ->post(route('hs.code.import'), ['sheet' => fakeCustomsExportSheet()]);
+
+    $response->assertSessionHas('success', fn (string $message) => str_contains($message, '4 new'));
+    expect(HsCode::count())->toBe(4);
+
+    // 0101.21.00 arrives as the number 1012100 and gets its leading zero back.
+    $horses = HsCode::where('code_digits', '01012100')->first();
+    expect($horses->code)->toBe('0101.21.00')
+        ->and($horses->description)->toBe('Pure-bred breeding animals of horses')
+        ->and((float) $horses->cd_rate)->toEqual(5.0)
+        ->and((float) $horses->ait_rate)->toEqual(5.0);
+});
+
+test('a specific duty in taka is not taken for a percentage', function () {
+    $this->actingAs($this->user)->post(route('hs.code.import'), ['sheet' => fakeCustomsExportSheet()]);
+
+    // Tk 3000 a tonne on sugar and Tk 1800 / Tk 600 on scrap book as zero, to be keyed by hand.
+    $sugar = HsCode::where('code_digits', '17011200')->first();
+    expect((float) $sugar->cd_rate)->toEqual(0.0)
+        ->and((float) $sugar->rd_rate)->toEqual(15.0);
+
+    $scrap = HsCode::where('code_digits', '72041000')->first();
+    expect((float) $scrap->vat_rate)->toEqual(0.0)
+        ->and((float) $scrap->ait_rate)->toEqual(0.0);
+
+    // The 500% SD on large cars is a real rate and stays.
+    $car = HsCode::where('code_digits', '87032421')->first();
+    expect((float) $car->sd_rate)->toEqual(500.0)
+        ->and($car->totalTaxIncidence())->toEqual(860.5);
+});
+
 test('a workbook without an HS code column is rejected', function () {
     $response = $this->actingAs($this->user)
         ->post(route('hs.code.import'), ['sheet' => fakePackingList()]);

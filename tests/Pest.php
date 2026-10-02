@@ -118,6 +118,29 @@ function fakeRatesSheet(array $rows): UploadedFile
 }
 
 /**
+ * The flat export Customs publishes alongside the book: one line per code, every
+ * rate filled in, and the code kept as a number — so chapters 01-09 lose their
+ * leading zero. Specific duties sit in the rate columns as plain taka figures.
+ */
+function fakeCustomsExportSheet(): UploadedFile
+{
+    $spreadsheet = new Spreadsheet;
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->fromArray([
+        ['Hscode', 'TARRIFF_DESCRIPTION', 'CD', 'SD', 'VAT', 'AIT', 'RD', 'AT', 'TTI'],
+        [1012100, 'Pure-bred breeding animals of horses..', 5, 0, 0, 5, 0, 0, 10],
+        [17011200, 'Other cane sugar', 3000, 0, 15, 5, 15, 7.5, null],
+        [72041000, 'Waste and scrap of cast iron', 0, 0, 1800, 600, 0, 7.5, null],
+        [87032421, 'Other Motor cars and oth.vehicles,incl. stn. wagon,CBU cap. >3000cc, <=4000cc', 25, 500, 15, 5, 5, 7.5, 860.5],
+    ], null, 'A1', true);
+
+    $path = tempnam(sys_get_temp_dir(), 'export').'.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, 'tariff-export.xlsx', null, null, true);
+}
+
+/**
  * Build a real packing-list workbook mimicking the supplier layout (bilingual
  * header block, one row per carton, TOTAL row) and wrap it as an upload.
  *
