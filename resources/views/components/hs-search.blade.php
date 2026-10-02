@@ -51,6 +51,13 @@
                 if (field) { field.value = parseFloat(row[rate]) || 0; }
             });
 
+            // The reference declared value from Rates, where the row keeps one (quotations).
+            const reference = row.reference || null;
+            const priceField = block.querySelector('[data-name="reference_unit_price"]');
+            const dateField = block.querySelector('[data-name="reference_rate_date"]');
+            if (priceField) { priceField.value = reference ? reference.unit_price : ''; }
+            if (dateField) { dateField.value = reference ? reference.rate_date : ''; }
+
             close();
             if (typeof onPick === 'function') { onPick(block); }
         }

@@ -92,7 +92,14 @@
                                 <td>{{ $item->packingType->name ?? '—' }}</td>
                                 <td class="text-end">{{ rtrim(rtrim(number_format($item->package_quantity, 2), '0'), '.') }}</td>
                                 <td class="text-end">{{ $item->cbm ? rtrim(rtrim(number_format($item->cbm, 4), '0'), '.') : '—' }}</td>
-                                <td class="text-end">৳ {{ number_format($item->declared_value, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($item->declared_value, 2) }}
+                                    @if($item->reference_unit_price)
+                                        <div class="small text-muted text-nowrap" title="Reference rate from Rates &amp; Taxes">
+                                            ref. {{ rtrim(rtrim(number_format((float) $item->reference_unit_price, 4), '0'), '.') }} USD/kg{{ $item->reference_usd_rate ? ' × ৳'.rtrim(rtrim(number_format((float) $item->reference_usd_rate, 4), '0'), '.') : '' }}
+                                            · {{ $item->reference_rate_date?->format('d M Y') }}
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="text-end">৳ {{ number_format($item->duty_amount, 2) }}</td>
                                 <td class="text-end">৳ {{ number_format($item->line_total, 2) }}</td>
                                 <td class="text-end">৳ {{ number_format($item->total_profit, 2) }}</td>

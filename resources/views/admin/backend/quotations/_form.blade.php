@@ -309,6 +309,11 @@
                 <input type="text" class="form-control form-control-sm bg-light out-duty" readonly value="0.00">
             </div>
         </div>
+        {{-- The rate the declared value is worked out from (Rates & Taxes → Rates). --}}
+        <input type="hidden" data-name="reference_unit_price">
+        <input type="hidden" data-name="reference_rate_date">
+        <input type="hidden" data-name="reference_usd_rate">
+        <div class="ref-hint small mt-1"></div>
         </div>
 
         <div class="row g-2 mt-1 align-items-end">
@@ -363,6 +368,68 @@ document.addEventListener('DOMContentLoaded', function () {
     const tmpl = document.getElementById('itemTemplate');
     let index = 0;
     const money = n => (Number(n) || 0).toFixed(2);
+
+    // ---------------- Declared value from the reference rate ----------------
+    // Declared value = reference USD per kg × net weight × the dollar rate. It fills
+    // itself until somebody types over it; the basis is kept on the item and shown.
+    const DOLLAR_RATE = {{ (float) ($dollarRate ?? 0) }};
+    const RATES_URL = @json(Route::has('rates.index') ? route('rates.index') : null);
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const field = (block, name) => block.querySelector('[data-name="' + name + '"]');
+    const fieldNum = (block, name) => parseFloat(field(block, name)?.value) || 0;
+    const dayLabel = value => {
+        const [y, m, d] = String(value || '').slice(0, 10).split('-');
+        return y && m && d ? d + ' ' + MONTHS[Number(m) - 1] + ' ' + y : '';
+    };
+    const plain = n => (Math.round((Number(n) || 0) * 10000) / 10000).toLocaleString('en-US', { maximumFractionDigits: 4 });
+    const grouped = n => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function referenceTotal(block, dollarRate) {
+        return fieldNum(block, 'reference_unit_price') * fieldNum(block, 'net_weight') * dollarRate;
+    }
+
+    function applyReference(block, force) {
+        const declared = field(block, 'declared_value');
+        if (fieldNum(block, 'reference_unit_price') > 0 && DOLLAR_RATE > 0 && (force || !declared.dataset.touched)) {
+            field(block, 'reference_usd_rate').value = DOLLAR_RATE;
+            declared.value = money(referenceTotal(block, DOLLAR_RATE));
+            delete declared.dataset.touched;
+        }
+        renderReference(block);
+    }
+
+    function renderReference(block) {
+        const hint = block.querySelector('.ref-hint');
+        const price = fieldNum(block, 'reference_unit_price');
+        const declared = field(block, 'declared_value');
+
+        if (!price) {
+            hint.innerHTML = field(block, 'hs_code_id').value
+                ? '<span class="text-muted">No rate uploaded for this HS code yet.</span>'
+                : '';
+            return;
+        }
+
+        const dollarRate = fieldNum(block, 'reference_usd_rate') || DOLLAR_RATE;
+        let text = '<i class="ri-price-tag-2-line"></i> Reference <strong>' + plain(price) + ' USD/kg</strong>' +
+            ' · rate of <strong>' + dayLabel(field(block, 'reference_rate_date').value) + '</strong>';
+
+        if (dollarRate > 0) {
+            text += ' · ' + plain(price) + ' × ' + plain(fieldNum(block, 'net_weight')) + ' kg × ৳' + plain(dollarRate) +
+                ' = ৳' + grouped(referenceTotal(block, dollarRate));
+        } else {
+            text += ' · <span class="text-danger">set the dollar rate' +
+                (RATES_URL ? ' on <a href="' + RATES_URL + '" target="_blank">Rates</a>' : '') + ' to fill the declared value</span>';
+        }
+
+        if (declared.dataset.touched) {
+            text += ' · <span class="text-warning">declared value edited by hand</span>' +
+                (DOLLAR_RATE > 0 ? ' — <a href="#" class="use-reference">use the reference</a>' : '');
+        }
+
+        hint.className = 'ref-hint small mt-1 text-primary';
+        hint.innerHTML = text;
+    }
 
     // Bangladesh Customs cascade: CD & RD on AV, SD compounds, VAT/AT compound further, AIT on AV.
     function recalcDuty(block) {
@@ -493,6 +560,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         avField.addEventListener('input', function () { this.dataset.touched = '1'; });
 
+        // A saved item whose declared value no longer matches its reference was edited by hand.
+        const declaredField = field(block, 'declared_value');
+        const rateDateField = field(block, 'reference_rate_date');
+        if (rateDateField.value) { rateDateField.value = rateDateField.value.slice(0, 10); }
+        if (data && fieldNum(block, 'reference_unit_price') > 0) {
+            const basis = referenceTotal(block, fieldNum(block, 'reference_usd_rate') || DOLLAR_RATE);
+            if (Math.abs((parseFloat(data.declared_value) || 0) - basis) > 0.01) { declaredField.dataset.touched = '1'; }
+        } else if (data && (parseFloat(data.declared_value) || 0) > 0) {
+            declaredField.dataset.touched = '1';
+        }
+        declaredField.addEventListener('input', function () { this.dataset.touched = '1'; renderReference(block); });
+        field(block, 'net_weight').addEventListener('input', function () { applyReference(block); recalcBlock(block); });
+        block.querySelector('.ref-hint').addEventListener('click', function (e) {
+            if (e.target.classList.contains('use-reference')) {
+                e.preventDefault();
+                applyReference(block, true);
+                recalcBlock(block);
+            }
+        });
+
         block.querySelector('[data-name="description"]').addEventListener('input', renumber);
         block.querySelectorAll('.calc, .dim').forEach(el => el.addEventListener('input', () => recalcBlock(block)));
         block.querySelectorAll('.dim').forEach(el => el.addEventListener('input', () => { autoCbm(block); recalcTotals(); }));
@@ -502,8 +589,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         wrap.appendChild(node);
-        window.attachHsSearch(wrap.lastElementChild, function (b) { renumber(); recalcBlock(b); });
+        window.attachHsSearch(wrap.lastElementChild, function (b) { renumber(); applyReference(b); recalcBlock(b); });
         renumber();
+        renderReference(wrap.lastElementChild);
         recalcBlock(wrap.lastElementChild);
     }
 

@@ -239,6 +239,10 @@ class QuotationController extends Controller
                 'line_total' => $lineCharge,
                 'total_profit' => round($lineCharge - $duty['total'] - $lineFreight, 2),
                 'remarks' => $row['remarks'] ?? null,
+                // What the declared value was worked out from, if a rate was on file.
+                'reference_unit_price' => filled($row['reference_unit_price'] ?? null) ? $row['reference_unit_price'] : null,
+                'reference_rate_date' => filled($row['reference_rate_date'] ?? null) ? substr((string) $row['reference_rate_date'], 0, 10) : null,
+                'reference_usd_rate' => filled($row['reference_usd_rate'] ?? null) ? $row['reference_usd_rate'] : null,
             ]);
 
             $totalDuty += $duty['total'];
@@ -351,6 +355,7 @@ class QuotationController extends Controller
             'transportationModes' => TransportationMode::orderBy('name')->get(),
             'packingTypes' => PackingType::orderBy('name')->get(),
             'costCategories' => CostCategory::orderBy('name')->get(),
+            'dollarRate' => (float) CompanySetting::current()->usd_rate,
         ];
     }
 
@@ -397,6 +402,9 @@ class QuotationController extends Controller
             'items.*.ait_rate' => 'nullable|numeric|min:0|max:1000',
             'items.*.at_rate' => 'nullable|numeric|min:0|max:1000',
             'items.*.remarks' => 'nullable|string',
+            'items.*.reference_unit_price' => 'nullable|numeric|min:0',
+            'items.*.reference_rate_date' => 'nullable|date',
+            'items.*.reference_usd_rate' => 'nullable|numeric|min:0',
         ]);
     }
 }

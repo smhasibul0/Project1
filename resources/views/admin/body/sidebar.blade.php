@@ -67,15 +67,30 @@
                 @endcan
 
 
-                <!-- HS Codes / customs tariff -->
-                @can('hs.view')
+                <!-- Rates & Taxes: the customs tariff and the reference declared values -->
+                @canany(['hs.view', 'rates.view'])
                 <li>
-                    <a href="{{ route('hs.codes') }}">
+                    <a href="#sidebarRates" data-bs-toggle="collapse">
                         <i data-feather="package"></i>
-                        <span> HS Codes </span>
+                        <span> Rates &amp; Taxes </span>
+                        <span class="menu-arrow"></span>
                     </a>
+                    <div class="collapse" id="sidebarRates">
+                        <ul class="nav-second-level">
+                            @can('hs.view')
+                            <li>
+                                <a href="{{ route('hs.codes') }}" class="tp-link">HS Codes</a>
+                            </li>
+                            @endcan
+                            @can('rates.view')
+                            <li>
+                                <a href="{{ route('rates.index') }}" class="tp-link">Rates</a>
+                            </li>
+                            @endcan
+                        </ul>
+                    </div>
                 </li>
-                @endcan
+                @endcanany
 
                 <!-- Warehouse -->
                 @canany(['warehouses.view', 'expense-categories.view', 'reports.warehouse-summary'])

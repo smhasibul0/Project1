@@ -58,13 +58,30 @@ class HsCodeController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
+        // The reference declared value is for whoever prices quotations — the
+        // customer portal uses this lookup too, and never sees it.
+        $withReference = $request->user()->can('quotations.create') || $request->user()->can('quotations.edit');
+
         $results = HsCode::search($request->input('q'))
             ->where('is_active', true)
+            ->when($withReference, fn ($q) => $q->with('latestValuationRate'))
             ->orderBy('code_digits')
             ->limit(20)
-            ->get(['id', 'code', 'description', 'statistical_unit', ...HsCode::RATE_FIELDS]);
+            ->get(['id', 'code', 'code_digits', 'description', 'statistical_unit', ...HsCode::RATE_FIELDS]);
 
-        return response()->json($results);
+        return response()->json($results->map(function (HsCode $hsCode) use ($withReference) {
+            $row = $hsCode->only(['id', 'code', 'description', 'statistical_unit', ...HsCode::RATE_FIELDS]);
+            $rate = $withReference ? $hsCode->latestValuationRate : null;
+
+            if ($withReference) {
+                $row['reference'] = $rate ? [
+                    'unit_price' => (float) $rate->unit_price,
+                    'rate_date' => $rate->rate_date->toDateString(),
+                ] : null;
+            }
+
+            return $row;
+        }));
     }
 
     public function store(Request $request)

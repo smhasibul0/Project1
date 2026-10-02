@@ -33,6 +33,9 @@ class QuotationItem extends Model
             'duty_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
             'total_profit' => 'decimal:2',
+            'reference_unit_price' => 'decimal:4',
+            'reference_rate_date' => 'date',
+            'reference_usd_rate' => 'decimal:4',
         ];
     }
 

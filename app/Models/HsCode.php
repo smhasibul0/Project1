@@ -8,6 +8,7 @@ use Database\Factories\HsCodeFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class HsCode extends Model
 {
@@ -104,5 +105,15 @@ class HsCode extends Model
     public function totalTaxIncidence(): float
     {
         return round(DutyCalculator::calculate(100, $this->rates())['total'], 2);
+    }
+
+    /**
+     * The newest Customs valuation rate uploaded for this code — the reference a
+     * quotation's declared value is worked out from.
+     */
+    public function latestValuationRate(): HasOne
+    {
+        return $this->hasOne(ValuationRate::class, 'code_digits', 'code_digits')
+            ->ofMany(['rate_date' => 'max', 'id' => 'max']);
     }
 }

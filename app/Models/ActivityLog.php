@@ -65,6 +65,7 @@ class ActivityLog extends Model
             'customer' => ['class' => Contact::class, 'label' => 'Customer', 'route' => null],
             'customer_group' => ['class' => CustomerGroup::class, 'label' => 'Customer Group', 'route' => null],
             'hs_code' => ['class' => HsCode::class, 'label' => 'HS Code', 'route' => null],
+            'valuation_rate' => ['class' => ValuationRate::class, 'label' => 'Rate', 'route' => 'rates.show'],
             'transportation_mode' => ['class' => TransportationMode::class, 'label' => 'Transportation Mode', 'route' => null],
             'packing_type' => ['class' => PackingType::class, 'label' => 'Packing Type', 'route' => null],
             'cost_category' => ['class' => CostCategory::class, 'label' => 'Cost Category', 'route' => null],

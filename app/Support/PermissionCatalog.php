@@ -63,6 +63,13 @@ class PermissionCatalog
                 'hs.import' => ['Import the tariff book', 'Bulk-load HS codes and rates from a workbook.'],
             ],
 
+            'Rates' => [
+                'rates.view' => ['View rates', 'Open the Customs valuation reports and the reference price per HS code.'],
+                'rates.upload' => ['Upload rates', 'Upload a Customs valuation report PDF.'],
+                'rates.delete' => ['Delete rates', 'Remove an uploaded valuation report.'],
+                'rates.dollar' => ['Set the dollar rate', 'Change the USD to BDT rate used to fill declared values.'],
+            ],
+
             'Quotations' => [
                 'quotations.view' => ['View quotations', 'Open the quotation list, customer requests and quote details.'],
                 'quotations.create' => ['Create quotations', 'Build a new quote, including the packing-list import.'],

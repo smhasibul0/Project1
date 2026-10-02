@@ -26,6 +26,7 @@ use App\Http\Controllers\Backend\ReportController;
 use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\TransportationModeController;
 use App\Http\Controllers\Backend\UserController;
+use App\Http\Controllers\Backend\ValuationRateController;
 use App\Http\Controllers\Backend\WarehouseController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
@@ -183,6 +184,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/hs-codes/import', [HsCodeController::class, 'import'])->middleware('can:hs.import')->name('hs.code.import');
     Route::put('/hs-codes/{id}', [HsCodeController::class, 'update'])->middleware('can:hs.edit')->name('hs.code.update');
     Route::delete('/hs-codes/{id}', [HsCodeController::class, 'destroy'])->middleware('can:hs.delete')->name('hs.code.delete');
+});
+
+// Rates: Customs valuation reports, the reference declared value per HS code
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/rates', [ValuationRateController::class, 'index'])->middleware('can:rates.view')->name('rates.index');
+    Route::post('/rates', [ValuationRateController::class, 'store'])->middleware('can:rates.upload')->name('rates.store');
+    Route::post('/rates/dollar', [ValuationRateController::class, 'updateDollarRate'])->middleware('can:rates.dollar')->name('rates.dollar');
+    Route::get('/rates/{id}', [ValuationRateController::class, 'show'])->middleware('can:rates.view')->name('rates.show');
+    Route::get('/rates/{id}/pdf', [ValuationRateController::class, 'pdf'])->middleware('can:rates.view')->name('rates.pdf');
+    Route::delete('/rates/{id}', [ValuationRateController::class, 'destroy'])->middleware('can:rates.delete')->name('rates.delete');
 });
 
 // Warehouses

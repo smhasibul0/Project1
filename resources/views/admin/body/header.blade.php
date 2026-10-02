@@ -154,6 +154,9 @@ window.__adminSearch = [
     @can('hs.view')
     { l: 'HS Codes', i: 'ri-box-3-line', u: '{{ route('hs.codes') }}', k: 'tariff customs duty hs code' },
     @endcan
+    @can('rates.view')
+    { l: 'Rates', i: 'ri-price-tag-2-line', u: '{{ route('rates.index') }}', k: 'declared value valuation report dollar usd' },
+    @endcan
     @can('warehouses.view')
     { l: 'Warehouses', i: 'ri-store-2-line', u: '{{ route('warehouses.index') }}', k: 'warehouse stock' },
     @endcan

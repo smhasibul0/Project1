@@ -141,6 +141,58 @@ function fakeCustomsExportSheet(): UploadedFile
 }
 
 /**
+ * A Customs "ValuationReport_Analysis" PDF, written out by hand: one text line per
+ * entry, so the lines can be given exactly as the report's own text comes out —
+ * columns run together, wrapped descriptions, a bill that leaves its date out.
+ *
+ * @param  array<int, string>|null  $lines
+ */
+function fakeValuationReport(?array $lines = null, string $name = '79011210.pdf'): UploadedFile
+{
+    $lines ??= [
+        'HSCODE', '79011210', 'Date', 'Between 01/01/2026 - 10/01/2026', 'ValuationReport_Analysis',
+        'OfficeType Proc BE_NO BE_Date HSCODE Commercial Description Item Number CURCODE Dec. PriceDec Unit Price',
+        '601 4 66225 27/09/202679011210ZINC INGOT 1 USD 50.001.00 60.001.20 50.00 0IN ACME TRADING',
+        'DHAKA ROAD',
+        '301 4 125132221/09/202679011210ZINC INGOTS 1 USD 19,543.001.0074,951.313.8419,543.00 0AU SAMPLE METALS',
+        '55190 79011210ELECTROPLATING', 'CHEMICAL ZINC', 'INGOT',
+        '2 USD 3,426.005.713,426.005.71 600.00 0IN NORTH EXPORTS',
+    ];
+
+    $content = "BT /F1 8 Tf 10 TL 20 560 Td\n";
+    foreach ($lines as $line) {
+        $content .= '('.str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $line).") Tj T*\n";
+    }
+    $content .= 'ET';
+
+    $objects = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+        '<< /Length '.strlen($content)." >>\nstream\n".$content."\nendstream",
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ];
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [];
+    foreach ($objects as $i => $object) {
+        $offsets[] = strlen($pdf);
+        $pdf .= ($i + 1)." 0 obj\n".$object."\nendobj\n";
+    }
+    $xref = strlen($pdf);
+    $pdf .= "xref\n0 ".(count($objects) + 1)."\n0000000000 65535 f \n";
+    foreach ($offsets as $offset) {
+        $pdf .= sprintf("%010d 00000 n \n", $offset);
+    }
+    $pdf .= "trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF";
+
+    $path = tempnam(sys_get_temp_dir(), 'valuation').'.pdf';
+    file_put_contents($path, $pdf);
+
+    return new UploadedFile($path, $name, 'application/pdf', null, true);
+}
+
+/**
  * Build a real packing-list workbook mimicking the supplier layout (bilingual
  * header block, one row per carton, TOTAL row) and wrap it as an upload.
  *
