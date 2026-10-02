@@ -26,6 +26,8 @@
         .auth-brand::after { content: ''; position: absolute; width: 320px; height: 320px; border-radius: 50%; background: rgba(255,255,255,.06); bottom: -120px; left: -100px; }
         .auth-brand .inner { position: relative; z-index: 1; max-width: 420px; }
         .auth-brand .mark { width: 54px; height: 54px; border-radius: 15px; background: rgba(255,255,255,.16); display: grid; place-items: center; font-size: 1.6rem; margin-bottom: 1.6rem; }
+        .auth-brand .mark-logo { width: auto; height: auto; max-width: 240px; padding: .65rem .9rem; background: #fff; }
+        .auth-brand .mark-logo img { display: block; max-height: 60px; max-width: 100%; object-fit: contain; }
         .auth-brand h1 { font-size: 2rem; font-weight: 800; line-height: 1.2; margin: 0 0 .8rem; letter-spacing: -.02em; }
         .auth-brand p.lead { opacity: .9; font-size: 1rem; margin: 0 0 2rem; }
         .auth-feat { list-style: none; padding: 0; margin: 0; display: grid; gap: .9rem; }
@@ -64,7 +66,11 @@
     <div class="auth-wrap">
         <div class="auth-brand">
             <div class="inner">
-                <div class="mark"><i class="ri-ship-2-line"></i></div>
+                @if($logo)
+                    <div class="mark mark-logo"><img src="{{ $logo }}" alt="{{ $company->company_name }}"></div>
+                @else
+                    <div class="mark"><i class="ri-ship-2-line"></i></div>
+                @endif
                 <h1>{{ $company->company_name ?: 'Import Sourcing & Freight' }}</h1>
                 <p class="lead">Source, ship and track your imports end to end — quotations, orders, LCs, containers and payments in one place.</p>
                 <ul class="auth-feat">
