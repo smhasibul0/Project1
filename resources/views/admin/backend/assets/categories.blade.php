@@ -46,6 +46,7 @@
                                 <td class="text-end text-muted">{{ $category->assets_count }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$category" as="button" />
                                         @can('asset-categories.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-row="{{ json_encode($category->only(['id', 'name', 'default_method', 'default_useful_life_years', 'default_rate', 'is_active'])) }}">

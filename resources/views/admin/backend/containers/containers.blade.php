@@ -76,6 +76,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$c" />
                                         </ul>
                                     </div>
                                 </td>

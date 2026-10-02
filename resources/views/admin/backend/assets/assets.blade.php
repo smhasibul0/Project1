@@ -135,6 +135,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$asset" />
                                         </ul>
                                     </div>
                                 </td>

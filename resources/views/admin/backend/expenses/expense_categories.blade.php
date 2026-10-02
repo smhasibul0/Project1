@@ -31,6 +31,7 @@
                                 <td><span class="badge bg-{{ $parent->is_active ? 'success' : 'secondary' }}">{{ $parent->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$parent" as="button" />
                                         @can('expense-categories.create')<button type="button" class="btn btn-sm btn-outline-secondary add-sub-btn" data-parent="{{ $parent->id }}" data-parent-name="{{ $parent->name }}" title="Add sub-category"><i class="ri-add-line"></i></button>@endcan
                                         @can('expense-categories.edit')<button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($parent->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>@endcan
                                         @can('expense-categories.delete')<form action="{{ route('expense.category.delete', $parent->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
@@ -43,6 +44,7 @@
                                 <td><span class="badge bg-{{ $child->is_active ? 'success' : 'secondary' }}-subtle text-{{ $child->is_active ? 'success' : 'secondary' }}">{{ $child->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$child" as="button" />
                                         @can('expense-categories.edit')<button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($child->only(['id','name','is_active'])) }}"><i class="ri-edit-line"></i></button>@endcan
                                         @can('expense-categories.delete')<form action="{{ route('expense.category.delete', $child->id) }}" method="POST" class="m-0">@csrf @method('DELETE')<button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button></form>@endcan
                                     </div>

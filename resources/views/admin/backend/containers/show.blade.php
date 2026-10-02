@@ -263,6 +263,8 @@
                 </div>
             </div>
         </div>
+
+        <x-activity-history :record="$container" />
     </div>
 </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\HsCode;
 use App\Support\HsCodeSheetImporter;
 use Illuminate\Http\JsonResponse;
@@ -46,6 +47,8 @@ class HsCodeController extends Controller
         $message = $stats['mode'] === 'merge'
             ? "Rates merged: {$stats['updated']} HS code(s) updated, {$stats['skipped']} not found."
             : "Tariff imported: {$stats['created']} new HS code(s), {$stats['updated']} updated.";
+
+        ActivityLog::recordBulk(HsCode::class, ActivityLog::IMPORTED, $request->file('sheet')->getClientOriginalName(), $message);
 
         return redirect()->back()->with('success', $message.' Columns read: '.implode(', ', $stats['columns']).'.');
     }

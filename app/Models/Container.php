@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\ContainerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,8 @@ class Container extends Model
 {
     /** @use HasFactory<ContainerFactory> */
     use HasFactory;
+
+    use RecordsActivity;
 
     protected $guarded = [];
 

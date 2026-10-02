@@ -161,6 +161,8 @@
                 </div>
             </div>
         </div>
+
+        <x-activity-history :record="$staff" />
     </div>
 </div>
 

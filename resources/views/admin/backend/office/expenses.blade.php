@@ -161,6 +161,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$e" />
                                         </ul>
                                     </div>
                                 </td>

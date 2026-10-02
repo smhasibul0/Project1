@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class WarehouseExpensePayment extends Model
 {
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'expense';
+
     protected $guarded = [];
 
     /**

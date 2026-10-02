@@ -150,6 +150,8 @@
                 </div>
             </div>
         </div>
+
+        <x-activity-history :record="$lc" />
     </div>
 </div>
 

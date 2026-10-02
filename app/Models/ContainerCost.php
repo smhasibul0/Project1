@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\ContainerCostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,11 @@ class ContainerCost extends Model
 {
     /** @use HasFactory<ContainerCostFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'container';
 
     protected $guarded = [];
 

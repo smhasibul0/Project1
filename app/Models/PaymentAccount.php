@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PaymentAccount extends Model
 {
     use HasFactory;
+    use RecordsActivity;
+
+    /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
+    protected array $activityIgnore = ['balance'];
 
     protected $guarded = [];
 

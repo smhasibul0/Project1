@@ -127,6 +127,7 @@
                                                     <i class="ri-attachment-line me-2"></i>Documents &amp; Note
                                                 </a>
                                             </li>
+                                            <x-history-link :record="$contact" />
                                         </ul>
                                     </div>
                                 </td>

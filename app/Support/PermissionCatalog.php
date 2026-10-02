@@ -253,6 +253,10 @@ class PermissionCatalog
                 'settings.view' => ['View company settings', 'See the company and invoice settings.'],
                 'settings.edit' => ['Edit company settings', 'Change the company details shown on invoices and quotes.'],
             ],
+
+            'Activity Log' => [
+                'activity.view' => ['View activity log', 'See who added, edited, updated or deleted every record, and what they changed.'],
+            ],
         ];
     }
 

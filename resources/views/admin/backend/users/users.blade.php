@@ -59,6 +59,7 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$user" as="button" />
                                         @can('users.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-user-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"

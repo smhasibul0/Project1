@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\QuotationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,20 @@ class Quotation extends Model
 {
     /** @use HasFactory<QuotationFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
+    protected array $activityIgnore = [
+        'total_cbm',
+        'customer_charge',
+        'grand_total',
+        'total_duty',
+        'projected_cost_total',
+        'projected_profit',
+        'total_profit',
+        'profit_margin',
+    ];
 
     protected $guarded = [];
 

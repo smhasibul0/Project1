@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OfficeCostType extends Model
 {
+    use RecordsActivity;
+
     /**
      * A fixed cost recurs every month at a broadly steady amount (rent,
      * internet, salary); a variable one is incurred as needed (repairs,

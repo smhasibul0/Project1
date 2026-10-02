@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,8 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    use RecordsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -94,5 +97,13 @@ class User extends Authenticatable
     public function hasPermission(string $key): bool
     {
         return $this->role !== null && $this->role->hasPermission($key);
+    }
+
+    /**
+     * How this user reads in the activity log.
+     */
+    public function activityLabel(): string
+    {
+        return trim($this->first_name.' '.$this->last_name) ?: (string) $this->username;
     }
 }

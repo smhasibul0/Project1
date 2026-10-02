@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\ContactFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,8 @@ class Contact extends Model
 {
     /** @use HasFactory<ContactFactory> */
     use HasFactory;
+
+    use RecordsActivity;
 
     protected $guarded = [];
 

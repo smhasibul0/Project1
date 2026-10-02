@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Container;
 use App\Models\ContainerCost;
 use App\Models\ContainerDocument;
@@ -118,11 +119,22 @@ class ContainerController extends Controller
             'remarks' => $data['remarks'] ?? null,
         ];
 
-        if ($container->orders()->where('order_id', $data['order_id'])->exists()) {
+        $alreadyLoaded = $container->orders()->where('order_id', $data['order_id'])->exists();
+
+        if ($alreadyLoaded) {
             $container->orders()->updateExistingPivot($data['order_id'], $pivot);
         } else {
             $container->orders()->attach($data['order_id'], $pivot);
         }
+
+        // Membership lives in a pivot table, so it is logged by hand — on the order,
+        // filed under the container so both histories show it.
+        ActivityLog::record(
+            Order::findOrFail($data['order_id']),
+            ActivityLog::EDITED,
+            ($alreadyLoaded ? 'Changed its load in container ' : 'Loaded into container ').$container->container_code,
+            parent: $container,
+        );
 
         $this->recomputeMembers($container);
 
@@ -133,6 +145,10 @@ class ContainerController extends Controller
     {
         $container = Container::findOrFail($id);
         $container->orders()->detach($orderId);
+
+        if ($order = Order::find($orderId)) {
+            ActivityLog::record($order, ActivityLog::EDITED, 'Removed from container '.$container->container_code, parent: $container);
+        }
 
         Order::find($orderId)?->recomputeFinancials();
         $this->recomputeMembers($container);

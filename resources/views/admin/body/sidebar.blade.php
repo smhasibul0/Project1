@@ -391,6 +391,16 @@
                 </li>
                 @endcan
 
+                <!-- Activity Log -->
+                @can('activity.view')
+                <li>
+                    <a href="{{ route('activity.index') }}">
+                        <i data-feather="activity"></i>
+                        <span> Activity Log </span>
+                    </a>
+                </li>
+                @endcan
+
 
             </ul>
         </div>

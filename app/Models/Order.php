@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,30 @@ class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Columns whose change reads "Status updated". */
+    protected array $activityStatusFields = ['goods_status', 'delivery_status'];
+
+    /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
+    protected array $activityIgnore = [
+        'subtotal',
+        'total_amount',
+        'payment_status',
+        'received_amount',
+        'due_amount',
+        'amount_received_date',
+        'total_expense',
+        'profit',
+        'lc_cost',
+        'container_cost',
+        'total_cbm',
+        'freight_cost',
+        'duty_total',
+        'total_delivery_days',
+        'track_token',
+    ];
 
     protected $guarded = [];
 
@@ -359,5 +384,13 @@ class Order extends Model
             'profit' => round($totalAmount - $freightCost - $dutyTotal - $orderCosts - $lcCost - $containerCost, 2),
             'total_delivery_days' => $days,
         ]);
+    }
+
+    /**
+     * Store a status change by its label ("At BD Warehouse"), not its key.
+     */
+    protected function activityDisplayValue(string $field, mixed $value): ?string
+    {
+        return $field === 'goods_status' ? (static::goodsStatuses()[$value] ?? null) : null;
     }
 }

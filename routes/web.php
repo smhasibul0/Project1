@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Backend\AccountTypeController;
+use App\Http\Controllers\Backend\ActivityLogController;
 use App\Http\Controllers\Backend\AssetCategoryController;
 use App\Http\Controllers\Backend\AssetController;
 use App\Http\Controllers\Backend\AssetDepreciationController;
@@ -369,6 +370,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/settings/company', [CompanySettingController::class, 'edit'])->middleware('can:settings.view')->name('settings.company');
     Route::post('/settings/company', [CompanySettingController::class, 'update'])->middleware('can:settings.edit')->name('settings.company.update');
+});
+
+// Activity log: who added, edited, updated the status of, or deleted every record
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->middleware('can:activity.view')->name('activity.index');
 });
 
 // Access Control: users & roles (admin-managed)

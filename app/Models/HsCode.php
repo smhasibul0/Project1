@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use App\Support\DutyCalculator;
 use Database\Factories\HsCodeFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,11 @@ class HsCode extends Model
 {
     /** @use HasFactory<HsCodeFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
+    protected array $activityIgnore = ['code_digits'];
 
     protected $guarded = [];
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Loan extends Model
 {
+    use RecordsActivity;
+
     /**
      * Borrowed means the company took the money and owes it; lent means the
      * company handed it out and is owed it back.

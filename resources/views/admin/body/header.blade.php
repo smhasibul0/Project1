@@ -193,6 +193,9 @@ window.__adminSearch = [
     @can('settings.view')
     { l: 'Company Settings', i: 'ri-settings-3-line', u: '{{ route('settings.company') }}', k: 'settings logo brand' },
     @endcan
+    @can('activity.view')
+    { l: 'Activity Log', i: 'ri-history-line', u: '{{ route('activity.index') }}', k: 'history audit who changed edited deleted' },
+    @endcan
 ];
 
 document.addEventListener('DOMContentLoaded', function () {

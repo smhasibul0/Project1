@@ -38,6 +38,7 @@
                                 <td>{{ $type->name }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$type" as="button" />
                                         @can('packing-types.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"

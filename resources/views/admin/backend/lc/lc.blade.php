@@ -80,6 +80,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$lc" />
                                         </ul>
                                     </div>
                                 </td>

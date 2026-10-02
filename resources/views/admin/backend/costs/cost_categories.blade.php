@@ -39,6 +39,7 @@
                                 <td><span class="badge bg-{{ $category->is_active ? 'success' : 'secondary' }}">{{ $category->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$category" as="button" />
                                         @can('cost-categories.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"

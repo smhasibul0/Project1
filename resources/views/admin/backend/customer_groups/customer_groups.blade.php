@@ -57,6 +57,7 @@
                                 <td>{{ $group->description ?: '—' }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$group" as="button" />
                                         @can('customer-groups.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-group-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editGroupModal"

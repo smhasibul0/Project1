@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Support\PermissionCatalog;
@@ -85,7 +86,7 @@ class RoleController extends Controller
         // The Admin role always has every permission (it also bypasses gates), so never
         // let its matrix be narrowed.
         if (! $role->isAdmin()) {
-            $role->permissions()->sync($request->input('permissions', []));
+            $this->logPermissionChanges($role, $role->permissions()->sync($request->input('permissions', [])));
         }
 
         return redirect()->back()->with('success', 'Role updated successfully.');
@@ -118,5 +119,26 @@ class RoleController extends Controller
         }
 
         return $slug;
+    }
+
+    /**
+     * The permission matrix is a pivot table, which saves no model of its own, so the
+     * role's log entry names what was granted and what was taken away.
+     *
+     * @param  array{attached: array<int, int>, detached: array<int, int>}  $result
+     */
+    private function logPermissionChanges(Role $role, array $result): void
+    {
+        $granted = Permission::whereIn('id', $result['attached'])->orderBy('name')->pluck('name')->implode(', ');
+        $removed = Permission::whereIn('id', $result['detached'])->orderBy('name')->pluck('name')->implode(', ');
+
+        $changes = array_filter([
+            'permissions_granted' => $granted !== '' ? ['old' => null, 'new' => $granted] : null,
+            'permissions_removed' => $removed !== '' ? ['old' => $removed, 'new' => null] : null,
+        ]);
+
+        if ($changes !== []) {
+            $role->logActivity(ActivityLog::EDITED, null, $changes);
+        }
     }
 }

@@ -225,6 +225,8 @@
                 </div>
             </div>
         </div>
+
+        <x-activity-history :record="$quotation" />
     </div>
 </div>
 @endsection

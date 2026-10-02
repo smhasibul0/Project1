@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WarehouseStaffDocument extends Model
 {
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'staff';
+
     protected $guarded = [];
 
     public function staff(): BelongsTo

@@ -38,6 +38,7 @@
                                 <td>{{ $mode->name }}</td>
                                 <td class="text-end">
                                     <div class="d-flex gap-1 justify-content-end">
+                                        <x-history-link :record="$mode" as="button" />
                                         @can('transportation-modes.edit')
                                         <button type="button" class="btn btn-sm btn-outline-primary edit-btn"
                                                 data-bs-toggle="modal" data-bs-target="#editModal"

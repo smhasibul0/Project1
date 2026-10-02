@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Carbon\Carbon;
 use Database\Factories\AssetFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,8 @@ class Asset extends Model
 {
     /** @use HasFactory<AssetFactory> */
     use HasFactory;
+
+    use RecordsActivity;
 
     /**
      * Straight line spreads the depreciable amount evenly over the useful

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\ContainerDocumentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,11 @@ class ContainerDocument extends Model
 {
     /** @use HasFactory<ContainerDocumentFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'container';
 
     protected $guarded = [];
 
@@ -42,5 +48,10 @@ class ContainerDocument extends Model
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by');
+    }
+
+    public function activityLabel(): string
+    {
+        return $this->type.($this->container ? ' — Container '.$this->container->container_code : '');
     }
 }

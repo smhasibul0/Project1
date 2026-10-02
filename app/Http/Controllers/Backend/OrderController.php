@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\CompanySetting;
 use App\Models\Contact;
 use App\Models\CostCategory;
@@ -196,15 +197,24 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
         $data = $this->validated($request);
+        $before = $this->contents($order);
 
         DB::transaction(function () use ($order, $data, $request) {
             $order->update($this->headerData($data));
-            $order->items()->delete();
-            $order->payments()->delete();
-            $this->syncItems($order, $data['items']);
-            $this->syncPayments($order, $request->input('payments', []));
+
+            // The form re-saves every item and payment; only a real difference is
+            // logged (below), not every row as if it were new.
+            ActivityLog::withoutRecording(function () use ($order, $data, $request) {
+                $order->items()->delete();
+                $order->payments()->delete();
+                $this->syncItems($order, $data['items']);
+                $this->syncPayments($order, $request->input('payments', []));
+            });
+
             $this->recompute($order);
         });
+
+        $order->logChangedContents($before, $this->contents($order));
 
         return redirect()->route('orders.index')->with('success', 'Order updated successfully.');
     }
@@ -522,6 +532,17 @@ class OrderController extends Controller
                 'added_by' => Auth::id(),
             ]);
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function contents(Order $order): array
+    {
+        return [
+            'items' => Order::activityFingerprint($order->items()),
+            'payments' => Order::activityFingerprint($order->payments()),
+        ];
     }
 
     /**

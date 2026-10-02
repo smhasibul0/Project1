@@ -97,6 +97,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$q" />
                                         </ul>
                                     </div>
                                 </td>

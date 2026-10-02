@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\LcFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,11 @@ class Lc extends Model
 {
     /** @use HasFactory<LcFactory> */
     use HasFactory;
+
+    use RecordsActivity;
+
+    /** Columns whose change reads "Status updated". */
+    protected array $activityStatusFields = ['lc_status'];
 
     protected $table = 'lcs';
 

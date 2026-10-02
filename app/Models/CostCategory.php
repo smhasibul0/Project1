@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\CostCategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ class CostCategory extends Model
 {
     /** @use HasFactory<CostCategoryFactory> */
     use HasFactory;
+
+    use RecordsActivity;
 
     protected $guarded = [];
 

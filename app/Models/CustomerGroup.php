@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Database\Factories\CustomerGroupFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ class CustomerGroup extends Model
 {
     /** @use HasFactory<CustomerGroupFactory> */
     use HasFactory;
+
+    use RecordsActivity;
 
     protected $guarded = [];
 

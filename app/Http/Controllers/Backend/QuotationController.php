@@ -126,6 +126,7 @@ class QuotationController extends Controller
         $data = $this->validated($request);
         $send = $request->input('action') === 'send';
         $packingList = $this->storePackingList($request);
+        $before = $this->contents($quotation);
 
         DB::transaction(function () use ($quotation, $data, $send, $packingList) {
             $quotation->update([
@@ -146,8 +147,21 @@ class QuotationController extends Controller
             $this->applyPricing($quotation, $data);
         });
 
+        $quotation->logChangedContents($before, $this->contents($quotation));
+
         return redirect()->route($send ? 'quotations.index' : 'quotation.show', $send ? [] : $quotation->id)
             ->with('success', $send ? 'Quotation sent to the customer.' : 'Quotation saved.');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function contents(Quotation $quotation): array
+    {
+        return [
+            'items' => Quotation::activityFingerprint($quotation->items()),
+            'expenses' => Quotation::activityFingerprint($quotation->expenses()),
+        ];
     }
 
     /**

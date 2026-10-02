@@ -70,6 +70,7 @@
                                         <td class="text-end text-muted">{{ $type->expenses_count }}</td>
                                         <td class="text-end">
                                             <div class="d-flex gap-1 justify-content-end">
+                                                <x-history-link :record="$type" as="button" />
                                                 @can('office.cost-types.edit')
                                                 <button type="button" class="btn btn-sm btn-outline-primary edit-btn" data-row="{{ json_encode($type->only(['id', 'name', 'expense_category_id', 'nature', 'monthly_amount', 'is_active']) + ['category_parent_id' => $type->category?->parent_id ?? $type->expense_category_id]) }}"><i class="ri-edit-line"></i></button>
                                                 @endcan

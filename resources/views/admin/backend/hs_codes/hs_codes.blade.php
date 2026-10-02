@@ -116,6 +116,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$hsCode" />
                                         </ul>
                                     </div>
                                 </td>

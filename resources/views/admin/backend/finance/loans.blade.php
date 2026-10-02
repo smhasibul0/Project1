@@ -137,6 +137,7 @@
                                                 </form>
                                             </li>
                                             @endcan
+                                            <x-history-link :record="$loan" />
                                         </ul>
                                     </div>
                                 </td>

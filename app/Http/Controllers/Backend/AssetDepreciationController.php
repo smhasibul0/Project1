@@ -93,7 +93,9 @@ class AssetDepreciationController extends Controller
     public function destroyMonth(Request $request)
     {
         $period = $this->resolveMonth($request->input('month'))->startOfMonth();
-        $removed = AssetDepreciation::whereDate('period', $period)->delete();
+        $entries = AssetDepreciation::whereDate('period', $period)->get();
+        $entries->each->delete();
+        $removed = $entries->count();
 
         return redirect()->back()->with('success', $removed.' entr(ies) reversed for '.$period->format('F Y').'.');
     }

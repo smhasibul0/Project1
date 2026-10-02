@@ -2,15 +2,24 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Transaction extends Model
 {
     use HasFactory;
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'account';
+
+    /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
+    protected array $activityIgnore = ['running_balance'];
 
     protected $guarded = [];
 
@@ -74,5 +83,23 @@ class Transaction extends Model
                 $transaction->to_account_id = optional($pair->firstWhere('type', 'credit'))->payment_account_id;
             }
         }
+    }
+
+    /**
+     * Entries written by a payment are logged as that payment; only the deposits and
+     * transfers made straight on the account book are logged as entries of their own.
+     */
+    public function shouldRecordActivity(): bool
+    {
+        return $this->isManual();
+    }
+
+    /**
+     * "Deposit ৳5,000.00 — Payment Account City Bank".
+     */
+    public function activityLabel(): string
+    {
+        return Str::headline((string) $this->source).' '.'৳'.number_format((float) $this->amount, 2)
+            .($this->account ? ' — Payment Account '.$this->account->name : '');
     }
 }

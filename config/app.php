@@ -68,6 +68,12 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Times are stored in UTC above; this is the clock they are shown on.
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Dhaka'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

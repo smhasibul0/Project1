@@ -280,6 +280,8 @@
             </div>
         </div>
 
+        <x-activity-history :record="$account" />
+
     </div>
 </div>
 

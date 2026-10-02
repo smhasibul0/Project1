@@ -47,6 +47,8 @@
                 </table>
             </div>
         </div>
+
+        <x-activity-history :record="$stock" />
     </div>
 </div>
 @endsection

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Container;
 use App\Models\Order;
 use App\Models\OrderScan;
@@ -138,6 +139,10 @@ class TrackController extends Controller
         $existing
             ? $container->orders()->updateExistingPivot($order->id, $pivot)
             : $container->orders()->attach($order->id, $pivot);
+
+        if (! $existing) {
+            ActivityLog::record($order, ActivityLog::EDITED, 'Loaded into container '.$container->container_code.' by carton scan', parent: $container);
+        }
 
         // The container's costs are split by what's loaded, so the shares move.
         $container->load('orders');

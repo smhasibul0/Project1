@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderScan extends Model
 {
+    use RecordsActivity;
+
+    /** Its history shows on the record it belongs to. */
+    protected string $activityParent = 'order';
+
     protected $guarded = [];
 
     /**
@@ -66,5 +72,14 @@ class OrderScan extends Model
     public function scannedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'scanned_by');
+    }
+
+    /**
+     * "12 cartons — Received at China warehouse — Order OR0001".
+     */
+    public function activityLabel(): string
+    {
+        return rtrim(rtrim(number_format((float) $this->cartons, 2), '0'), '.').' cartons — '.$this->stageLabel()
+            .($this->order ? ' — Order '.$this->order->order_no : '');
     }
 }

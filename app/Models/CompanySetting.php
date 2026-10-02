@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class CompanySetting extends Model
 {
+    use RecordsActivity;
+
     protected $guarded = [];
 
     /**
@@ -14,5 +17,10 @@ class CompanySetting extends Model
     public static function current(): self
     {
         return static::firstOrCreate([]);
+    }
+
+    public function activityLabel(): string
+    {
+        return 'Company settings';
     }
 }

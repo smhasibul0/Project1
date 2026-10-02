@@ -369,6 +369,8 @@
             </div>
         </div>
         @endcan
+
+        <x-activity-history :record="$order" />
     </div>
 </div>
 

@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class AdminController extends Controller
 {
     // Admin Logout
-    public function AdminLogout(Request $request){
+    public function AdminLogout(Request $request)
+    {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
@@ -25,9 +25,11 @@ class AdminController extends Controller
     // End Method
 
     // Admin Profile
-    public function AdminProfile(){
+    public function AdminProfile()
+    {
         $id = Auth::user()->id;
         $profileData = User::find($id);
+
         return view('admin.admin_profile', compact('profileData'));
     }
     // End Method
@@ -61,7 +63,7 @@ class AdminController extends Controller
         $data->bank_account_holder_name = $request->bank_account_holder_name;
         $data->bank_branch = $request->bank_branch;
         $data->bank_routing_number = $request->bank_routing_number;
-        
+
         $oldPhotoPath = $data->photo;
 
         if ($request->file('photo')) {
@@ -72,25 +74,24 @@ class AdminController extends Controller
             }
 
             // Image upload
-            $manager = new ImageManager(new Driver());
+            $manager = new ImageManager(new Driver);
             $image = $request->file('photo');
 
             $name_gen = hexdec(uniqid()).'.'.$image->getClientOriginalExtension();
 
-            $img = $manager->read($image)->cover(300,300);
+            $img = $manager->read($image)->cover(300, 300);
 
             $img->save(public_path('upload/user_images/'.$name_gen));
 
             $data->photo = $name_gen;
         }
 
-
         $data->save();
 
-        $notification = array(
+        $notification = [
             'message' => 'Admin Profile Updated Successfully',
-            'alert-type' => 'success'
-        );
+            'alert-type' => 'success',
+        ];
 
         return redirect()->back()->with($notification);
 
@@ -106,24 +107,26 @@ class AdminController extends Controller
             'new_password' => 'required|confirmed|min:8',
         ]);
 
-        if (!Hash::check($request->old_password, $user->password)) {
-            $notification = array(
+        if (! Hash::check($request->old_password, $user->password)) {
+            $notification = [
                 'message' => 'Password does not match',
-                'alert-type' => 'error'
-            );
+                'alert-type' => 'error',
+            ];
+
             return back()->with($notification);
         }
 
-        $user::whereId($user->id)->update([
-            'password' => Hash::make($request->new_password)
+        $user->update([
+            'password' => Hash::make($request->new_password),
         ]);
 
         Auth::logout();
 
-        $notification = array(
+        $notification = [
             'message' => 'Password Updated Successfully',
-            'alert-type' => 'success'
-        );
+            'alert-type' => 'success',
+        ];
+
         return redirect()->route('login')->with($notification);
     }
     // End Method
