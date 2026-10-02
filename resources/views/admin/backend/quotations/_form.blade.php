@@ -370,8 +370,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const money = n => (Number(n) || 0).toFixed(2);
 
     // ---------------- Declared value from the reference rate ----------------
-    // Declared value = reference USD per kg × net weight × the dollar rate. It fills
-    // itself until somebody types over it; the basis is kept on the item and shown.
+    // Declared value = reference USD per kg × net weight × the dollar rate — or, before
+    // a weight is entered, the taka value of one kilogram. It fills itself until somebody
+    // types over it; the basis is kept on the item and shown.
     const DOLLAR_RATE = {{ (float) ($dollarRate ?? 0) }};
     const RATES_URL = @json(Route::has('rates.index') ? route('rates.index') : null);
     const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -384,8 +385,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const plain = n => (Math.round((Number(n) || 0) * 10000) / 10000).toLocaleString('en-US', { maximumFractionDigits: 4 });
     const grouped = n => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // Rounded the way the server does (5.71 × 122.5 = 699.48, not the float's 699.47).
+    const round2 = n => Math.round(Number((Number(n) || 0).toPrecision(12)) * 100) / 100;
+
+    // The line's value in taka; with no net weight yet, the value of one kilogram.
     function referenceTotal(block, dollarRate) {
-        return fieldNum(block, 'reference_unit_price') * fieldNum(block, 'net_weight') * dollarRate;
+        const weight = fieldNum(block, 'net_weight');
+        return round2(fieldNum(block, 'reference_unit_price') * (weight > 0 ? weight : 1) * dollarRate);
     }
 
     function applyReference(block, force) {
@@ -414,9 +420,12 @@ document.addEventListener('DOMContentLoaded', function () {
         let text = '<i class="ri-price-tag-2-line"></i> Reference <strong>' + plain(price) + ' USD/kg</strong>' +
             ' · rate of <strong>' + dayLabel(field(block, 'reference_rate_date').value) + '</strong>';
 
-        if (dollarRate > 0) {
+        if (dollarRate > 0 && fieldNum(block, 'net_weight') > 0) {
             text += ' · ' + plain(price) + ' × ' + plain(fieldNum(block, 'net_weight')) + ' kg × ৳' + plain(dollarRate) +
                 ' = ৳' + grouped(referenceTotal(block, dollarRate));
+        } else if (dollarRate > 0) {
+            text += ' · ' + plain(price) + ' × ৳' + plain(dollarRate) + ' = <strong>৳' + grouped(referenceTotal(block, dollarRate)) +
+                ' per kg</strong> · <span class="text-warning">enter the Net Weight for the whole line</span>';
         } else {
             text += ' · <span class="text-danger">set the dollar rate' +
                 (RATES_URL ? ' on <a href="' + RATES_URL + '" target="_blank">Rates</a>' : '') + ' to fill the declared value</span>';
