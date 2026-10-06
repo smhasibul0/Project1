@@ -33,6 +33,8 @@ class Transaction extends Model
             'debit' => 'decimal:2',
             'credit' => 'decimal:2',
             'running_balance' => 'decimal:2',
+            'usd_amount' => 'decimal:2',
+            'usd_rate' => 'decimal:4',
         ];
     }
 

@@ -28,6 +28,8 @@ class LcCost extends Model
         return [
             'cost_date' => 'date',
             'amount' => 'decimal:2',
+            'usd_amount' => 'decimal:2',
+            'usd_rate' => 'decimal:4',
         ];
     }
 

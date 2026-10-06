@@ -199,6 +199,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
 // Exchange rates: the dollar rate for each day
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/exchange-rates', [ExchangeRateController::class, 'index'])->middleware('can:exchange-rates.view')->name('exchange.rates');
+    // The day's rate for a form filling in a dollar amount — open to anyone in the admin panel.
+    Route::get('/exchange-rates/for-date', [ExchangeRateController::class, 'lookup'])->name('exchange.rate.lookup');
     Route::post('/exchange-rates', [ExchangeRateController::class, 'store'])->middleware('can:exchange-rates.create')->name('exchange.rate.store');
     Route::put('/exchange-rates/{id}', [ExchangeRateController::class, 'update'])->middleware('can:exchange-rates.edit')->name('exchange.rate.update');
     Route::delete('/exchange-rates/{id}', [ExchangeRateController::class, 'destroy'])->middleware('can:exchange-rates.delete')->name('exchange.rate.delete');
@@ -346,6 +348,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // LC charge lines (bank/LC fees that feed the order's cost)
     Route::post('/lcs/{id}/cost', [LcController::class, 'storeCost'])->middleware('can:lc.costs.create')->name('lc.cost.store');
     Route::delete('/lcs/{id}/cost/{costId}', [LcController::class, 'destroyCost'])->middleware('can:lc.costs.delete')->name('lc.cost.delete');
+    Route::post('/lcs/{id}/payment', [LcController::class, 'storePayment'])->middleware('can:lc.payments.create')->name('lc.payment.store');
+    Route::delete('/lcs/{id}/payment/{paymentId}', [LcController::class, 'destroyPayment'])->middleware('can:lc.payments.delete')->name('lc.payment.delete');
 });
 
 // Containers & Shipments (group orders into a container; shared costs distributed to orders)

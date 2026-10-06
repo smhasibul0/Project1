@@ -70,6 +70,7 @@
                                         <th>Account Number</th>
                                         <th>Note</th>
                                         <th class="text-end">Balance</th>
+                                        <th class="text-end">Dollars Sent</th>
                                         <th data-filter="Status">Status</th>
                                         <th>Account Details</th>
                                         <th>Added By</th>
@@ -84,6 +85,7 @@
                                         <td>{{ $account->account_number ?? '-' }}</td>
                                         <td>{{ $account->note ?? '-' }}</td>
                                         <td class="text-end">৳ {{ number_format($account->balance, 2) }}</td>
+                                        <td class="text-end">{{ $account->usd_sent > 0 ? '$'.number_format($account->usd_sent, 2) : '—' }}</td>
                                         <td><span class="badge bg-{{ $account->is_active ? 'success' : 'secondary' }}">{{ $account->is_active ? 'Active' : 'Closed' }}</span></td>
                                         <td>{{ $account->account_details ?? '-' }}</td>
                                         <td>{{ $account->addedBy->name ?? '-' }}</td>
@@ -140,7 +142,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">No accounts found.</td>
+                                        <td colspan="10" class="text-center text-muted py-4">No accounts found.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>

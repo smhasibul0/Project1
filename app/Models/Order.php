@@ -342,7 +342,7 @@ class Order extends Model
      */
     public function recomputeFinancials(): void
     {
-        $this->load('items', 'costs', 'payments', 'lcs.costs', 'containers');
+        $this->load('items', 'costs', 'payments', 'lcs.costs', 'lcs.payments', 'containers');
 
         $totalCbm = round((float) $this->items->sum('cbm'), 4);
         $subtotal = round((float) $this->items->sum('line_total'), 2);

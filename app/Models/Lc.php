@@ -87,11 +87,98 @@ class Lc extends Model
     }
 
     /**
-     * The LC's total cost to the order: bank charges plus any booked LC charge lines.
-     * (The goods value is not counted here — it already lives in the order items.)
+     * Dollar payments made against the LC, oldest first.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(LcPayment::class)->orderBy('paid_on')->orderBy('id');
+    }
+
+    /**
+     * Only dollar LCs are paid and converted; an LC in any other currency works as before.
+     */
+    public function isDollar(): bool
+    {
+        return $this->currency === 'USD';
+    }
+
+    public function usdPaid(): float
+    {
+        return round((float) $this->payments->sum('usd_amount'), 2);
+    }
+
+    public function usdDue(): float
+    {
+        return max(0.0, round((float) $this->invoice_amount - $this->usdPaid(), 2));
+    }
+
+    /**
+     * The bank's rate across the LC's payments, weighted by the dollars in each.
+     */
+    public function averageBankRate(): ?float
+    {
+        $usd = (float) $this->payments->sum('usd_amount');
+
+        return $usd > 0 ? round((float) $this->payments->sum('bdt_amount') / $usd, 4) : null;
+    }
+
+    /**
+     * The rate the bank charge turns into taka at, and where it came from: the LC's
+     * own payments, else the USD Sell Rate on the LC, else — as an estimate — the
+     * day's rate. A charge on an LC in another currency is counted as it stands.
+     *
+     * @return array{rate: float|null, source: string|null}
+     */
+    public function bankChargeRate(): array
+    {
+        if (! $this->isDollar()) {
+            return ['rate' => 1.0, 'source' => null];
+        }
+
+        if ($rate = $this->averageBankRate()) {
+            return ['rate' => $rate, 'source' => 'payments'];
+        }
+
+        if ((float) $this->usd_sell_rate > 0) {
+            return ['rate' => (float) $this->usd_sell_rate, 'source' => 'sell_rate'];
+        }
+
+        $day = ExchangeRate::forDate($this->usd_sell_date ?? $this->pi_date ?? $this->created_at);
+
+        return $day ? ['rate' => (float) $day->usd_rate, 'source' => 'estimate'] : ['rate' => null, 'source' => null];
+    }
+
+    public function bankChargesInTaka(): float
+    {
+        return round((float) $this->bank_charges * (float) $this->bankChargeRate()['rate'], 2);
+    }
+
+    /**
+     * A dollar bank charge with no bank rate behind it yet — estimated at the day's
+     * rate, or not counted at all — so the LC is listed for a rate to be added.
+     */
+    public function needsBankRate(): bool
+    {
+        return $this->isDollar()
+            && (float) $this->bank_charges > 0
+            && in_array($this->bankChargeRate()['source'], ['estimate', null], true);
+    }
+
+    /**
+     * The exchange gain (+) or loss (−) across the LC's payments.
+     */
+    public function exchangeGainLoss(): float
+    {
+        return round((float) $this->payments->sum('exchange_gain_loss'), 2);
+    }
+
+    /**
+     * The LC's total cost to the order, in taka: bank charges plus any booked LC
+     * charge lines. Neither the goods value nor the LC payments count here — the
+     * payments only move money, and their exchange result is reported on its own.
      */
     public function lcCost(): float
     {
-        return round((float) $this->bank_charges + (float) $this->costs->sum('amount'), 2);
+        return round($this->bankChargesInTaka() + (float) $this->costs->sum('amount'), 2);
     }
 }

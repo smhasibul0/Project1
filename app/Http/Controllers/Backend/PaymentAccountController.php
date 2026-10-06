@@ -17,7 +17,10 @@ class PaymentAccountController extends Controller
 {
     public function index()
     {
-        $accounts = PaymentAccount::with(['accountType', 'addedBy'])->latest()->get();
+        $accounts = PaymentAccount::with(['accountType', 'addedBy'])
+            ->withSum(['transactions as usd_sent' => fn ($query) => $query->where('type', 'debit')], 'usd_amount')
+            ->latest()
+            ->get();
         $accountTypes = AccountType::all();
 
         return view('admin.backend.payment_accounts.payment_accounts', compact('accounts', 'accountTypes'));

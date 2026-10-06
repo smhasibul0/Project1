@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Lc;
 use App\Models\LcCost;
+use App\Models\LcPayment;
 use App\Models\Loan;
 use App\Models\OfficeExpense;
 use App\Models\Order;
@@ -98,7 +99,9 @@ class ReportController extends Controller
             + (float) Lc::whereNull('order_id')
                 ->when($from, fn ($q) => $q->whereDate('created_at', '>=', $from))
                 ->when($to, fn ($q) => $q->whereDate('created_at', '<=', $to))
-                ->sum('bank_charges'),
+                ->with('payments')
+                ->get()
+                ->sum(fn (Lc $lc) => $lc->bankChargesInTaka()),
             2);
 
         $operating = [
@@ -108,12 +111,22 @@ class ReportController extends Controller
             'standalone_lc' => $standaloneLcCharges,
             'total' => round($warehouseExpenses + $officeExpenses + $salaries + $standaloneLcCharges, 2),
         ];
-        $netProfit = round($totalProfit - $operating['total'], 2);
+
+        // A dollar LC payment only moves money; what reaches the P&L is its exchange
+        // gain or loss, counted on the day it was paid.
+        $exchangeGainLoss = round((float) LcPayment::query()
+            ->when($from, fn ($q) => $q->whereDate('paid_on', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('paid_on', '<=', $to))
+            ->when($customerId, fn ($q) => $q->whereHas('lc.order', fn ($order) => $order->where('customer_id', $customerId)))
+            ->sum('exchange_gain_loss'), 2);
+
+        $netProfit = round($totalProfit - $operating['total'] + $exchangeGainLoss, 2);
 
         return view('admin.backend.reports.profit_loss', [
             'rows' => $rows,
             'totals' => $totals,
             'operating' => $operating,
+            'exchangeGainLoss' => $exchangeGainLoss,
             'netProfit' => $netProfit,
             'netMargin' => $totalRevenue > 0 ? round($netProfit / $totalRevenue * 100, 2) : 0,
             'customers' => Contact::customers()->orderBy('name')->get(),
@@ -231,17 +244,20 @@ class ReportController extends Controller
                 'source' => $labels[$source] ?? ucfirst(str_replace('_', ' ', (string) $source)),
                 'in' => round((float) $group->sum('credit'), 2),
                 'out' => round((float) $group->sum('debit'), 2),
+                'usd_out' => round((float) $group->where('type', 'debit')->sum('usd_amount'), 2),
             ];
         })->values();
 
         $totalIn = round((float) $transactions->sum('credit'), 2);
         $totalOut = round((float) $transactions->sum('debit'), 2);
+        $totalUsdOut = round((float) $transactions->where('type', 'debit')->sum('usd_amount'), 2);
 
         return view('admin.backend.reports.cash_flow', [
             'transactions' => $transactions,
             'rows' => $rows,
             'totalIn' => $totalIn,
             'totalOut' => $totalOut,
+            'totalUsdOut' => $totalUsdOut,
             'net' => round($totalIn - $totalOut, 2),
             'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
             'sourceLabels' => $labels,
@@ -266,6 +282,7 @@ class ReportController extends Controller
             'fund_transfer' => 'Fund transfers',
             'order_cost' => 'Order costs paid',
             'lc_cost' => 'LC charges paid',
+            'lc_payment' => 'LC payments (dollars sent)',
             'container_cost' => 'Container costs paid',
             'warehouse_expense' => 'Warehouse expenses paid',
             'office_expense' => 'Office expenses paid',

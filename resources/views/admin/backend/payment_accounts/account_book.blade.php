@@ -38,6 +38,13 @@
                                 <td class="fw-semibold ps-0">Balance:</td>
                                 <td>৳ {{ number_format($account->balance, 2) }}</td>
                             </tr>
+                            @php $usdSent = $account->usdSent(); @endphp
+                            @if($usdSent > 0)
+                            <tr>
+                                <td class="fw-semibold ps-0">Dollars Sent:</td>
+                                <td>${{ number_format($usdSent, 2) }} <small class="text-muted">(LC payments and dollar charges)</small></td>
+                            </tr>
+                            @endif
                         </table>
                     </div>
                 </div>
@@ -188,6 +195,9 @@
                                             </td>
                                             <td>
                                                 <div>{{ $txn->description ?? ucfirst($txn->type) }}</div>
+                                                @if($txn->usd_amount !== null)
+                                                    <div><strong>Dollars:</strong> ${{ number_format($txn->usd_amount, 2) }} @ {{ rtrim(rtrim(number_format((float) $txn->usd_rate, 4), '0'), '.') }}</div>
+                                                @endif
                                                 @if($txn->reference_label && $txn->reference_value)
                                                     <div><strong>{{ $txn->reference_label }}:</strong> {{ $txn->reference_value }}</div>
                                                 @endif

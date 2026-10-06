@@ -147,7 +147,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.hsCodeRecord', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs', 'containers'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.hsCodeRecord', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs.payments', 'containers'])
             ->findOrFail($id);
         $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();

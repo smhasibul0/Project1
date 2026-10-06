@@ -255,6 +255,14 @@
                             <tr><th class="fw-normal ps-3">LC Cost</th><td class="text-end">৳ {{ number_format($order->lc_cost, 2) }}</td></tr>
                             <tr><th class="fw-normal ps-3">Allocated Container Cost</th><td class="text-end">৳ {{ number_format($order->container_cost, 2) }}</td></tr>
                             <tr class="table-light"><th>Profit</th><td class="text-end fw-semibold">৳ {{ number_format($order->profit, 2) }}</td></tr>
+                            @php $orderExchange = round($order->lcs->sum(fn ($lc) => $lc->exchangeGainLoss()), 2); @endphp
+                            @if($order->lcs->contains(fn ($lc) => $lc->payments->isNotEmpty()))
+                            <tr>
+                                <th class="fw-normal ps-3">Exchange gain / (loss) on LC payments<small class="d-block text-muted">in the P&amp;L on the day paid</small></th>
+                                <td class="text-end {{ $orderExchange < 0 ? 'text-danger' : ($orderExchange > 0 ? 'text-success' : '') }}">{{ $orderExchange < 0 ? '(৳ '.number_format(abs($orderExchange), 2).')' : '৳ '.number_format($orderExchange, 2) }}</td>
+                            </tr>
+                            <tr class="table-light"><th>Profit after exchange</th><td class="text-end fw-semibold">৳ {{ number_format((float) $order->profit + $orderExchange, 2) }}</td></tr>
+                            @endif
                         </table>
                     </div>
                 </div>

@@ -76,7 +76,8 @@ test('deleting an order releases its LCs instead of deleting them', function () 
 });
 
 test('linking a standalone LC to an order folds its charges into that order', function () {
-    $lc = Lc::factory()->create(['order_id' => null, 'invoice_amount' => 1000, 'net_amount_received' => 900, 'bank_charges' => 100]);
+    // A $100 bank charge, turned into taka at the LC's USD sell rate of 120.
+    $lc = Lc::factory()->create(['order_id' => null, 'invoice_amount' => 1000, 'net_amount_received' => 900, 'bank_charges' => 100, 'usd_sell_rate' => 120]);
 
     $this->actingAs($this->user)->put(route('lc.update', $lc->id), [
         'order_id' => $this->order->id,
@@ -85,7 +86,7 @@ test('linking a standalone LC to an order folds its charges into that order', fu
     ]);
 
     expect($lc->fresh()->order_id)->toBe($this->order->id);
-    expect((float) $this->order->fresh()->lc_cost)->toEqual(100.0);
+    expect((float) $this->order->fresh()->lc_cost)->toEqual(12000.0);
 
     // Unlinking pulls the charges back out of the order.
     $this->actingAs($this->user)->put(route('lc.update', $lc->id), [
@@ -163,18 +164,19 @@ test('LC bank charges and charge lines feed the linked order cost and profit', f
         'declared_value' => 300, 'line_total' => 500,
     ]);
 
-    // LC with 300 bank charges (invoice 12000, received 11700).
+    // A dollar LC with $3 of bank charges (invoice $12,000, received $11,997), at ৳120.
     $this->actingAs($this->user)->post(route('lc.store'), [
         'order_id' => $this->order->id,
         'invoice_amount' => 12000,
-        'net_amount_received' => 11700,
+        'net_amount_received' => 11997,
+        'usd_sell_rate' => 120,
     ]);
     $lc = Lc::firstOrFail();
 
     $this->order->refresh();
-    expect($this->order->lc_cost)->toEqual('300.00');
-    // profit 500 - 300 freight - 0 order costs - 300 lc = -100
-    expect($this->order->profit)->toEqual('-100.00');
+    expect($this->order->lc_cost)->toEqual('360.00'); // $3 × ৳120
+    // profit 500 - 300 freight - 0 order costs - 360 lc = -160
+    expect($this->order->profit)->toEqual('-160.00');
 
     // Add an LC charge line of 200.
     $this->actingAs($this->user)->post(route('lc.cost.store', $lc->id), [
@@ -183,8 +185,8 @@ test('LC bank charges and charge lines feed the linked order cost and profit', f
     ])->assertSessionHas('success');
 
     $this->order->refresh();
-    expect($this->order->lc_cost)->toEqual('500.00'); // 300 bank + 200 charge
-    expect($this->order->profit)->toEqual('-300.00');
+    expect($this->order->lc_cost)->toEqual('560.00'); // 360 bank + 200 charge
+    expect($this->order->profit)->toEqual('-360.00');
 });
 
 test('the LC list and create pages load', function () {
@@ -197,8 +199,9 @@ test('standalone LC charges reduce the P&L net profit as an operating expense', 
     $lc = Lc::factory()->create([
         'order_id' => null,
         'invoice_amount' => 2000,
-        'net_amount_received' => 1850,
-        'bank_charges' => 150,
+        'net_amount_received' => 1998.5,
+        'bank_charges' => 1.5,
+        'usd_sell_rate' => 100,
     ]);
     $lc->costs()->create(['title' => 'Swift charge', 'amount' => 50, 'cost_date' => now()->toDateString()]);
 
@@ -206,7 +209,7 @@ test('standalone LC charges reduce the P&L net profit as an operating expense', 
     $response->assertOk();
 
     $operating = $response->viewData('operating');
-    expect($operating['standalone_lc'])->toEqual(200.0); // 150 bank charges + 50 charge line
+    expect($operating['standalone_lc'])->toEqual(200.0); // $1.50 bank charges × ৳100 + 50 charge line
     expect($operating['total'])->toEqual(200.0);
     expect($response->viewData('netProfit'))->toEqual(-200.0);
 });

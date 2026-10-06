@@ -129,6 +129,9 @@
                                 </td>
                                 <td style="vertical-align:top;">
                                     <div class="text-primary">{{ $txn->description ?: ucfirst($txn->type) }}</div>
+                                    @if($txn->usd_amount !== null)
+                                        <div><strong>Dollars:</strong> ${{ number_format($txn->usd_amount, 2) }} @ {{ rtrim(rtrim(number_format((float) $txn->usd_rate, 4), '0'), '.') }}</div>
+                                    @endif
                                     @if($txn->reference)
                                         <div><strong>Reference No:</strong> {{ $txn->reference }}</div>
                                     @endif
@@ -215,14 +218,14 @@
                         <tr>
                             <td>{{ $r->source }}</td>
                             <td class="text-end text-success">{{ $r->in > 0 ? '৳ '.number_format($r->in, 2) : '—' }}</td>
-                            <td class="text-end text-danger">{{ $r->out > 0 ? '৳ '.number_format($r->out, 2) : '—' }}</td>
+                            <td class="text-end text-danger">{{ $r->out > 0 ? '৳ '.number_format($r->out, 2) : '—' }}@if($r->usd_out > 0)<small class="d-block text-muted">${{ number_format($r->usd_out, 2) }} sent</small>@endif</td>
                         </tr>
                         @empty
                         <tr><td colspan="3" class="text-center text-muted py-4">No transactions in this range.</td></tr>
                         @endforelse
                     </tbody>
                     <tfoot>
-                        <tr class="table-light fw-semibold"><td>Total</td><td class="text-end text-success">৳ {{ number_format($totalIn, 2) }}</td><td class="text-end text-danger">৳ {{ number_format($totalOut, 2) }}</td></tr>
+                        <tr class="table-light fw-semibold"><td>Total</td><td class="text-end text-success">৳ {{ number_format($totalIn, 2) }}</td><td class="text-end text-danger">৳ {{ number_format($totalOut, 2) }}@if($totalUsdOut > 0)<small class="d-block text-muted fw-normal">${{ number_format($totalUsdOut, 2) }} sent</small>@endif</td></tr>
                     </tfoot>
                 </table>
             </div>

@@ -43,4 +43,13 @@ class PaymentAccount extends Model
     {
         return $this->hasMany(Transaction::class, 'payment_account_id');
     }
+
+    /**
+     * Dollars sent through this account — LC payments and dollar charges. The taka
+     * balance already went down by their value; this keeps count of the dollars.
+     */
+    public function usdSent(): float
+    {
+        return round((float) $this->transactions()->where('type', 'debit')->sum('usd_amount'), 2);
+    }
 }

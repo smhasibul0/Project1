@@ -132,6 +132,8 @@ class PermissionCatalog
                 'lc.delete' => ['Delete LCs', 'Remove an LC.'],
                 'lc.costs.create' => ['Add LC charges', 'Post a bank or LC charge that feeds the order cost.'],
                 'lc.costs.delete' => ['Delete LC charges', 'Remove an LC charge line.'],
+                'lc.payments.create' => ['Pay LCs', 'Pay an LC in dollars from a bank account, in one go or in parts.'],
+                'lc.payments.delete' => ['Reverse LC payments', 'Undo an LC payment and return its taka to the account.'],
             ],
 
             'Containers & Shipments' => [

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CostCategory;
 use App\Models\Lc;
 use App\Models\LcCost;
+use App\Models\LcPayment;
 use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
@@ -17,9 +18,12 @@ class LcController extends Controller
 {
     public function index()
     {
-        $lcs = Lc::with('order')->latest()->get();
+        $lcs = Lc::with(['order', 'payments'])->latest()->get();
 
-        return view('admin.backend.lc.lc', compact('lcs'));
+        // Dollar bank charges with no bank rate behind them — estimated or not counted.
+        $needsRate = $lcs->filter(fn (Lc $lc) => $lc->needsBankRate())->values();
+
+        return view('admin.backend.lc.lc', compact('lcs', 'needsRate'));
     }
 
     public function create(Request $request)
@@ -45,7 +49,7 @@ class LcController extends Controller
 
     public function show($id)
     {
-        $lc = Lc::with(['order.customer', 'addedBy', 'costs.category', 'costs.paymentAccount'])->findOrFail($id);
+        $lc = Lc::with(['order.customer', 'addedBy', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount'])->findOrFail($id);
 
         return view('admin.backend.lc.show', [
             'lc' => $lc,
@@ -88,6 +92,12 @@ class LcController extends Controller
     public function destroy($id)
     {
         $lc = Lc::findOrFail($id);
+
+        // Its payments moved real money; they are reversed one by one, not dropped with it.
+        if ($lc->payments()->exists()) {
+            return redirect()->back()->with('error', 'LC '.$lc->lc_code.' has payments — reverse them before deleting it.');
+        }
+
         $order = $lc->order;
         $lc->delete();
         $order?->recomputeFinancials();
@@ -133,12 +143,21 @@ class LcController extends Controller
         $data = $request->validate([
             'cost_category_id' => 'nullable|exists:cost_categories,id',
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
+            'currency' => 'nullable|in:BDT,USD',
+            'amount' => 'required_unless:currency,USD|nullable|numeric|min:0.01',
+            'usd_amount' => 'required_if:currency,USD|nullable|numeric|min:0.01',
+            'usd_rate' => 'required_if:currency,USD|nullable|numeric|min:0.0001|max:100000',
             'cost_date' => 'nullable|date',
             'note' => 'nullable|string|max:255',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
         ]);
+
+        // A dollar charge is booked at the taka it cost: dollars × the rate given.
+        $inDollars = ($data['currency'] ?? 'BDT') === 'USD';
+        $data['amount'] = $inDollars ? round((float) $data['usd_amount'] * (float) $data['usd_rate'], 2) : (float) $data['amount'];
+        $data['usd_amount'] = $inDollars ? $data['usd_amount'] : null;
+        $data['usd_rate'] = $inDollars ? $data['usd_rate'] : null;
 
         DB::transaction(function () use ($lc, $data, $request) {
             $attachment = null;
@@ -156,6 +175,8 @@ class LcController extends Controller
                 'cost_category_id' => $data['cost_category_id'] ?? null,
                 'title' => $data['title'],
                 'amount' => $data['amount'],
+                'usd_amount' => $data['usd_amount'],
+                'usd_rate' => $data['usd_rate'],
                 'cost_date' => $data['cost_date'] ?? now()->toDateString(),
                 'note' => $data['note'] ?? null,
                 'payment_account_id' => $data['payment_account_id'] ?? null,
@@ -173,9 +194,12 @@ class LcController extends Controller
                     'credit' => 0,
                     'debit' => $data['amount'],
                     'running_balance' => $account->fresh()->balance,
-                    'description' => $data['title'].' for LC '.$lc->lc_code,
+                    'description' => $data['title'].' for LC '.$lc->lc_code
+                        .($data['usd_amount'] ? ' — $'.number_format((float) $data['usd_amount'], 2).' @ '.$this->rate($data['usd_rate']) : ''),
                     'reference' => $lc->lc_number ?: $lc->lc_code,
                     'note' => $data['note'] ?? null,
+                    'usd_amount' => $data['usd_amount'],
+                    'usd_rate' => $data['usd_rate'],
                     'transactionable_type' => LcCost::class,
                     'transactionable_id' => $cost->id,
                     'added_by' => Auth::id(),
@@ -220,6 +244,104 @@ class LcController extends Controller
      *
      * @param  array<string, mixed>  $data
      */
+    /**
+     * Pay dollars against the LC from a bank account — all of what's due, or a part.
+     * The account gives up dollars × the bank's rate; the gap to the day's rate is
+     * the exchange gain or loss. The payment itself is no cost to the order.
+     */
+    public function storePayment(Request $request, $id)
+    {
+        $lc = Lc::with('payments')->findOrFail($id);
+
+        if (! $lc->isDollar()) {
+            return redirect()->back()->with('error', 'Only LCs in US dollars are paid here.');
+        }
+
+        $data = $request->validate([
+            'paid_on' => 'required|date',
+            'payment_account_id' => 'required|exists:payment_accounts,id',
+            'usd_amount' => 'required|numeric|min:0.01',
+            'day_rate' => 'required|numeric|min:0.0001|max:100000',
+            'bank_rate' => 'required|numeric|min:0.0001|max:100000',
+            'reference' => 'nullable|string|max:100',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        if ((float) $data['usd_amount'] > $lc->usdDue() + 0.005) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Only $'.number_format($lc->usdDue(), 2).' is still due on LC '.$lc->lc_code.'.');
+        }
+
+        $payment = DB::transaction(function () use ($lc, $data) {
+            $payment = $lc->payments()->create($data + LcPayment::convert(
+                (float) $data['usd_amount'], (float) $data['day_rate'], (float) $data['bank_rate']
+            ) + ['added_by' => Auth::id()]);
+
+            $account = PaymentAccount::findOrFail($data['payment_account_id']);
+            $account->decrement('balance', (float) $payment->bdt_amount);
+            $account->transactions()->create([
+                'type' => 'debit',
+                'source' => 'lc_payment',
+                'amount' => $payment->bdt_amount,
+                'credit' => 0,
+                'debit' => $payment->bdt_amount,
+                'running_balance' => $account->fresh()->balance,
+                'description' => 'LC payment '.$lc->lc_code.' — $'.number_format((float) $payment->usd_amount, 2).' @ '.$this->rate($payment->bank_rate),
+                'reference' => $lc->lc_number ?: $lc->lc_code,
+                'payment_details' => $data['reference'] ?? null,
+                'note' => $data['note'] ?? null,
+                'usd_amount' => $payment->usd_amount,
+                'usd_rate' => $payment->bank_rate,
+                'transactionable_type' => LcPayment::class,
+                'transactionable_id' => $payment->id,
+                'added_by' => Auth::id(),
+                'created_at' => $payment->paid_on,
+            ]);
+
+            // The bank charge is converted at the LC's bank rate, which this payment moves.
+            $lc->load('payments');
+            $lc->order?->recomputeFinancials();
+
+            return $payment;
+        });
+
+        $result = (float) $payment->exchange_gain_loss;
+
+        return redirect()->back()->with('success', 'Paid $'.number_format((float) $payment->usd_amount, 2).' at ৳'.$this->rate($payment->bank_rate)
+            .' — ৳'.number_format((float) $payment->bdt_amount, 2).' from '.$payment->paymentAccount->name.'. '
+            .($result == 0 ? 'No exchange difference.' : 'Exchange '.($result > 0 ? 'gain' : 'loss').' ৳'.number_format(abs($result), 2).'.'));
+    }
+
+    /**
+     * Undo an LC payment: the taka goes back to the account and its exchange result goes.
+     */
+    public function destroyPayment($id, $paymentId)
+    {
+        $lc = Lc::findOrFail($id);
+        $payment = $lc->payments()->findOrFail($paymentId);
+
+        DB::transaction(function () use ($lc, $payment) {
+            PaymentAccount::find($payment->payment_account_id)?->increment('balance', (float) $payment->bdt_amount);
+            Transaction::where('transactionable_type', LcPayment::class)
+                ->where('transactionable_id', $payment->id)
+                ->delete();
+
+            $payment->delete();
+            $lc->load('payments');
+            $lc->order?->recomputeFinancials();
+        });
+
+        return redirect()->back()->with('success', 'LC payment of $'.number_format((float) $payment->usd_amount, 2).' reversed.');
+    }
+
+    /**
+     * A rate as written: 123.1, not 123.1000.
+     */
+    private function rate(float|string $rate): string
+    {
+        return rtrim(rtrim(number_format((float) $rate, 4), '0'), '.');
+    }
+
     private function bankCharges(array $data): float
     {
         if (! isset($data['net_amount_received']) || $data['net_amount_received'] === null) {

@@ -23,6 +23,21 @@
             </div>
         </div>
 
+        @if($needsRate->isNotEmpty())
+        <div class="alert alert-warning">
+            <strong><i class="ri-error-warning-line me-1"></i> {{ $needsRate->count() }} dollar {{ Str::plural('LC', $needsRate->count()) }} {{ $needsRate->count() === 1 ? 'needs' : 'need' }} a USD Sell Rate.</strong>
+            Their bank charges are in dollars but have no bank rate yet, so they are estimated at the day's rate, or not counted where there is none.
+            Add the USD Sell Rate on each, or pay the LC, to fix the taka cost:
+            <div class="mt-2 d-flex flex-wrap gap-2">
+                @foreach($needsRate as $lc)
+                <a href="{{ auth()->user()->can('lc.edit') ? route('lc.edit', $lc->id) : route('lc.show', $lc->id) }}" class="badge bg-warning-subtle text-warning-emphasis border border-warning text-decoration-none">
+                    {{ $lc->lc_code }} · ${{ number_format($lc->bank_charges, 2) }}
+                </a>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 class="mb-0">LC List</h5>

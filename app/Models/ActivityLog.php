@@ -62,6 +62,7 @@ class ActivityLog extends Model
             'container_document' => ['class' => ContainerDocument::class, 'label' => 'Container Document', 'route' => null],
             'lc' => ['class' => Lc::class, 'label' => 'LC', 'route' => 'lc.show'],
             'lc_cost' => ['class' => LcCost::class, 'label' => 'LC Cost', 'route' => null],
+            'lc_payment' => ['class' => LcPayment::class, 'label' => 'LC Payment', 'route' => null],
             'customer' => ['class' => Contact::class, 'label' => 'Customer', 'route' => null],
             'customer_group' => ['class' => CustomerGroup::class, 'label' => 'Customer Group', 'route' => null],
             'hs_code' => ['class' => HsCode::class, 'label' => 'HS Code', 'route' => null],

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExchangeRate;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,22 @@ class ExchangeRateController extends Controller
             'older' => $older,
             'today' => ExchangeRate::today(),
             'current' => ExchangeRate::forDate(),
+        ]);
+    }
+
+    /**
+     * The rate in force on a date, for a form to fill in: that day's own, or the
+     * latest before it (and which day that was). The rate is null before the first one set.
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $date = $request->validate(['date' => 'required|date'])['date'];
+        $rate = ExchangeRate::forDate($date);
+
+        return response()->json([
+            'usd_rate' => $rate ? (float) $rate->usd_rate : null,
+            'rate_date' => $rate?->rate_date->toDateString(),
+            'is_exact' => $rate ? $rate->isFor($date) : false,
         ]);
     }
 
