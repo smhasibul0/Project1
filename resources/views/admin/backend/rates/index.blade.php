@@ -2,7 +2,7 @@
 @section('admin')
 
 @php
-    $usdRate = (float) $company->usd_rate;
+    $usdRate = (float) ($dollarRate?->usd_rate ?? 0);
     $usd = fn ($value) => rtrim(rtrim(number_format((float) $value, 4), '0'), '.');
 @endphp
 
@@ -37,20 +37,13 @@
                             @endif
                         </div>
                         <div class="text-muted small mb-3">
-                            @if($company->usd_rate_date)
-                                Set on {{ $company->usd_rate_date->format('d M Y') }}.
+                            @if($dollarRate)
+                                Rate of {{ $dollarRate->rate_date->format('d M Y') }}{{ $dollarRate->isFor(\App\Models\ExchangeRate::today()) ? ' (today)' : ' — no rate set for today yet' }}.
                             @endif
-                            Declared value = price per kg × net weight × this rate.
+                            Declared value = price per kg × net weight × today's rate.
                         </div>
-                        @can('rates.dollar')
-                        <form action="{{ route('rates.dollar') }}" method="POST" class="d-flex gap-2">
-                            @csrf
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">1 USD = ৳</span>
-                                <input type="number" step="0.0001" min="0.0001" class="form-control" name="usd_rate" value="{{ $usdRate > 0 ? $usd($usdRate) : '' }}" required>
-                            </div>
-                            <button class="btn btn-sm btn-primary">Save</button>
-                        </form>
+                        @can('exchange-rates.view')
+                            <a href="{{ route('exchange.rates') }}" class="btn btn-sm btn-outline-primary"><i class="ri-exchange-dollar-line me-1"></i> Exchange Rates</a>
                         @endcan
                     </div>
                 </div>

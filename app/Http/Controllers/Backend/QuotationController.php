@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanySetting;
 use App\Models\Contact;
 use App\Models\CostCategory;
+use App\Models\ExchangeRate;
 use App\Models\PackingType;
 use App\Models\Quotation;
 use App\Models\TransportationMode;
@@ -355,7 +356,7 @@ class QuotationController extends Controller
             'transportationModes' => TransportationMode::orderBy('name')->get(),
             'packingTypes' => PackingType::orderBy('name')->get(),
             'costCategories' => CostCategory::orderBy('name')->get(),
-            'dollarRate' => (float) CompanySetting::current()->usd_rate,
+            'dollarRate' => ExchangeRate::forDate(),
         ];
     }
 

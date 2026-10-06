@@ -155,7 +155,10 @@ window.__adminSearch = [
     { l: 'HS Codes', i: 'ri-box-3-line', u: '{{ route('hs.codes') }}', k: 'tariff customs duty hs code' },
     @endcan
     @can('rates.view')
-    { l: 'Rates', i: 'ri-price-tag-2-line', u: '{{ route('rates.index') }}', k: 'declared value valuation report dollar usd' },
+    { l: 'Rates', i: 'ri-price-tag-2-line', u: '{{ route('rates.index') }}', k: 'declared value valuation report' },
+    @endcan
+    @can('exchange-rates.view')
+    { l: 'Exchange Rates', i: 'ri-exchange-dollar-line', u: '{{ route('exchange.rates') }}', k: 'dollar usd rate taka conversion' },
     @endcan
     @can('warehouses.view')
     { l: 'Warehouses', i: 'ri-store-2-line', u: '{{ route('warehouses.index') }}', k: 'warehouse stock' },

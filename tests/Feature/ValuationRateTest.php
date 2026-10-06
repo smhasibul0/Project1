@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\CompanySetting;
 use App\Models\Contact;
+use App\Models\ExchangeRate;
 use App\Models\HsCode;
 use App\Models\Quotation;
 use App\Models\Role;
@@ -78,12 +78,20 @@ test('the rates page lists uploads and marks the newest per code as in use', fun
         ->assertSee('Bills of Entry');
 });
 
-test('the dollar rate is saved with the day it was set', function () {
-    $this->actingAs($this->admin)->post(route('rates.dollar'), ['usd_rate' => 122.5])->assertSessionHas('success');
+test('the dollar rate is saved with the day it was set, and the rates page converts at it', function () {
+    $this->actingAs($this->admin)->post(route('exchange.rate.store'), ['rate_date' => ExchangeRate::today(), 'usd_rate' => 122.5])
+        ->assertSessionHas('success');
 
-    $company = CompanySetting::current();
-    expect((float) $company->usd_rate)->toBe(122.5)
-        ->and($company->usd_rate_date)->not->toBeNull();
+    $rate = ExchangeRate::sole();
+    expect((float) $rate->usd_rate)->toBe(122.5)
+        ->and($rate->rate_date->toDateString())->toBe(ExchangeRate::today());
+
+    ValuationRate::factory()->create(['unit_price' => 2]);
+
+    $this->actingAs($this->admin)->get(route('rates.index'))
+        ->assertOk()
+        ->assertSee('1 USD = ৳ 122.50')
+        ->assertSee('৳ 245.00/kg');
 });
 
 test('the HS lookup gives quotation staff the newest rate, and the customer portal none', function () {
@@ -131,12 +139,14 @@ test('a quotation keeps the reference its declared value was worked out from', f
         ->assertSee('01 Oct 2026');
 });
 
-test('the quotation form carries the dollar rate for filling declared values', function () {
-    CompanySetting::current()->update(['usd_rate' => 122.5]);
+test('the quotation form carries today\'s dollar rate for filling declared values', function () {
+    ExchangeRate::factory()->create(['rate_date' => now()->subDays(3)->toDateString(), 'usd_rate' => 121]);
+    ExchangeRate::factory()->create(['rate_date' => ExchangeRate::today(), 'usd_rate' => 122.5]);
 
     $this->actingAs($this->admin)->get(route('quotations.create'))
         ->assertOk()
-        ->assertSee('const DOLLAR_RATE = 122.5;', false);
+        ->assertSee('const DOLLAR_RATE = 122.5;', false)
+        ->assertSee('const DOLLAR_RATE_DATE = "'.ExchangeRate::today().'";', false);
 });
 
 test('deleting a rate removes its PDF once no other rate uses it', function () {
@@ -156,5 +166,5 @@ test('rates are only open to those allowed', function () {
     $this->actingAs($clerk)->get(route('rates.index'))->assertForbidden();
     $this->actingAs($clerk)->get(route('rates.show', $rate->id))->assertForbidden();
     $this->actingAs($clerk)->post(route('rates.store'), ['rate_date' => '2026-10-02', 'reports' => [UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')]])->assertForbidden();
-    $this->actingAs($clerk)->post(route('rates.dollar'), ['usd_rate' => 1])->assertForbidden();
+    $this->actingAs($clerk)->post(route('exchange.rate.store'), ['rate_date' => '2026-10-02', 'usd_rate' => 1])->assertForbidden();
 });

@@ -12,6 +12,7 @@ use App\Http\Controllers\Backend\ContainerController;
 use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\Backend\ExchangeRateController;
 use App\Http\Controllers\Backend\ExpenseCategoryController;
 use App\Http\Controllers\Backend\HsCodeController;
 use App\Http\Controllers\Backend\LcController;
@@ -190,10 +191,17 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/rates', [ValuationRateController::class, 'index'])->middleware('can:rates.view')->name('rates.index');
     Route::post('/rates', [ValuationRateController::class, 'store'])->middleware('can:rates.upload')->name('rates.store');
-    Route::post('/rates/dollar', [ValuationRateController::class, 'updateDollarRate'])->middleware('can:rates.dollar')->name('rates.dollar');
     Route::get('/rates/{id}', [ValuationRateController::class, 'show'])->middleware('can:rates.view')->name('rates.show');
     Route::get('/rates/{id}/pdf', [ValuationRateController::class, 'pdf'])->middleware('can:rates.view')->name('rates.pdf');
     Route::delete('/rates/{id}', [ValuationRateController::class, 'destroy'])->middleware('can:rates.delete')->name('rates.delete');
+});
+
+// Exchange rates: the dollar rate for each day
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/exchange-rates', [ExchangeRateController::class, 'index'])->middleware('can:exchange-rates.view')->name('exchange.rates');
+    Route::post('/exchange-rates', [ExchangeRateController::class, 'store'])->middleware('can:exchange-rates.create')->name('exchange.rate.store');
+    Route::put('/exchange-rates/{id}', [ExchangeRateController::class, 'update'])->middleware('can:exchange-rates.edit')->name('exchange.rate.update');
+    Route::delete('/exchange-rates/{id}', [ExchangeRateController::class, 'destroy'])->middleware('can:exchange-rates.delete')->name('exchange.rate.delete');
 });
 
 // Warehouses

@@ -2,7 +2,7 @@
 @section('admin')
 
 @php
-    $usdRate = (float) $company->usd_rate;
+    $usdRate = (float) ($dollarRate?->usd_rate ?? 0);
     $usd = fn ($value) => rtrim(rtrim(number_format((float) $value, 4), '0'), '.');
     $common = $rate->mostCommonAssessedPrice();
 @endphp

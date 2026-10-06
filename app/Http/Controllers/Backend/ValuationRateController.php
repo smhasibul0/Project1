@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Models\CompanySetting;
+use App\Models\ExchangeRate;
 use App\Models\HsCode;
 use App\Models\ValuationRate;
 use App\Support\ValuationReportParser;
@@ -46,7 +46,7 @@ class ValuationRateController extends Controller
             'rates' => $rates,
             'currentIds' => $currentIds,
             'search' => $search,
-            'company' => CompanySetting::current(),
+            'dollarRate' => ExchangeRate::forDate(),
         ]);
     }
 
@@ -59,7 +59,7 @@ class ValuationRateController extends Controller
 
         return view('admin.backend.rates.show', [
             'rate' => $rate,
-            'company' => CompanySetting::current(),
+            'dollarRate' => ExchangeRate::forDate(),
             'isCurrent' => $rate->isCurrent(),
         ]);
     }
@@ -152,22 +152,5 @@ class ValuationRateController extends Controller
         }
 
         return redirect()->back()->with('success', 'Rate deleted.');
-    }
-
-    /**
-     * The one USD → BDT rate used to turn dollars per kilogram into a declared value.
-     */
-    public function updateDollarRate(Request $request)
-    {
-        $data = $request->validate([
-            'usd_rate' => 'required|numeric|min:0.0001|max:100000',
-        ]);
-
-        CompanySetting::current()->update([
-            'usd_rate' => $data['usd_rate'],
-            'usd_rate_date' => now()->timezone(config('app.display_timezone'))->toDateString(),
-        ]);
-
-        return redirect()->back()->with('success', 'Dollar rate saved: 1 USD = ৳ '.number_format((float) $data['usd_rate'], 2).'.');
     }
 }

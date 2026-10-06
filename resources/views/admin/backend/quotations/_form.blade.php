@@ -373,8 +373,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Declared value = reference USD per kg × net weight × the dollar rate — or, before
     // a weight is entered, the taka value of one kilogram. It fills itself until somebody
     // types over it; the basis is kept on the item and shown.
-    const DOLLAR_RATE = {{ (float) ($dollarRate ?? 0) }};
-    const RATES_URL = @json(Route::has('rates.index') ? route('rates.index') : null);
+    // Today's rate from Exchange Rates (or the latest before today).
+    const DOLLAR_RATE = {{ (float) ($dollarRate?->usd_rate ?? 0) }};
+    const DOLLAR_RATE_DATE = @json($dollarRate?->rate_date?->toDateString());
+    const RATES_URL = @json(auth()->user()->can('exchange-rates.view') ? route('exchange.rates') : null);
     const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const field = (block, name) => block.querySelector('[data-name="' + name + '"]');
     const fieldNum = (block, name) => parseFloat(field(block, name)?.value) || 0;
@@ -427,8 +429,13 @@ document.addEventListener('DOMContentLoaded', function () {
             text += ' · ' + plain(price) + ' × ৳' + plain(dollarRate) + ' = <strong>৳' + grouped(referenceTotal(block, dollarRate)) +
                 ' per kg</strong> · <span class="text-warning">enter the Net Weight for the whole line</span>';
         } else {
-            text += ' · <span class="text-danger">set the dollar rate' +
-                (RATES_URL ? ' on <a href="' + RATES_URL + '" target="_blank">Rates</a>' : '') + ' to fill the declared value</span>';
+            text += ' · <span class="text-danger">set today\'s dollar rate' +
+                (RATES_URL ? ' on <a href="' + RATES_URL + '" target="_blank">Exchange Rates</a>' : '') + ' to fill the declared value</span>';
+        }
+
+        // Name the day the dollar rate comes from, when it is today's daily rate.
+        if (dollarRate > 0 && dollarRate === DOLLAR_RATE && DOLLAR_RATE_DATE) {
+            text += ' · dollar rate of ' + dayLabel(DOLLAR_RATE_DATE);
         }
 
         if (declared.dataset.touched) {

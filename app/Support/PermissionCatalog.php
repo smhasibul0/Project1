@@ -67,7 +67,13 @@ class PermissionCatalog
                 'rates.view' => ['View rates', 'Open the Customs valuation reports and the reference price per HS code.'],
                 'rates.upload' => ['Upload rates', 'Upload a Customs valuation report PDF.'],
                 'rates.delete' => ['Delete rates', 'Remove an uploaded valuation report.'],
-                'rates.dollar' => ['Set the dollar rate', 'Change the USD to BDT rate used to fill declared values.'],
+            ],
+
+            'Exchange Rates' => [
+                'exchange-rates.view' => ['View exchange rates', 'See the dollar rate for each day.'],
+                'exchange-rates.create' => ['Add exchange rates', 'Set the dollar rate for a day that has none.'],
+                'exchange-rates.edit' => ['Edit exchange rates', 'Change a day\'s dollar rate.'],
+                'exchange-rates.delete' => ['Delete exchange rates', 'Remove a day\'s dollar rate.'],
             ],
 
             'Quotations' => [

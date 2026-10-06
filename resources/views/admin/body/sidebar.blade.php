@@ -68,7 +68,7 @@
 
 
                 <!-- Rates & Taxes: the customs tariff and the reference declared values -->
-                @canany(['hs.view', 'rates.view'])
+                @canany(['hs.view', 'rates.view', 'exchange-rates.view'])
                 <li>
                     <a href="#sidebarRates" data-bs-toggle="collapse">
                         <i data-feather="package"></i>
@@ -85,6 +85,11 @@
                             @can('rates.view')
                             <li>
                                 <a href="{{ route('rates.index') }}" class="tp-link">Rates</a>
+                            </li>
+                            @endcan
+                            @can('exchange-rates.view')
+                            <li>
+                                <a href="{{ route('exchange.rates') }}" class="tp-link">Exchange Rates</a>
                             </li>
                             @endcan
                         </ul>
