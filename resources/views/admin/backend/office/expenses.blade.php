@@ -5,21 +5,28 @@
     $prevMonth = $month->copy()->subMonth()->format('Y-m');
     $nextMonth = $month->copy()->addMonth()->format('Y-m');
     $defaultDate = $month->isSameMonth(now()) ? now()->toDateString() : $month->copy()->startOfMonth()->toDateString();
+    $title = $isMonthly ? 'Monthly Expenses' : 'Regular Expenses';
 @endphp
 
 <div class="content">
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column gap-2">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Office Expenses</h4>
-                <small class="text-muted">Running costs for the office, split into fixed and variable by cost type.</small>
+                <h4 class="fs-18 fw-semibold m-0">{{ $title }}</h4>
+                <small class="text-muted">
+                    @if($isMonthly)
+                        Fixed costs booked every month — rent, internet, salaries.
+                    @else
+                        Variable costs paid as they come up — repairs, stationery, conveyance.
+                    @endif
+                </small>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('office.expenses', ['month' => $prevMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Previous month"><i class="ri-arrow-left-s-line"></i></a>
-                <form method="GET" action="{{ route('office.expenses') }}" class="m-0">
+                <a href="{{ route('office.expenses', ['kind' => $kind, 'month' => $prevMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Previous month"><i class="ri-arrow-left-s-line"></i></a>
+                <form method="GET" action="{{ route('office.expenses', $kind) }}" class="m-0">
                     <input type="month" class="form-control form-control-sm" name="month" value="{{ $month->format('Y-m') }}" onchange="this.form.submit()">
                 </form>
-                <a href="{{ route('office.expenses', ['month' => $nextMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Next month"><i class="ri-arrow-right-s-line"></i></a>
+                <a href="{{ route('office.expenses', ['kind' => $kind, 'month' => $nextMonth]) }}" class="btn btn-sm btn-outline-secondary" title="Next month"><i class="ri-arrow-right-s-line"></i></a>
                 @if($pendingFixed->isNotEmpty() && auth()->user()->can('office.expenses.generate'))
                 <form action="{{ route('office.expense.generate') }}" method="POST" class="m-0 ms-2" id="generateForm">
                     @csrf
@@ -49,13 +56,11 @@
         {{-- Month summary --}}
         <div class="row g-3 mb-3">
             @foreach([
-                ['Fixed', $fixedTotal, 'primary', 'ri-repeat-line'],
-                ['Variable', $variableTotal, 'info', 'ri-shuffle-line'],
                 ['Total', $total, 'dark', 'ri-wallet-3-line'],
                 ['Paid', $paidTotal, 'success', 'ri-checkbox-circle-line'],
                 ['Outstanding', $outstanding, 'danger', 'ri-error-warning-line'],
             ] as [$label, $value, $tone, $icon])
-            <div class="col-6 col-lg">
+            <div class="col-12 col-sm-4">
                 <div class="card mb-0 h-100">
                     <div class="card-body py-3">
                         <small class="text-muted d-block"><i class="{{ $icon }} me-1 text-{{ $tone }}"></i>{{ $label }}</small>
@@ -70,8 +75,8 @@
         <div class="alert alert-warning d-flex align-items-center gap-2 py-2">
             <i class="ri-error-warning-line fs-18"></i>
             <div class="small">
-                No active cost types yet, so there is nothing to book an expense against.
-                <a href="{{ route('office.cost.types') }}" class="fw-semibold">Add a cost type</a> — rent, internet, stationery — and file it under a category first.
+                No active {{ $isMonthly ? 'fixed' : 'variable' }} cost types yet, so there is nothing to book {{ $isMonthly ? 'a monthly' : 'a regular' }} expense against.
+                <a href="{{ route('office.cost.types') }}" class="fw-semibold">Add a cost type</a> — {{ $isMonthly ? 'rent, internet, salary — as Fixed' : 'repairs, stationery — as Variable' }} — and file it under a category first.
             </div>
         </div>
         @endif
@@ -94,7 +99,7 @@
                 <small class="text-muted">{{ $expenses->count() }} expense(s)</small>
             </div>
             <div class="card-body p-0">
-                <x-data-table id="officeExpensesTable" export-name="office-expenses">
+                <x-data-table id="officeExpensesTable" :export-name="Str::slug($title)">
                     <table class="ct-table">
                         <thead>
                             <tr>
@@ -103,7 +108,6 @@
                                 <th data-filter="Cost Type">Cost Type</th>
                                 <th data-filter="Category">Category</th>
                                 <th data-filter="Sub-category">Sub-category</th>
-                                <th data-filter="Nature">Nature</th>
                                 <th class="text-end">Total</th>
                                 <th class="text-end">Paid</th>
                                 <th class="text-end">Due</th>
@@ -169,13 +173,6 @@
                                 <td>{{ $e->costType->name ?? '—' }}</td>
                                 <td>{{ $e->categoryName() ?? '—' }}</td>
                                 <td>{{ $e->subCategoryName() ?? '—' }}</td>
-                                <td>
-                                    @if($e->isFixed())
-                                        <span class="badge bg-primary-subtle text-primary">Fixed</span>
-                                    @else
-                                        <span class="badge bg-info-subtle text-info">Variable</span>
-                                    @endif
-                                </td>
                                 <td class="text-end fw-semibold">৳ {{ number_format($e->amount, 2) }}</td>
                                 <td class="text-end">৳ {{ number_format($e->paidTotal(), 2) }}</td>
                                 <td class="text-end @if($e->dueTotal() > 0) text-danger fw-semibold @endif">৳ {{ number_format($e->dueTotal(), 2) }}</td>
@@ -205,7 +202,7 @@
             <form action="{{ route('office.expense.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Office Expense</h5>
+                    <h5 class="modal-title">Add {{ $isMonthly ? 'Monthly' : 'Regular' }} Expense</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -354,9 +351,9 @@
                     <div class="col-md-6">
                         <label class="form-label">Cost type <span class="text-danger">*</span></label>
                         {{-- An inactive type stays pickable while an expense still points at it, so editing never silently re-files the cost. --}}
-                        @php $typeOptions = $e->costType && ! $costTypes->contains('id', $e->office_cost_type_id)
-                            ? $costTypes->concat([$e->costType])
-                            : $costTypes; @endphp
+                        @php $typeOptions = $e->costType && ! $allCostTypes->contains('id', $e->office_cost_type_id)
+                            ? $allCostTypes->concat([$e->costType])
+                            : $allCostTypes; @endphp
                         <x-cost-type-select :cost-types="$typeOptions" :selected="$e->office_cost_type_id" :required="true" />
                     </div>
                     <div class="col-md-6">

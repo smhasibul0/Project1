@@ -39,20 +39,64 @@ test('an expense whose cost type was deleted falls back to variable', function (
     expect($expense->fresh()->nature())->toBe('variable');
 });
 
-test('the monthly view totals fixed and variable separately', function () {
+test('monthly expenses hold the fixed costs and regular expenses the variable ones', function () {
     officeExpense($this->rent, 25000, '2026-09-01');
     officeExpense($this->stationery, 1200, '2026-09-03');
     officeExpense($this->stationery, 800, '2026-09-20');
     // Another month's cost must stay out of September's totals.
     officeExpense($this->rent, 25000, '2026-08-01');
 
-    $response = $this->actingAs($this->user)->get(route('office.expenses', ['month' => '2026-09']));
+    $monthly = $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'monthly', 'month' => '2026-09']));
+    $monthly->assertOk()->assertSee('Monthly Expenses');
+    expect($monthly->viewData('total'))->toEqual(25000.0);
+    expect($monthly->viewData('expenses'))->toHaveCount(1);
 
+    $regular = $this->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
+    $regular->assertOk()->assertSee('Regular Expenses');
+    expect($regular->viewData('total'))->toEqual(2000.0);
+    expect($regular->viewData('expenses'))->toHaveCount(2);
+});
+
+test('the old expenses address opens monthly expenses, and an unknown list is refused', function () {
+    officeExpense($this->rent, 25000, '2026-09-01');
+
+    $response = $this->actingAs($this->user)->get('/office-expenses?month=2026-09');
     $response->assertOk();
-    expect($response->viewData('fixedTotal'))->toEqual(25000.0);
-    expect($response->viewData('variableTotal'))->toEqual(2000.0);
-    expect($response->viewData('total'))->toEqual(27000.0);
-    expect($response->viewData('expenses'))->toHaveCount(3);
+    expect($response->viewData('kind'))->toBe('monthly');
+    expect($response->viewData('total'))->toEqual(25000.0);
+
+    $this->get('/office-expenses/yearly')->assertClientError();
+});
+
+test('an expense whose cost type was deleted is listed under regular expenses', function () {
+    $expense = officeExpense($this->rent, 25000, '2026-09-01');
+    $this->rent->delete();
+
+    $regular = $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
+    expect($regular->viewData('expenses')->pluck('id')->all())->toBe([$expense->id]);
+});
+
+test('only monthly expenses offer to generate the month\'s fixed costs', function () {
+    $this->rent->update(['monthly_amount' => 25000]);
+
+    $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'monthly', 'month' => '2026-09']))
+        ->assertOk()->assertSee('Generate Sep 2026');
+
+    $regular = $this->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
+    $regular->assertOk()->assertDontSee('Generate Sep 2026');
+    expect($regular->viewData('pendingFixed'))->toHaveCount(0);
+});
+
+test('the sidebar groups monthly expenses, regular expenses and cost types under Expenses', function () {
+    $this->actingAs($this->user)->get(route('dashboard'))
+        ->assertOk()
+        ->assertSeeInOrder([
+            '<span> Expenses </span>',
+            route('office.expenses', 'monthly'), 'Monthly Expenses',
+            route('office.expenses', 'regular'), 'Regular Expenses',
+            route('office.cost.types'), 'Cost Types',
+        ], false)
+        ->assertDontSee('Office Expenses');
 });
 
 test('the month falls back to the current one when the parameter is junk', function () {
@@ -301,17 +345,21 @@ test('clearing the category on a cost type leaves it uncategorised', function ()
     expect($this->stationery->fresh()->expense_category_id)->toBeNull();
 });
 
-test('the expenses page lists every active cost type to pick from', function () {
+test('each list offers the active cost types of its own kind to pick from', function () {
     $utilities = ExpenseCategory::create(['name' => 'Utilities']);
     $this->rent->update(['expense_category_id' => $utilities->id]);
     // An inactive type must stay out of the picker.
     OfficeCostType::create(['name' => 'Retired Cost', 'nature' => 'variable', 'is_active' => false]);
 
-    $response = $this->actingAs($this->user)->get(route('office.expenses', ['month' => '2026-09']));
+    $regular = $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
+    expect($regular->viewData('costTypes')->pluck('name')->all())->toEqual(['Stationery']);
+    $regular->assertDontSee('Retired Cost');
+
+    $response = $this->get(route('office.expenses', ['kind' => 'monthly', 'month' => '2026-09']));
 
     $response->assertOk();
     expect($response->viewData('costTypes')->pluck('name')->all())
-        ->toEqual(['Office Rent', 'Stationery']);
+        ->toEqual(['Office Rent']);
     // Each pickable row carries its name and the category it reports under.
     $response->assertSee('data-label="Office Rent"', false);
     $response->assertSee('data-hint="Fixed · Utilities"', false);
@@ -325,7 +373,7 @@ test('the expenses page points at cost types when none exist yet', function () {
 
     $response->assertOk();
     expect($response->viewData('costTypes'))->toHaveCount(0);
-    $response->assertSee('No active cost types yet');
+    $response->assertSee('No active fixed cost types yet');
     $response->assertSee('Add Cost Type First');
 });
 
@@ -358,7 +406,7 @@ test('the cost type picker is searchable by name, category and nature', function
 test('the cost type picker opens on the expense it is editing', function () {
     $expense = officeExpense($this->stationery, 1200, '2026-09-03');
 
-    $response = $this->actingAs($this->user)->get(route('office.expenses', ['month' => '2026-09']));
+    $response = $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
 
     $response->assertOk();
     $response->assertSee('name="office_cost_type_id" value="'.$this->stationery->id.'" class="cts-value"', false);
@@ -368,11 +416,11 @@ test('the cost type picker keeps an inactive type pickable while an expense uses
     officeExpense($this->stationery, 1200, '2026-09-03');
     $this->stationery->update(['is_active' => false]);
 
-    $response = $this->actingAs($this->user)->get(route('office.expenses', ['month' => '2026-09']));
+    $response = $this->actingAs($this->user)->get(route('office.expenses', ['kind' => 'regular', 'month' => '2026-09']));
 
     $response->assertOk();
     // Out of the picker for new expenses, still selectable on the one that uses it.
-    expect($response->viewData('costTypes')->pluck('name')->all())->toEqual(['Office Rent']);
+    expect($response->viewData('costTypes')->pluck('name')->all())->toEqual([]);
     $response->assertSee('data-id="'.$this->stationery->id.'"', false);
 });
 
@@ -382,8 +430,10 @@ test('the expense list offers a filter on every column worth narrowing by', func
     $response = $this->actingAs($this->user)->get(route('office.expenses', ['month' => '2026-09']));
 
     $response->assertOk();
-    // The shared table builds a dropdown per data-filter header.
-    foreach (['Cost Type', 'Category', 'Sub-category', 'Nature', 'Payment Status'] as $filter) {
+    // The shared table builds a dropdown per data-filter header. Each list holds one
+    // nature, so it has no Nature filter.
+    $response->assertDontSee('data-filter="Nature"', false);
+    foreach (['Cost Type', 'Category', 'Sub-category', 'Payment Status'] as $filter) {
         $response->assertSee('data-filter="'.$filter.'"', false);
     }
 });

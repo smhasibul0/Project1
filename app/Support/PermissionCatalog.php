@@ -170,21 +170,21 @@ class PermissionCatalog
                 'account-types.delete' => ['Delete account types', 'Remove an account type.'],
             ],
 
-            'Office Running Costs' => [
-                'office.expenses.view' => ['View office costs', 'Open the office running-cost list.'],
-                'office.expenses.create' => ['Add office costs', 'Post a company running cost.'],
-                'office.expenses.edit' => ['Edit office costs', 'Change a running cost.'],
-                'office.expenses.generate' => ['Generate recurring costs', 'Raise the month\'s fixed costs in one go.'],
-                'office.expenses.delete' => ['Delete office costs', 'Remove a running cost.'],
-                'office.expenses.payments.create' => ['Settle office costs', 'Pay a running cost from a payment account.'],
-                'office.expenses.payments.delete' => ['Reverse office cost payments', 'Undo a payment and put the money back.'],
+            'Expenses' => [
+                'office.expenses.view' => ['View expenses', 'Open the monthly and regular expense lists.'],
+                'office.expenses.create' => ['Add expenses', 'Post a monthly or regular expense.'],
+                'office.expenses.edit' => ['Edit expenses', 'Change an expense.'],
+                'office.expenses.generate' => ['Generate monthly expenses', 'Raise the month\'s fixed costs in one go.'],
+                'office.expenses.delete' => ['Delete expenses', 'Remove an expense.'],
+                'office.expenses.payments.create' => ['Settle expenses', 'Pay an expense from a payment account.'],
+                'office.expenses.payments.delete' => ['Reverse expense payments', 'Undo a payment and put the money back.'],
             ],
 
-            'Office Cost Types' => [
-                'office.cost-types.view' => ['View office cost types', 'Open the fixed/variable cost-type list.'],
-                'office.cost-types.create' => ['Add office cost types', 'Add a cost type.'],
-                'office.cost-types.edit' => ['Edit office cost types', 'Change a cost type\'s name or nature.'],
-                'office.cost-types.delete' => ['Delete office cost types', 'Remove a cost type.'],
+            'Cost Types' => [
+                'office.cost-types.view' => ['View cost types', 'Open the fixed/variable cost-type list.'],
+                'office.cost-types.create' => ['Add cost types', 'Add a cost type.'],
+                'office.cost-types.edit' => ['Edit cost types', 'Change a cost type\'s name or nature.'],
+                'office.cost-types.delete' => ['Delete cost types', 'Remove a cost type.'],
             ],
 
             'Borrowing & Lending' => [
@@ -341,7 +341,7 @@ class PermissionCatalog
             ),
             'payments.manage' => ['orders.payments.create'],
             'reports.view' => self::group('Reports'),
-            'office.expenses.manage' => self::groups(['Office Running Costs', 'Office Cost Types']),
+            'office.expenses.manage' => self::groups(['Expenses', 'Cost Types']),
             'loans.manage' => self::group('Borrowing & Lending'),
             'assets.manage' => self::groups(['Fixed Assets', 'Asset Depreciation', 'Asset Categories']),
             'warehouses.manage' => self::group('Warehouses'),

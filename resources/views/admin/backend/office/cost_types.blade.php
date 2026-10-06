@@ -5,8 +5,8 @@
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Office Cost Types</h4>
-                <small class="text-muted">Fixed costs recur every month (rent, internet, salary); variable ones are incurred as needed (repairs, stationery).</small>
+                <h4 class="fs-18 fw-semibold m-0">Cost Types</h4>
+                <small class="text-muted">Fixed costs recur every month (rent, internet, salary) and are booked under Monthly Expenses; variable ones are incurred as needed (repairs, stationery) and booked under Regular Expenses.</small>
             </div>
             <div class="d-flex flex-wrap gap-2 justify-content-sm-end mt-2 mt-sm-0">
                 <form action="{{ route('office.cost.types') }}" method="GET" class="d-flex flex-wrap gap-2">

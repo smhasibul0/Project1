@@ -280,10 +280,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/expense-categories/{id}', [ExpenseCategoryController::class, 'destroy'])->middleware('can:expense-categories.delete')->name('expense.category.delete');
 });
 
-// Office running costs — company-level fixed & variable expenses, settled by
-// one or more payments drawn from the payment accounts.
+// Expenses — company-level running costs: monthly (fixed) and regular (variable),
+// settled by one or more payments drawn from the payment accounts.
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/office-expenses', [OfficeExpenseController::class, 'index'])->middleware('can:office.expenses.view')->name('office.expenses');
+    Route::get('/office-expenses/{kind?}', [OfficeExpenseController::class, 'index'])->whereIn('kind', array_keys(OfficeExpenseController::KINDS))->middleware('can:office.expenses.view')->name('office.expenses');
     Route::post('/office-expenses', [OfficeExpenseController::class, 'store'])->middleware('can:office.expenses.create')->name('office.expense.store');
     Route::post('/office-expenses/generate', [OfficeExpenseController::class, 'generate'])->middleware('can:office.expenses.generate')->name('office.expense.generate');
     Route::put('/office-expenses/{id}', [OfficeExpenseController::class, 'update'])->middleware('can:office.expenses.edit')->name('office.expense.update');

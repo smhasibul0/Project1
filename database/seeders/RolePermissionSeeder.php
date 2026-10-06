@@ -62,8 +62,8 @@ class RolePermissionSeeder extends Seeder
             ['dashboard.view', 'orders.view', 'orders.invoice', 'orders.payments.create'],
             array_diff(PermissionCatalog::group('Payment Accounts'), ['accounts.view-balance']),
             PermissionCatalog::groups([
-                'Order Costs', 'Cost Categories', 'Account Types', 'Office Running Costs',
-                'Office Cost Types', 'Borrowing & Lending', 'Fixed Assets', 'Asset Depreciation',
+                'Order Costs', 'Cost Categories', 'Account Types', 'Expenses',
+                'Cost Types', 'Borrowing & Lending', 'Fixed Assets', 'Asset Depreciation',
                 'Asset Categories', 'Warehouse Expense Categories', 'Reports',
             ]),
         ));

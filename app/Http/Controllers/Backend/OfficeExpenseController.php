@@ -20,40 +20,56 @@ class OfficeExpenseController extends Controller
     public const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'Cheque', 'Mobile Banking', 'Other'];
 
     /**
-     * One month of office running costs, split into fixed and variable.
+     * The two expense lists: monthly expenses are the fixed costs booked every month,
+     * regular expenses the variable ones paid as they come up (kind => cost type nature).
+     *
+     * @var array<string, string>
      */
-    public function index(Request $request)
+    public const KINDS = [
+        'monthly' => 'fixed',
+        'regular' => 'variable',
+    ];
+
+    /**
+     * One month of monthly (fixed) or regular (variable) expenses.
+     */
+    public function index(Request $request, ?string $kind = null)
     {
+        $kind ??= 'monthly';
+        $isMonthly = $kind === 'monthly';
         $month = $this->resolveMonth($request->query('month'));
 
-        $expenses = OfficeExpense::with(['costType.category.parent', 'payments.paymentAccount'])
+        $monthExpenses = OfficeExpense::with(['costType.category.parent', 'payments.paymentAccount'])
             ->whereBetween('expense_date', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
             ->latest('expense_date')->latest('id')->get();
 
-        $fixed = $expenses->filter(fn (OfficeExpense $e) => $e->isFixed());
-        $variable = $expenses->reject(fn (OfficeExpense $e) => $e->isFixed());
+        // An expense whose cost type was deleted counts as variable, so it shows under regular.
+        $expenses = $monthExpenses->filter(fn (OfficeExpense $e) => $e->isFixed() === $isMonthly)->values();
 
-        $sum = fn ($rows) => round($rows->sum(fn (OfficeExpense $e) => (float) $e->amount), 2);
+        $total = round($expenses->sum(fn (OfficeExpense $e) => (float) $e->amount), 2);
         $paid = round($expenses->sum(fn (OfficeExpense $e) => $e->paidTotal()), 2);
-        $total = $sum($expenses);
 
         // Fixed types with a standard amount that this month hasn't booked yet.
-        $pendingFixed = OfficeCostType::generatable()
-            ->whereNotIn('id', $expenses->pluck('office_cost_type_id')->filter()->all())
-            ->get();
+        $pendingFixed = $isMonthly
+            ? OfficeCostType::generatable()->whereNotIn('id', $monthExpenses->pluck('office_cost_type_id')->filter()->all())->get()
+            : collect();
+
+        $activeTypes = OfficeCostType::with('category.parent')->where('is_active', true)
+            ->orderBy('nature')->orderBy('name')->get();
 
         return view('admin.backend.office.expenses', [
+            'kind' => $kind,
+            'isMonthly' => $isMonthly,
             'month' => $month,
             'expenses' => $expenses,
-            'fixedTotal' => $sum($fixed),
-            'variableTotal' => $sum($variable),
             'total' => $total,
             'paidTotal' => $paid,
             'outstanding' => round($total - $paid, 2),
             'pendingFixed' => $pendingFixed,
             'pendingFixedTotal' => round((float) $pendingFixed->sum(fn (OfficeCostType $t) => (float) $t->monthly_amount), 2),
-            'costTypes' => OfficeCostType::with('category.parent')->where('is_active', true)
-                ->orderBy('nature')->orderBy('name')->get(),
+            // A new expense is booked against this list's kind of cost type; an edit may move it to any.
+            'costTypes' => $activeTypes->where('nature', self::KINDS[$kind])->values(),
+            'allCostTypes' => $activeTypes,
             'accounts' => PaymentAccount::where('is_active', true)->orderBy('name')->get(),
             'paymentMethods' => self::PAYMENT_METHODS,
         ]);

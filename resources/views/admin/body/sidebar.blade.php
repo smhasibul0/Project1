@@ -253,18 +253,21 @@
                 </li>
                 @endcan
 
-                <!-- Office running costs -->
+                <!-- Expenses: monthly (fixed) and regular (variable) running costs -->
                 @can('office.expenses.view')
                 <li>
                     <a href="#sidebarOfficeExpenses" data-bs-toggle="collapse">
-                        <i data-feather="home"></i>
-                        <span> Office Expenses </span>
+                        <i data-feather="trending-down"></i>
+                        <span> Expenses </span>
                         <span class="menu-arrow"></span>
                     </a>
                     <div class="collapse" id="sidebarOfficeExpenses">
                         <ul class="nav-second-level">
                             <li>
-                                <a href="{{ route('office.expenses') }}" class="tp-link">Monthly Expenses</a>
+                                <a href="{{ route('office.expenses', 'monthly') }}" class="tp-link">Monthly Expenses</a>
+                            </li>
+                            <li>
+                                <a href="{{ route('office.expenses', 'regular') }}" class="tp-link">Regular Expenses</a>
                             </li>
                             @can('office.cost-types.view')
                             <li>
