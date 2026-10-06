@@ -329,3 +329,14 @@ test('a system transaction cannot be edited or deleted from the account book', f
     expect($account->fresh()->balance)->toEqual('100.00');
     expect(Transaction::find($txn->id))->not->toBeNull();
 });
+
+test('the accounts page points its edit forms at the real update routes', function () {
+    PaymentAccount::factory()->create();
+
+    $this->actingAs($this->user)->get(route('payment.accounts'))
+        ->assertOk()
+        ->assertSee(route('payment.account.update', '__id__'), false)
+        ->assertSee(route('account.type.update', '__id__'), false)
+        ->assertDontSee(url('payment/account').'/', false)
+        ->assertDontSee(url('account-type').'/', false);
+});

@@ -311,7 +311,7 @@
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form id="editAccountForm" action="{{ url('payment/account') }}" method="POST">
+            <form id="editAccountForm" action="{{ route('payment.accounts') }}" method="POST">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="id" id="editAccountId">
@@ -548,7 +548,7 @@
 <div class="modal fade" id="editAccountTypeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="editAccountTypeForm" action="{{ url('account-type') }}" method="POST">
+            <form id="editAccountTypeForm" action="{{ route('payment.accounts') }}" method="POST">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="id" id="editAccountTypeId">
@@ -577,7 +577,8 @@
 @endcan
 
 <script>
-$(document).ready(function () {
+// jQuery and its plugins load at the end of the layout, after this page's markup.
+document.addEventListener('DOMContentLoaded', function () {
 
     // Fallback shim: if the jQuery Validation plugin fails to load, replace .validate()
     // with a harmless no-op so a missing script can never abort the modal handlers below
@@ -601,8 +602,8 @@ $(document).ready(function () {
         $('#editAccountNote').val(btn.data('note'));
         $('#editAccountActiveToggle').prop('checked', btn.data('is-active') == 1);
 
-        // Point the form at /payment/account/{id}
-        $('#editAccountForm').attr('action', '{{ url('payment/account') }}/' + id);
+        // Point the form at this account's update route
+        $('#editAccountForm').attr('action', '{{ route('payment.account.update', '__id__') }}'.replace('__id__', id));
 
         // Clear any stale validation state from a previous open
         $('#editAccountForm').validate().resetForm();
@@ -740,8 +741,8 @@ $(document).ready(function () {
         $('#editAccountTypeName').val(btn.data('name'));
         $('#editAccountTypeDescription').val(btn.data('description'));
 
-        // Point the form at /account-type/{id}
-        $('#editAccountTypeForm').attr('action', '{{ url('account-type') }}/' + id);
+        // Point the form at this account type's update route
+        $('#editAccountTypeForm').attr('action', '{{ route('account.type.update', '__id__') }}'.replace('__id__', id));
 
         // Clear any stale validation state from a previous open
         $('#editAccountTypeForm').validate().resetForm();
