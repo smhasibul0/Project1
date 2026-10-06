@@ -25,6 +25,9 @@ class ValuationRateFactory extends Factory
             'hs_code' => '7901.12.10',
             'description' => 'ZINC INGOT',
             'unit_price' => $assessed,
+            'lowest_unit_price' => $assessed,
+            'common_unit_price' => $assessed,
+            'common_bills' => 1,
             'bills_count' => 1,
             'bills' => [[
                 'be_no' => fake()->numerify('#####'),

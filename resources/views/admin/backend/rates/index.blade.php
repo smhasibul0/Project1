@@ -71,8 +71,8 @@
                         </form>
                         <div class="alert alert-light border mt-3 mb-0 small">
                             Upload the <em>ValuationReport_Analysis</em> PDF Customs prints for an HS code. Every bill of entry in it is read,
-                            and the <strong>highest assessed unit price (USD/kg)</strong> becomes that code's reference.
-                            Quotations use the newest dated rate for each code; older ones stay here as history.
+                            and the <strong>highest, most common and lowest assessed unit prices (USD/kg)</strong> are kept for that code.
+                            Quotations are offered all three from the newest dated rate for each code, starting on the highest; older ones stay here as history.
                         </div>
                     </div>
                 </div>
@@ -103,6 +103,7 @@
                                 <th class="text-end">Highest Assessed</th>
                                 <th class="text-end">In Taka</th>
                                 <th class="text-end">Most Common</th>
+                                <th class="text-end">Lowest</th>
                                 <th class="text-end">Bills</th>
                                 <th>Bills Dated</th>
                                 <th>Uploaded By</th>
@@ -151,6 +152,7 @@
                                         —
                                     @endif
                                 </td>
+                                <td class="text-end text-nowrap text-muted">{{ $rate->lowest_unit_price !== null ? $usd($rate->lowest_unit_price) : '—' }}</td>
                                 <td class="text-end">{{ $rate->bills_count }}</td>
                                 <td class="text-nowrap small">
                                     @if($rate->period_from)
@@ -163,7 +165,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center text-muted py-5">
+                                <td colspan="10" class="text-center text-muted py-5">
                                     @if($search !== '')
                                         Nothing matches “{{ $search }}”.
                                     @else

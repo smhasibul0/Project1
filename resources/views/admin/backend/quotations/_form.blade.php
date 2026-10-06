@@ -311,6 +311,8 @@
         </div>
         {{-- The rate the declared value is worked out from (Rates & Taxes → Rates). --}}
         <input type="hidden" data-name="reference_unit_price">
+        <input type="hidden" data-name="reference_basis">
+        <input type="hidden" data-name="reference_options">
         <input type="hidden" data-name="reference_rate_date">
         <input type="hidden" data-name="reference_usd_rate">
         <div class="ref-hint small mt-1"></div>
@@ -386,6 +388,26 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const plain = n => (Math.round((Number(n) || 0) * 10000) / 10000).toLocaleString('en-US', { maximumFractionDigits: 4 });
     const grouped = n => (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const BASES = @json(\App\Models\QuotationItem::referenceBases());
+
+    // The highest, most common and lowest prices the line can be priced from.
+    function referenceOptions(block) {
+        try { return JSON.parse(field(block, 'reference_options').value || 'null'); } catch (e) { return null; }
+    }
+
+    function suggestionButtons(block) {
+        const options = referenceOptions(block);
+        if (!options) { return ''; }
+        const current = field(block, 'reference_basis').value || 'highest';
+
+        return Object.keys(BASES).filter(basis => options[basis] > 0).map(function (basis) {
+            const note = basis === 'common' && options.common_bills
+                ? ' <span class="opacity-75">· ' + options.common_bills + ' of ' + options.bills_count + ' bills</span>' : '';
+            return '<button type="button" class="btn btn-sm py-0 px-2 me-1 mb-1 ref-option ' +
+                (basis === current ? 'btn-primary' : 'btn-outline-primary') + '" data-basis="' + basis + '" data-price="' + options[basis] + '">' +
+                BASES[basis] + ' <strong>' + plain(options[basis]) + '</strong>' + note + '</button>';
+        }).join('');
+    }
 
     // Rounded the way the server does (5.71 × 122.5 = 699.48, not the float's 699.47).
     const round2 = n => Math.round(Number((Number(n) || 0).toPrecision(12)) * 100) / 100;
@@ -419,8 +441,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const dollarRate = fieldNum(block, 'reference_usd_rate') || DOLLAR_RATE;
-        let text = '<i class="ri-price-tag-2-line"></i> Reference <strong>' + plain(price) + ' USD/kg</strong>' +
-            ' · rate of <strong>' + dayLabel(field(block, 'reference_rate_date').value) + '</strong>';
+        const buttons = suggestionButtons(block);
+        const basis = BASES[field(block, 'reference_basis').value];
+        let text = (buttons
+            ? '<div class="mb-1"><i class="ri-price-tag-2-line"></i> Suggested USD/kg from the rate of <strong>' +
+                dayLabel(field(block, 'reference_rate_date').value) + '</strong>: ' + buttons + '</div>'
+            : '') +
+            (buttons ? 'Using ' : '<i class="ri-price-tag-2-line"></i> Reference ') +
+            '<strong>' + (basis ? basis.toLowerCase() + ' ' : '') + plain(price) + ' USD/kg</strong>' +
+            (buttons ? '' : ' · rate of <strong>' + dayLabel(field(block, 'reference_rate_date').value) + '</strong>');
 
         if (dollarRate > 0 && fieldNum(block, 'net_weight') > 0) {
             text += ' · ' + plain(price) + ' × ' + plain(fieldNum(block, 'net_weight')) + ' kg × ৳' + plain(dollarRate) +
@@ -564,7 +593,8 @@ document.addEventListener('DOMContentLoaded', function () {
         block.querySelectorAll('[data-name]').forEach(function (el) {
             el.name = 'items[' + i + '][' + el.dataset.name + ']';
             if (data && data[el.dataset.name] !== undefined && data[el.dataset.name] !== null) {
-                el.value = data[el.dataset.name];
+                const value = data[el.dataset.name];
+                el.value = typeof value === 'object' ? JSON.stringify(value) : value;
             }
         });
 
@@ -591,6 +621,15 @@ document.addEventListener('DOMContentLoaded', function () {
         block.querySelector('.ref-hint').addEventListener('click', function (e) {
             if (e.target.classList.contains('use-reference')) {
                 e.preventDefault();
+                applyReference(block, true);
+                recalcBlock(block);
+            }
+
+            // Price the line from another suggestion: highest, most common or lowest.
+            const option = e.target.closest('.ref-option');
+            if (option) {
+                field(block, 'reference_unit_price').value = option.dataset.price;
+                field(block, 'reference_basis').value = option.dataset.basis;
                 applyReference(block, true);
                 recalcBlock(block);
             }

@@ -9,6 +9,7 @@ use App\Models\CostCategory;
 use App\Models\ExchangeRate;
 use App\Models\PackingType;
 use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\TransportationMode;
 use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
@@ -242,6 +243,8 @@ class QuotationController extends Controller
                 'remarks' => $row['remarks'] ?? null,
                 // What the declared value was worked out from, if a rate was on file.
                 'reference_unit_price' => filled($row['reference_unit_price'] ?? null) ? $row['reference_unit_price'] : null,
+                'reference_basis' => filled($row['reference_unit_price'] ?? null) ? ($row['reference_basis'] ?? null) : null,
+                'reference_options' => filled($row['reference_unit_price'] ?? null) ? $this->referenceOptions($row['reference_options'] ?? null) : null,
                 'reference_rate_date' => filled($row['reference_rate_date'] ?? null) ? substr((string) $row['reference_rate_date'], 0, 10) : null,
                 'reference_usd_rate' => filled($row['reference_usd_rate'] ?? null) ? $row['reference_usd_rate'] : null,
             ]);
@@ -404,8 +407,36 @@ class QuotationController extends Controller
             'items.*.at_rate' => 'nullable|numeric|min:0|max:1000',
             'items.*.remarks' => 'nullable|string',
             'items.*.reference_unit_price' => 'nullable|numeric|min:0',
+            'items.*.reference_basis' => 'nullable|in:'.implode(',', array_keys(QuotationItem::referenceBases())),
+            'items.*.reference_options' => 'nullable|json',
             'items.*.reference_rate_date' => 'nullable|date',
             'items.*.reference_usd_rate' => 'nullable|numeric|min:0',
         ]);
+    }
+
+    /**
+     * The highest, most common and lowest prices the line was offered, as numbers —
+     * whatever else the form sent is dropped.
+     *
+     * @return array{highest: float|null, common: float|null, common_bills: int|null, lowest: float|null, bills_count: int|null}|null
+     */
+    private function referenceOptions(?string $json): ?array
+    {
+        $options = json_decode((string) $json, true);
+
+        if (! is_array($options)) {
+            return null;
+        }
+
+        $number = fn (string $key): ?float => is_numeric($options[$key] ?? null) ? (float) $options[$key] : null;
+        $count = fn (string $key): ?int => is_numeric($options[$key] ?? null) ? (int) $options[$key] : null;
+
+        return [
+            'highest' => $number('highest'),
+            'common' => $number('common'),
+            'common_bills' => $count('common_bills'),
+            'lowest' => $number('lowest'),
+            'bills_count' => $count('bills_count'),
+        ];
     }
 }

@@ -11,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * The reference declared value for one HS code, read from a Customs valuation report:
- * the highest unit price Customs assessed, in US dollars per kilogram, kept under the
- * date it was uploaded for. Quotations use the latest one for a code.
+ * the highest (unit_price), lowest and most common unit price Customs assessed, in US
+ * dollars per kilogram, kept under the date it was uploaded for. Quotations are offered
+ * the three from the latest one for a code.
  */
 class ValuationRate extends Model
 {
@@ -33,6 +34,8 @@ class ValuationRate extends Model
             'period_from' => 'date',
             'period_to' => 'date',
             'unit_price' => 'decimal:4',
+            'lowest_unit_price' => 'decimal:4',
+            'common_unit_price' => 'decimal:4',
             'bills' => 'array',
         ];
     }
@@ -70,19 +73,31 @@ class ValuationRate extends Model
     }
 
     /**
-     * The assessed price Customs applied most often, and on how many bills — shown
-     * beside the highest so an outlier stands out.
+     * The assessed price Customs applied most often, and on how many bills.
      *
      * @return array{price: float, count: int}|null
      */
     public function mostCommonAssessedPrice(): ?array
     {
-        $counts = collect($this->bills ?? [])
-            ->where('currency', 'USD')
-            ->countBy(fn (array $bill): string => number_format((float) $bill['assessed_unit_price'], 2, '.', ''))
-            ->sortDesc();
+        return $this->common_unit_price !== null
+            ? ['price' => (float) $this->common_unit_price, 'count' => (int) $this->common_bills]
+            : null;
+    }
 
-        return $counts->isEmpty() ? null : ['price' => (float) $counts->keys()->first(), 'count' => $counts->first()];
+    /**
+     * The prices a quotation line can be priced from, as the quotation form takes them.
+     *
+     * @return array{highest: float, common: float|null, common_bills: int|null, lowest: float|null, bills_count: int}
+     */
+    public function suggestions(): array
+    {
+        return [
+            'highest' => (float) $this->unit_price,
+            'common' => $this->common_unit_price !== null ? (float) $this->common_unit_price : null,
+            'common_bills' => $this->common_bills !== null ? (int) $this->common_bills : null,
+            'lowest' => $this->lowest_unit_price !== null ? (float) $this->lowest_unit_price : null,
+            'bills_count' => (int) $this->bills_count,
+        ];
     }
 
     /**

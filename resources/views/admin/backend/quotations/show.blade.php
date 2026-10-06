@@ -95,7 +95,7 @@
                                 <td class="text-end">৳ {{ number_format($item->declared_value, 2) }}
                                     @if($item->reference_unit_price)
                                         <div class="small text-muted text-nowrap" title="Reference rate from Rates &amp; Taxes">
-                                            ref. {{ rtrim(rtrim(number_format((float) $item->reference_unit_price, 4), '0'), '.') }} USD/kg{{ $item->reference_usd_rate ? ' × ৳'.rtrim(rtrim(number_format((float) $item->reference_usd_rate, 4), '0'), '.') : '' }}
+                                            ref. {{ $item->reference_basis ? strtolower(\App\Models\QuotationItem::referenceBases()[$item->reference_basis] ?? '').' ' : '' }}{{ rtrim(rtrim(number_format((float) $item->reference_unit_price, 4), '0'), '.') }} USD/kg{{ $item->reference_usd_rate ? ' × ৳'.rtrim(rtrim(number_format((float) $item->reference_usd_rate, 4), '0'), '.') : '' }}
                                             · {{ $item->reference_rate_date?->format('d M Y') }}
                                         </div>
                                     @endif

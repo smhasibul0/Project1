@@ -31,10 +31,12 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-3"><small class="text-muted d-block">Rate date</small><span class="fw-semibold">{{ $rate->rate_date->format('d M Y') }}</span></div>
-                    <div class="col-md-3"><small class="text-muted d-block">Reference (highest assessed)</small><span class="fw-semibold">{{ $usd($rate->unit_price) }} USD/kg</span>
+                    <div class="col-md-3"><small class="text-muted d-block">Highest assessed</small><span class="fw-semibold">{{ $usd($rate->unit_price) }} USD/kg</span>
                         @if($usdRate > 0)<span class="text-muted"> · ৳ {{ number_format((float) $rate->unit_price * $usdRate, 2) }}/kg</span>@endif</div>
                     <div class="col-md-3"><small class="text-muted d-block">Most common assessed</small>
                         {{ $common ? $usd($common['price']).' USD/kg on '.$common['count'].' of '.$rate->bills_count.' bills' : '—' }}</div>
+                    <div class="col-md-3"><small class="text-muted d-block">Lowest assessed</small>
+                        {{ $rate->lowest_unit_price !== null ? $usd($rate->lowest_unit_price).' USD/kg' : '—' }}</div>
                     <div class="col-md-3"><small class="text-muted d-block">Bills dated</small>
                         {{ $rate->period_from ? $rate->period_from->format('d M Y').' – '.$rate->period_to->format('d M Y') : '—' }}</div>
                     <div class="col-md-3"><small class="text-muted d-block">File</small>

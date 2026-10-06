@@ -77,6 +77,7 @@ class HsCodeController extends Controller
                 $row['reference'] = $rate ? [
                     'unit_price' => (float) $rate->unit_price,
                     'rate_date' => $rate->rate_date->toDateString(),
+                    'options' => $rate->suggestions(),
                 ] : null;
             }
 

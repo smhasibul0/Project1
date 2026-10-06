@@ -34,8 +34,23 @@ class QuotationItem extends Model
             'line_total' => 'decimal:2',
             'total_profit' => 'decimal:2',
             'reference_unit_price' => 'decimal:4',
+            'reference_options' => 'array',
             'reference_rate_date' => 'date',
             'reference_usd_rate' => 'decimal:4',
+        ];
+    }
+
+    /**
+     * The reference prices a line can be priced from (key => label).
+     *
+     * @return array<string, string>
+     */
+    public static function referenceBases(): array
+    {
+        return [
+            'highest' => 'Highest',
+            'common' => 'Most common',
+            'lowest' => 'Lowest',
         ];
     }
 

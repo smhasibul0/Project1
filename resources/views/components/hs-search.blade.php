@@ -51,12 +51,17 @@
                 if (field) { field.value = parseFloat(row[rate]) || 0; }
             });
 
-            // The reference declared value from Rates, where the row keeps one (quotations).
+            // The reference declared value from Rates, where the row keeps one (quotations):
+            // the highest to start with, and the most common and lowest to choose from.
             const reference = row.reference || null;
             const priceField = block.querySelector('[data-name="reference_unit_price"]');
             const dateField = block.querySelector('[data-name="reference_rate_date"]');
+            const basisField = block.querySelector('[data-name="reference_basis"]');
+            const optionsField = block.querySelector('[data-name="reference_options"]');
             if (priceField) { priceField.value = reference ? reference.unit_price : ''; }
             if (dateField) { dateField.value = reference ? reference.rate_date : ''; }
+            if (basisField) { basisField.value = reference ? 'highest' : ''; }
+            if (optionsField) { optionsField.value = reference && reference.options ? JSON.stringify(reference.options) : ''; }
 
             close();
             if (typeof onPick === 'function') { onPick(block); }

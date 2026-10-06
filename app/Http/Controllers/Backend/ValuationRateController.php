@@ -99,6 +99,9 @@ class ValuationRateController extends Controller
                     'hs_code' => ValuationRate::formatCode($code['code_digits']),
                     'description' => $code['description'],
                     'unit_price' => $code['unit_price'],
+                    'lowest_unit_price' => $code['lowest_unit_price'],
+                    'common_unit_price' => $code['common_unit_price'],
+                    'common_bills' => $code['common_bills'],
                     'bills_count' => count($code['bills']),
                     'bills' => $code['bills'],
                     'period_from' => $code['period_from'],
@@ -108,8 +111,9 @@ class ValuationRateController extends Controller
                     'added_by' => Auth::id(),
                 ]);
 
-                $stored[] = $rate->hs_code.' at '.rtrim(rtrim(number_format((float) $rate->unit_price, 4), '0'), '.')
-                    .' USD/kg ('.$rate->bills_count.' bills)';
+                $stored[] = $rate->hs_code.' — highest '.$this->price($rate->unit_price)
+                    .', most common '.$this->price($rate->common_unit_price)
+                    .', lowest '.$this->price($rate->lowest_unit_price).' USD/kg ('.$rate->bills_count.' bills)';
             }
         }
 
@@ -138,6 +142,11 @@ class ValuationRateController extends Controller
         return Storage::disk(self::DISK)->response($rate->file_path, $rate->original_name ?: 'valuation-report.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    private function price(float|string|null $price): string
+    {
+        return rtrim(rtrim(number_format((float) $price, 4), '0'), '.');
     }
 
     public function destroy($id)

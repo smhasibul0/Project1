@@ -29,10 +29,11 @@ class ValuationReportParser
     private const AMOUNT = '/[\d,]+\.\d{2}/';
 
     /**
-     * The reference price per HS code in the report: the highest unit price Customs
-     * assessed on any bill priced in US dollars.
+     * The reference prices per HS code in the report, from the unit prices Customs
+     * assessed on the bills priced in US dollars: the highest, the lowest and the
+     * most common.
      *
-     * @return array<int, array{code_digits: string, description: string, unit_price: float, period_from: string|null, period_to: string|null, bills: array<int, array<string, mixed>>}>
+     * @return array<int, array{code_digits: string, description: string, unit_price: float, lowest_unit_price: float, common_unit_price: float, common_bills: int, period_from: string|null, period_to: string|null, bills: array<int, array<string, mixed>>}>
      *
      * @throws \RuntimeException when the file isn't a readable valuation report
      */
@@ -58,7 +59,7 @@ class ValuationReportParser
             $rates[] = [
                 'code_digits' => (string) $digits,
                 'description' => (string) $group->countBy('description')->sortDesc()->keys()->first(),
-                'unit_price' => (float) $usd->max('assessed_unit_price'),
+                ...static::summarise($usd->all()),
                 'period_from' => $dates->first(),
                 'period_to' => $dates->last(),
                 'bills' => $group->map(fn (array $bill) => collect($bill)->except('hs')->all())->values()->all(),
@@ -70,6 +71,32 @@ class ValuationReportParser
         }
 
         return $rates;
+    }
+
+    /**
+     * The highest, lowest and most common assessed unit price across dollar bills,
+     * and how many bills carry the most common one. When two prices are equally
+     * common, the higher one counts.
+     *
+     * @param  array<int, array<string, mixed>>  $usdBills
+     * @return array{unit_price: float, lowest_unit_price: float, common_unit_price: float, common_bills: int}
+     */
+    public static function summarise(array $usdBills): array
+    {
+        $prices = collect($usdBills)->map(fn (array $bill): float => round((float) $bill['assessed_unit_price'], 2));
+
+        $common = $prices
+            ->countBy(fn (float $price): string => number_format($price, 2, '.', ''))
+            ->map(fn (int $count, string $price): array => ['price' => (float) $price, 'count' => $count])
+            ->sort(fn (array $a, array $b): int => [$b['count'], $b['price']] <=> [$a['count'], $a['price']])
+            ->first();
+
+        return [
+            'unit_price' => (float) $prices->max(),
+            'lowest_unit_price' => (float) $prices->min(),
+            'common_unit_price' => $common['price'],
+            'common_bills' => $common['count'],
+        ];
     }
 
     private function text(string $path): string

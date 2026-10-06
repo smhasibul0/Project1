@@ -33,6 +33,34 @@ test('a valuation report is read bill by bill, and its highest assessed price pe
     expect($rate['bills'][0]['exporter'])->toBe('ACME TRADING DHAKA ROAD');
 });
 
+test('a report keeps the highest, lowest and most common assessed price per kg', function () {
+    // Bills at 1.20, 3.84, 3.84 and 5.71 USD/kg.
+    [$rate] = (new ValuationReportParser)->parse(fakeValuationReport([
+        'HSCODE', '79011210', 'ValuationReport_Analysis',
+        '601 4 66225 27/09/202679011210ZINC INGOT 1 USD 50.001.00 60.001.20 50.00 0IN ACME TRADING',
+        '301 4 125132221/09/202679011210ZINC INGOTS 1 USD 19,543.001.0074,951.313.8419,543.00 0AU SAMPLE METALS',
+        '301 4 125133321/09/202679011210ZINC INGOTS 1 USD 1,000.001.003,840.003.841,000.00 0AU SAMPLE METALS',
+        '55190 79011210ZINC INGOT 2 USD 3,426.005.713,426.005.71 600.00 0IN NORTH EXPORTS',
+    ])->getRealPath());
+
+    expect($rate)->toMatchArray([
+        'unit_price' => 5.71,
+        'lowest_unit_price' => 1.2,
+        'common_unit_price' => 3.84,
+        'common_bills' => 2,
+    ]);
+});
+
+test('when no price is more common than another, the higher one counts as most common', function () {
+    $figures = ValuationReportParser::summarise([
+        ['assessed_unit_price' => 1.2], ['assessed_unit_price' => 5.71],
+        ['assessed_unit_price' => 1.2], ['assessed_unit_price' => 5.71],
+        ['assessed_unit_price' => 3.0],
+    ]);
+
+    expect($figures)->toBe(['unit_price' => 5.71, 'lowest_unit_price' => 1.2, 'common_unit_price' => 5.71, 'common_bills' => 2]);
+});
+
 test('uploading a report stores the rate under the date given, with the PDF kept privately', function () {
     $this->actingAs($this->admin)->post(route('rates.store'), [
         'rate_date' => '2026-10-02',
@@ -43,6 +71,9 @@ test('uploading a report stores the rate under the date given, with the PDF kept
     expect($rate->hs_code)->toBe('7901.12.10')
         ->and($rate->rate_date->toDateString())->toBe('2026-10-02')
         ->and((float) $rate->unit_price)->toBe(5.71)
+        ->and((float) $rate->lowest_unit_price)->toBe(1.2)
+        ->and((float) $rate->common_unit_price)->toBe(5.71) // every bill differs; the higher counts
+        ->and($rate->common_bills)->toBe(1)
         ->and($rate->bills_count)->toBe(3)
         ->and($rate->added_by)->toBe($this->admin->id);
 
@@ -97,13 +128,19 @@ test('the dollar rate is saved with the day it was set, and the rates page conve
 test('the HS lookup gives quotation staff the newest rate, and the customer portal none', function () {
     $hsCode = HsCode::factory()->create(['code' => '7901.12.10']);
     ValuationRate::factory()->create(['code_digits' => '79011210', 'rate_date' => '2026-08-01', 'unit_price' => 1.2]);
-    ValuationRate::factory()->create(['code_digits' => '79011210', 'rate_date' => '2026-10-01', 'unit_price' => 5.71]);
+    ValuationRate::factory()->create([
+        'code_digits' => '79011210', 'rate_date' => '2026-10-01', 'bills_count' => 30,
+        'unit_price' => 5.71, 'common_unit_price' => 3.84, 'common_bills' => 12, 'lowest_unit_price' => 1.2,
+    ]);
 
     $this->actingAs($this->admin)->getJson(route('hs.code.search', ['q' => '7901']))
         ->assertOk()
         ->assertJsonPath('0.id', $hsCode->id)
         ->assertJsonPath('0.reference.unit_price', 5.71)
-        ->assertJsonPath('0.reference.rate_date', '2026-10-01');
+        ->assertJsonPath('0.reference.rate_date', '2026-10-01')
+        ->assertJsonPath('0.reference.options', [
+            'highest' => 5.71, 'common' => 3.84, 'common_bills' => 12, 'lowest' => 1.2, 'bills_count' => 30,
+        ]);
 
     $customer = User::factory()->create(['role_id' => Role::firstOrCreate(['slug' => 'customer'], ['name' => 'Customer', 'is_system' => true])->id]);
 
@@ -137,6 +174,47 @@ test('a quotation keeps the reference its declared value was worked out from', f
         ->assertOk()
         ->assertSee('ref. 5.71 USD/kg × ৳122')
         ->assertSee('01 Oct 2026');
+});
+
+test('a quotation line keeps which suggested price it used and the three it was offered', function () {
+    $customer = Contact::factory()->customer()->create();
+    $options = ['highest' => 5.71, 'common' => 3.84, 'common_bills' => 12, 'lowest' => 1.2, 'bills_count' => 30];
+
+    $this->actingAs($this->admin)->post(route('quotation.store'), [
+        'customer_id' => $customer->id,
+        'packing_list' => fakePackingList(),
+        'sell_rate_per_cbm' => 100,
+        'items' => [[
+            'package_quantity' => 2, 'cbm' => 2, 'net_weight' => 1000,
+            'declared_value' => 468480, // 3.84 USD/kg × 1,000 kg × ৳122
+            'reference_unit_price' => 3.84,
+            'reference_basis' => 'common',
+            'reference_options' => json_encode($options + ['note' => '<script>']),
+            'reference_rate_date' => '2026-10-01',
+            'reference_usd_rate' => 122,
+        ]],
+    ])->assertSessionHasNoErrors();
+
+    $item = Quotation::sole()->items()->sole();
+    expect($item->reference_basis)->toBe('common')
+        ->and($item->reference_options)->toBe($options); // anything else sent is dropped
+
+    $this->get(route('quotation.show', $item->quotation_id))
+        ->assertOk()
+        ->assertSee('ref. most common 3.84 USD/kg × ৳122');
+
+    // Editing the quotation offers the same three again.
+    $this->get(route('quotation.edit', $item->quotation_id))
+        ->assertOk()
+        ->assertSee('"reference_basis":"common"', false)
+        ->assertSee('"reference_options":{"highest":5.71,"common":3.84,"common_bills":12,"lowest":1.2,"bills_count":30}', false);
+});
+
+test('a quotation line refuses a basis that is not one of the suggestions', function () {
+    $this->actingAs($this->admin)->post(route('quotation.store'), [
+        'customer_id' => Contact::factory()->customer()->create()->id,
+        'items' => [['package_quantity' => 1, 'cbm' => 1, 'reference_unit_price' => 2, 'reference_basis' => 'average']],
+    ])->assertSessionHasErrors('items.0.reference_basis');
 });
 
 test('the quotation form carries today\'s dollar rate for filling declared values', function () {
