@@ -192,24 +192,21 @@
                 </li>
                 @endcan
 
-                <!-- LC -->
+                <!-- LC Management: LCs, CADs and TTs -->
                 @can('lc.view')
                 <li>
                     <a href="#sidebarLc" data-bs-toggle="collapse">
                         <i data-feather="file-text"></i>
-                        <span> LC </span>
+                        <span> LC Management </span>
                         <span class="menu-arrow"></span>
                     </a>
                     <div class="collapse" id="sidebarLc">
                         <ul class="nav-second-level">
+                            @foreach(\App\Models\Lc::types() as $lcType => $lcTypeLabel)
                             <li>
-                                <a href="{{ route('lc.index') }}" class="tp-link">List LC</a>
+                                <a href="{{ route('lc.index', $lcType) }}" class="tp-link">{{ $lcTypeLabel }}</a>
                             </li>
-                            @can('lc.create')
-                            <li>
-                                <a href="{{ route('lc.create') }}" class="tp-link">Add LC</a>
-                            </li>
-                            @endcan
+                            @endforeach
                         </ul>
                     </div>
                 </li>

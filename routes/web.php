@@ -39,6 +39,7 @@ use App\Http\Controllers\Warehouse\InventoryController as WarehouseInventoryCont
 use App\Http\Controllers\Warehouse\OrderController as WarehouseOrderController;
 use App\Http\Controllers\Warehouse\PayrollController as WarehousePayrollController;
 use App\Http\Controllers\Warehouse\StaffController as WarehouseStaffController;
+use App\Models\Lc;
 use Illuminate\Support\Facades\Route;
 
 // No public home page. The dashboard route already sends a guest to the login screen
@@ -334,9 +335,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/asset-categories/{id}', [AssetCategoryController::class, 'destroy'])->middleware('can:asset-categories.delete')->name('asset.category.delete');
 });
 
-// LC — Letters of Credit (opened against the shipper's proforma invoice for an order)
+// LC Management — LCs, CADs and TTs (ways of paying the shipper's proforma invoice for an order)
 Route::middleware(['auth', 'admin'])->group(function () {
-    Route::get('/lcs', [LcController::class, 'index'])->middleware('can:lc.view')->name('lc.index');
+    Route::get('/lcs/{type?}', [LcController::class, 'index'])->whereIn('type', array_keys(Lc::types()))->middleware('can:lc.view')->name('lc.index');
     Route::get('/lcs/create', [LcController::class, 'create'])->middleware('can:lc.create')->name('lc.create');
     Route::post('/lcs', [LcController::class, 'store'])->middleware('can:lc.create')->name('lc.store');
     Route::get('/lcs/{id}', [LcController::class, 'show'])->middleware('can:lc.view')->name('lc.show');

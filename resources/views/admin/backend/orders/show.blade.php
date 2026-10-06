@@ -346,22 +346,23 @@
         </div>
         @endif
 
-        {{-- Letters of Credit --}}
+        {{-- LC Management: the order's LCs, CADs and TTs --}}
         @can('lc.view')
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0">Letters of Credit ({{ $order->lcs->count() }})</h6>
-                @can('lc.create')<a href="{{ route('lc.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-primary"><i class="ri-add-line me-1"></i> Create LC</a>@endcan
+                <h6 class="mb-0">LC / CAD / TT ({{ $order->lcs->count() }})</h6>
+                @can('lc.create')<a href="{{ route('lc.create', ['order_id' => $order->id]) }}" class="btn btn-sm btn-primary"><i class="ri-add-line me-1"></i> Add LC / CAD / TT</a>@endcan
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0 align-middle">
                     <thead>
-                        <tr><th>LC Code</th><th>PI No</th><th>LC Number</th><th>Opening Bank</th><th class="text-end">Inv. Amount</th><th>Status</th><th></th></tr>
+                        <tr><th>Code</th><th>Type</th><th>PI No</th><th>Number</th><th>Bank</th><th class="text-end">Inv. Amount</th><th>Status</th><th></th></tr>
                     </thead>
                     <tbody>
                         @forelse($order->lcs as $lc)
                         <tr>
                             <td>{{ $lc->lc_code }}</td>
+                            <td><span class="badge bg-primary-subtle text-primary">{{ $lc->typeLabel() }}</span></td>
                             <td>{{ $lc->pi_no ?: '—' }}</td>
                             <td>{{ $lc->lc_number ?: '—' }}</td>
                             <td>{{ $lc->opening_bank ?: '—' }}</td>
@@ -370,7 +371,7 @@
                             <td class="text-end"><a href="{{ route('lc.show', $lc->id) }}" class="btn btn-sm btn-outline-secondary py-0"><i class="ri-eye-line"></i></a></td>
                         </tr>
                         @empty
-                        <tr><td colspan="7" class="text-muted text-center py-3">No letters of credit yet</td></tr>
+                        <tr><td colspan="8" class="text-muted text-center py-3">No LC, CAD or TT yet</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -12,22 +12,23 @@
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Letters of Credit</h4>
-                <small class="text-muted">LC register &amp; bank settlement tracking</small>
+                <h4 class="fs-18 fw-semibold m-0">{{ $typeTitle }} <small class="text-muted fw-normal">({{ $typeLabel }})</small></h4>
+                <small class="text-muted">LC Management — {{ $typeLabel }} register &amp; bank settlement tracking</small>
             </div>
             <div class="text-end">
                 <ol class="breadcrumb m-0 py-0">
                     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active">LC</li>
+                    <li class="breadcrumb-item">LC Management</li>
+                    <li class="breadcrumb-item active">{{ $typeLabel }}</li>
                 </ol>
             </div>
         </div>
 
         @if($needsRate->isNotEmpty())
         <div class="alert alert-warning">
-            <strong><i class="ri-error-warning-line me-1"></i> {{ $needsRate->count() }} dollar {{ Str::plural('LC', $needsRate->count()) }} {{ $needsRate->count() === 1 ? 'needs' : 'need' }} a USD Sell Rate.</strong>
+            <strong><i class="ri-error-warning-line me-1"></i> {{ $needsRate->count() }} dollar {{ Str::plural($typeLabel, $needsRate->count()) }} {{ $needsRate->count() === 1 ? 'needs' : 'need' }} a USD Sell Rate.</strong>
             Their bank charges are in dollars but have no bank rate yet, so they are estimated at the day's rate, or not counted where there is none.
-            Add the USD Sell Rate on each, or pay the LC, to fix the taka cost:
+            Add the USD Sell Rate on each, or pay it, to fix the taka cost:
             <div class="mt-2 d-flex flex-wrap gap-2">
                 @foreach($needsRate as $lc)
                 <a href="{{ auth()->user()->can('lc.edit') ? route('lc.edit', $lc->id) : route('lc.show', $lc->id) }}" class="badge bg-warning-subtle text-warning-emphasis border border-warning text-decoration-none">
@@ -40,24 +41,24 @@
 
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h5 class="mb-0">LC List</h5>
+                <h5 class="mb-0">{{ $typeLabel }} List</h5>
                 @can('lc.create')
-                <a href="{{ route('lc.create') }}" class="btn btn-primary rounded-pill px-4">
-                    <i class="ri-add-line me-1"></i> Add LC
+                <a href="{{ route('lc.create', ['type' => $type]) }}" class="btn btn-primary rounded-pill px-4">
+                    <i class="ri-add-line me-1"></i> Add {{ $typeLabel }}
                 </a>
                 @endcan
             </div>
             <div class="card-body p-0">
-                <x-data-table id="lcTable" export-name="letters-of-credit">
+                <x-data-table id="lcTable" :export-name="Str::slug($typeTitle)">
                     <table class="ct-table">
                         <thead>
                             <tr>
                                 <th class="dt-noexport">Action</th>
                                 <th>PI Date</th>
                                 <th>PI No</th>
-                                <th>LC Number</th>
+                                <th>{{ $typeLabel }} Number</th>
                                 <th>Order</th>
-                                <th>Opening Bank</th>
+                                <th>{{ $type === 'lc' ? 'Opening Bank' : 'Bank' }}</th>
                                 <th>Container No</th>
                                 <th>Commodity</th>
                                 <th class="text-end">Inv. Amount</th>
@@ -66,7 +67,7 @@
                                 <th class="text-end">Bank Charges</th>
                                 <th class="text-end">USD Sell</th>
                                 <th>USD Sell Date</th>
-                                <th data-filter="Status">LC Status</th>
+                                <th data-filter="Status">Status</th>
                                 <th>Released Date</th>
                             </tr>
                         </thead>

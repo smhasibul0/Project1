@@ -24,6 +24,70 @@ class Lc extends Model
     protected $guarded = [];
 
     /**
+     * The ways of paying a supplier the register holds (key => short label).
+     *
+     * @return array<string, string>
+     */
+    public static function types(): array
+    {
+        return [
+            'lc' => 'LC',
+            'cad' => 'CAD',
+            'tt' => 'TT',
+        ];
+    }
+
+    /**
+     * Each type's full name (key => name).
+     *
+     * @return array<string, string>
+     */
+    public static function typeNames(): array
+    {
+        return [
+            'lc' => 'Letter of Credit',
+            'cad' => 'Cash Against Documents',
+            'tt' => 'Telegraphic Transfer',
+        ];
+    }
+
+    /**
+     * Each type's list title (key => title).
+     *
+     * @return array<string, string>
+     */
+    public static function typeTitles(): array
+    {
+        return [
+            'lc' => 'Letters of Credit',
+            'cad' => 'Cash Against Documents',
+            'tt' => 'Telegraphic Transfers',
+        ];
+    }
+
+    public function typeLabel(): string
+    {
+        return static::types()[$this->type ?? 'lc'] ?? strtoupper((string) $this->type);
+    }
+
+    public function typeName(): string
+    {
+        return static::typeNames()[$this->type ?? 'lc'] ?? $this->typeLabel();
+    }
+
+    /**
+     * The next free code for a type: LC0001, CAD0001, TT0001…
+     */
+    public static function nextCode(string $type): string
+    {
+        $prefix = strtoupper($type);
+        $last = static::where('lc_code', 'like', $prefix.'%')->orderByDesc('id')->value('lc_code');
+        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * The LC lifecycle statuses (key => label).
      *
      * @return array<string, string>
@@ -63,10 +127,17 @@ class Lc extends Model
     protected static function booted(): void
     {
         static::creating(function (Lc $lc) {
+            $lc->type ??= 'lc';
+
             if (empty($lc->lc_code)) {
-                $last = static::where('lc_code', 'like', 'LC%')->orderByDesc('id')->value('lc_code');
-                $next = $last ? ((int) substr($last, 2)) + 1 : 1;
-                $lc->lc_code = 'LC'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                $lc->lc_code = static::nextCode($lc->type);
+            }
+        });
+
+        // A record moved to another type takes that type's next code.
+        static::updating(function (Lc $lc) {
+            if ($lc->isDirty('type') && ! $lc->isDirty('lc_code')) {
+                $lc->lc_code = static::nextCode($lc->type);
             }
         });
     }

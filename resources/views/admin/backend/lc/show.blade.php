@@ -9,10 +9,10 @@
     $rate = fn ($value) => rtrim(rtrim(number_format((float) $value, 4), '0'), '.');
     $chargeRate = $lc->bankChargeRate();
     $chargeRateNote = match ($chargeRate['source']) {
-        'payments' => 'at the bank\'s rate on the LC payments',
+        'payments' => 'at the bank\'s rate on its payments',
         'sell_rate' => 'at the USD Sell Rate',
-        'estimate' => 'estimated at the day\'s rate — pay the LC or add a USD Sell Rate to fix it',
-        default => 'no dollar rate yet — not counted until the LC is paid or has a USD Sell Rate',
+        'estimate' => 'estimated at the day\'s rate — pay it or add a USD Sell Rate to fix it',
+        default => 'no dollar rate yet — not counted until it is paid or has a USD Sell Rate',
     };
 @endphp
 
@@ -20,30 +20,30 @@
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">LC {{ $lc->lc_code }} @if($lc->lc_number)<small class="text-muted">/ {{ $lc->lc_number }}</small>@endif</h4>
+                <h4 class="fs-18 fw-semibold m-0">{{ $lc->lc_code }} <span class="badge bg-primary-subtle text-primary fs-12 align-middle">{{ $lc->typeName() }}</span> @if($lc->lc_number)<small class="text-muted">/ {{ $lc->lc_number }}</small>@endif</h4>
                 <small class="text-muted">
                     @if($lc->order)
                         {{ $lc->order->order_no }} · {{ $lc->order->customer->name ?? '—' }}
                     @else
-                        Standalone LC — not linked to an order
+                        Standalone {{ $lc->typeLabel() }} — not linked to an order
                     @endif
                 </small>
             </div>
             <div class="text-end">
                 @can('lc.edit')<a href="{{ route('lc.edit', $lc->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
-                <a href="{{ route('lc.index') }}" class="btn btn-secondary btn-sm">Back</a>
+                <a href="{{ route('lc.index', $lc->type) }}" class="btn btn-secondary btn-sm">Back</a>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">LC &amp; Purchase Invoice</h6>
+                <h6 class="mb-0">{{ $lc->typeLabel() }} &amp; Purchase Invoice</h6>
                 <span class="badge bg-{{ $statusColors[$lc->lc_status] ?? 'secondary' }}">{{ $lc->statusLabel() }}</span>
             </div>
             <div class="card-body row g-3">
                 <div class="col-md-3"><small class="text-muted d-block">PI Date</small><strong>{{ $lc->pi_date?->format('d M Y') ?: '—' }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">PI No</small><strong>{{ $lc->pi_no ?: '—' }}</strong></div>
-                <div class="col-md-3"><small class="text-muted d-block">LC Number</small><strong>{{ $lc->lc_number ?: '—' }}</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">{{ $lc->typeLabel() }} Number</small><strong>{{ $lc->lc_number ?: '—' }}</strong></div>
                 <div class="col-md-3"><small class="text-muted d-block">PI Document</small>
                     @if($lc->pi_document)<a href="{{ asset('upload/lc/'.$lc->pi_document) }}" target="_blank"><i class="ri-attachment-line me-1"></i>View</a>@else<span>—</span>@endif
                 </div>
@@ -56,7 +56,7 @@
                     @endif
                 </div>
                 <div class="col-md-3"><small class="text-muted d-block">Shipper</small>{{ $lc->shipper ?: '—' }}</div>
-                <div class="col-md-3"><small class="text-muted d-block">Opening Bank</small>{{ $lc->opening_bank ?: '—' }}</div>
+                <div class="col-md-3"><small class="text-muted d-block">{{ $lc->type === 'lc' ? 'Opening Bank' : 'Bank' }}</small>{{ $lc->opening_bank ?: '—' }}</div>
                 <div class="col-md-3"><small class="text-muted d-block">Container No</small>{{ $lc->container_no ?: '—' }}</div>
 
                 <div class="col-md-3"><small class="text-muted d-block">Commodity</small>{{ $lc->commodity ?: '—' }}</div>
@@ -69,12 +69,12 @@
         {{-- Quick status update --}}
         @can('lc.update-status')
         <div class="card">
-            <div class="card-header"><h6 class="mb-0">Update LC Status</h6></div>
+            <div class="card-header"><h6 class="mb-0">Update Status</h6></div>
             <div class="card-body">
                 <form action="{{ route('lc.status', $lc->id) }}" method="POST" class="row g-2 align-items-end">
                     @csrf
                     <div class="col-md-4">
-                        <label class="form-label">LC Status</label>
+                        <label class="form-label">Status</label>
                         <select class="form-control" name="lc_status" required>
                             @foreach($statuses as $key => $label)
                                 <option value="{{ $key }}" @selected($lc->lc_status === $key)>{{ $label }}</option>
@@ -129,10 +129,10 @@
         @php $gainLoss = $lc->exchangeGainLoss(); @endphp
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0">LC Payments ({{ $lc->payments->count() }}) <small class="text-muted">— dollars sent; only the exchange gain/loss reaches the P&amp;L</small></h6>
+                <h6 class="mb-0">{{ $lc->typeLabel() }} Payments ({{ $lc->payments->count() }}) <small class="text-muted">— dollars sent; only the exchange gain/loss reaches the P&amp;L</small></h6>
                 @can('lc.payments.create')
                 @if($lc->usdDue() > 0)
-                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payLcModal"><i class="ri-money-dollar-circle-line me-1"></i> Pay LC</button>
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payLcModal"><i class="ri-money-dollar-circle-line me-1"></i> Pay {{ $lc->typeLabel() }}</button>
                 @endif
                 @endcan
             </div>
@@ -183,7 +183,7 @@
         {{-- LC charges (feed the order's cost/profit) --}}
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0">LC Charges ({{ $lc->costs->count() }}) <small class="text-muted">— added to the order's cost alongside bank charges</small></h6>
+                <h6 class="mb-0">{{ $lc->typeLabel() }} Charges ({{ $lc->costs->count() }}) <small class="text-muted">— added to the order's cost alongside bank charges</small></h6>
                 @can('lc.costs.create')
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addLcCostModal"><i class="ri-add-line me-1"></i> Add Charge</button>
                 @endcan
@@ -221,7 +221,7 @@
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr class="table-light fw-semibold"><td colspan="5">Total LC Cost to Order</td><td class="text-end">৳ {{ number_format($lc->lcCost(), 2) }}</td><td></td></tr>
+                            <tr class="table-light fw-semibold"><td colspan="5">Total {{ $lc->typeLabel() }} Cost to Order</td><td class="text-end">৳ {{ number_format($lc->lcCost(), 2) }}</td><td></td></tr>
                         </tfoot>
                     </table>
                 </div>
@@ -240,7 +240,7 @@
             <form action="{{ route('lc.cost.store', $lc->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Add LC Charge</h5>
+                    <h5 class="modal-title">Add {{ $lc->typeLabel() }} Charge</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body row g-3">
@@ -253,7 +253,7 @@
                     </div>
                     <div class="col-md-5">
                         <label class="form-label">Title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="title" required placeholder="e.g. LC opening charge, Amendment fee">
+                        <input type="text" class="form-control" name="title" required placeholder="e.g. {{ $lc->typeLabel() }} opening charge, Amendment fee">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Paid In</label>
@@ -316,7 +316,7 @@
             <form action="{{ route('lc.payment.store', $lc->id) }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Pay LC {{ $lc->lc_code }} <small class="text-muted">— ${{ number_format($lc->usdDue(), 2) }} due</small></h5>
+                    <h5 class="modal-title">Pay {{ $lc->lc_code }} <small class="text-muted">— ${{ number_format($lc->usdDue(), 2) }} due</small></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body row g-3">

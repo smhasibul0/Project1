@@ -5,13 +5,13 @@
     <div class="container-xxl">
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
-                <h4 class="fs-18 fw-semibold m-0">Edit LC {{ $lc->lc_code }}</h4>
-                <small class="text-muted">Update letter of credit</small>
+                <h4 class="fs-18 fw-semibold m-0">Edit {{ $lc->lc_code }}</h4>
+                <small class="text-muted">Purchase invoice paid by {{ strtolower($lc->typeName()) }}</small>
             </div>
             <div class="text-end">
                 <ol class="breadcrumb m-0 py-0">
                     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('lc.index') }}">LC</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('lc.index', $lc->type) }}">{{ $lc->typeLabel() }}</a></li>
                     <li class="breadcrumb-item active">Edit</li>
                 </ol>
             </div>

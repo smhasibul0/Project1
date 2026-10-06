@@ -16,27 +16,39 @@ use Illuminate\Support\Facades\DB;
 
 class LcController extends Controller
 {
-    public function index()
+    /**
+     * The list of one type — LCs, CADs or TTs.
+     */
+    public function index(?string $type = null)
     {
-        $lcs = Lc::with(['order', 'payments'])->latest()->get();
+        $type ??= 'lc';
+        $lcs = Lc::with(['order', 'payments'])->where('type', $type)->latest()->get();
 
         // Dollar bank charges with no bank rate behind them — estimated or not counted.
         $needsRate = $lcs->filter(fn (Lc $lc) => $lc->needsBankRate())->values();
 
-        return view('admin.backend.lc.lc', compact('lcs', 'needsRate'));
+        return view('admin.backend.lc.lc', [
+            'lcs' => $lcs,
+            'needsRate' => $needsRate,
+            'type' => $type,
+            'typeLabel' => Lc::types()[$type],
+            'typeTitle' => Lc::typeTitles()[$type],
+        ]);
     }
 
     public function create(Request $request)
     {
         $lc = null;
         $order = $request->filled('order_id') ? Order::find($request->input('order_id')) : null;
+        $type = array_key_exists((string) $request->input('type'), Lc::types()) ? $request->input('type') : 'lc';
 
-        return view('admin.backend.lc.create', array_merge($this->formData(), compact('lc', 'order')));
+        return view('admin.backend.lc.create', array_merge($this->formData(), compact('lc', 'order', 'type')));
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $data['type'] = $data['type'] ?? 'lc';
         $data['bank_charges'] = $this->bankCharges($data);
         $data['pi_document'] = $this->uploadDocument($request);
         $data['added_by'] = Auth::id();
@@ -44,7 +56,7 @@ class LcController extends Controller
         $lc = Lc::create($data);
         $lc->order?->recomputeFinancials();
 
-        return redirect()->route('lc.index')->with('success', 'LC created successfully.');
+        return redirect()->route('lc.index', $lc->type)->with('success', $lc->typeLabel().' '.$lc->lc_code.' created successfully.');
     }
 
     public function show($id)
@@ -73,6 +85,11 @@ class LcController extends Controller
         $data = $this->validated($request);
         $data['bank_charges'] = $this->bankCharges($data);
 
+        // Left out, the type stays as it is.
+        if (empty($data['type'])) {
+            unset($data['type']);
+        }
+
         if ($document = $this->uploadDocument($request)) {
             $data['pi_document'] = $document;
         }
@@ -86,7 +103,7 @@ class LcController extends Controller
         }
         $lc->order?->recomputeFinancials();
 
-        return redirect()->route('lc.index')->with('success', 'LC updated successfully.');
+        return redirect()->route('lc.index', $lc->type)->with('success', $lc->typeLabel().' '.$lc->lc_code.' updated successfully.');
     }
 
     public function destroy($id)
@@ -95,14 +112,14 @@ class LcController extends Controller
 
         // Its payments moved real money; they are reversed one by one, not dropped with it.
         if ($lc->payments()->exists()) {
-            return redirect()->back()->with('error', 'LC '.$lc->lc_code.' has payments — reverse them before deleting it.');
+            return redirect()->back()->with('error', $lc->lc_code.' has payments — reverse them before deleting it.');
         }
 
         $order = $lc->order;
         $lc->delete();
         $order?->recomputeFinancials();
 
-        return redirect()->back()->with('success', 'LC deleted successfully.');
+        return redirect()->back()->with('success', $lc->typeLabel().' '.$lc->lc_code.' deleted successfully.');
     }
 
     /**
@@ -128,7 +145,7 @@ class LcController extends Controller
 
         $lc->update($updates);
 
-        return redirect()->back()->with('success', 'LC status updated to '.$lc->statusLabel().'.');
+        return redirect()->back()->with('success', $lc->lc_code.' status updated to '.$lc->statusLabel().'.');
     }
 
     /**
@@ -194,7 +211,7 @@ class LcController extends Controller
                     'credit' => 0,
                     'debit' => $data['amount'],
                     'running_balance' => $account->fresh()->balance,
-                    'description' => $data['title'].' for LC '.$lc->lc_code
+                    'description' => $data['title'].' for '.$lc->lc_code
                         .($data['usd_amount'] ? ' — $'.number_format((float) $data['usd_amount'], 2).' @ '.$this->rate($data['usd_rate']) : ''),
                     'reference' => $lc->lc_number ?: $lc->lc_code,
                     'note' => $data['note'] ?? null,
@@ -210,7 +227,7 @@ class LcController extends Controller
             $lc->order?->recomputeFinancials();
         });
 
-        return redirect()->back()->with('success', 'LC charge of '.number_format((float) $data['amount'], 2).' recorded.');
+        return redirect()->back()->with('success', $lc->typeLabel().' charge of '.number_format((float) $data['amount'], 2).' recorded.');
     }
 
     /**
@@ -236,7 +253,7 @@ class LcController extends Controller
             $lc->order?->recomputeFinancials();
         });
 
-        return redirect()->back()->with('success', 'LC charge deleted.');
+        return redirect()->back()->with('success', $lc->typeLabel().' charge deleted.');
     }
 
     /**
@@ -254,7 +271,7 @@ class LcController extends Controller
         $lc = Lc::with('payments')->findOrFail($id);
 
         if (! $lc->isDollar()) {
-            return redirect()->back()->with('error', 'Only LCs in US dollars are paid here.');
+            return redirect()->back()->with('error', 'Only '.$lc->typeLabel().'s in US dollars are paid here.');
         }
 
         $data = $request->validate([
@@ -269,7 +286,7 @@ class LcController extends Controller
 
         if ((float) $data['usd_amount'] > $lc->usdDue() + 0.005) {
             return redirect()->back()->withInput()
-                ->with('error', 'Only $'.number_format($lc->usdDue(), 2).' is still due on LC '.$lc->lc_code.'.');
+                ->with('error', 'Only $'.number_format($lc->usdDue(), 2).' is still due on '.$lc->lc_code.'.');
         }
 
         $payment = DB::transaction(function () use ($lc, $data) {
@@ -286,7 +303,7 @@ class LcController extends Controller
                 'credit' => 0,
                 'debit' => $payment->bdt_amount,
                 'running_balance' => $account->fresh()->balance,
-                'description' => 'LC payment '.$lc->lc_code.' — $'.number_format((float) $payment->usd_amount, 2).' @ '.$this->rate($payment->bank_rate),
+                'description' => $lc->typeLabel().' payment '.$lc->lc_code.' — $'.number_format((float) $payment->usd_amount, 2).' @ '.$this->rate($payment->bank_rate),
                 'reference' => $lc->lc_number ?: $lc->lc_code,
                 'payment_details' => $data['reference'] ?? null,
                 'note' => $data['note'] ?? null,
@@ -331,7 +348,7 @@ class LcController extends Controller
             $lc->order?->recomputeFinancials();
         });
 
-        return redirect()->back()->with('success', 'LC payment of $'.number_format((float) $payment->usd_amount, 2).' reversed.');
+        return redirect()->back()->with('success', $lc->typeLabel().' payment of $'.number_format((float) $payment->usd_amount, 2).' reversed.');
     }
 
     /**
@@ -379,6 +396,7 @@ class LcController extends Controller
         return [
             'orders' => Order::with('customer')->latest()->get(),
             'statuses' => Lc::statuses(),
+            'types' => Lc::typeNames(),
         ];
     }
 
@@ -388,6 +406,7 @@ class LcController extends Controller
     private function validated(Request $request): array
     {
         return $request->validate([
+            'type' => 'nullable|in:'.implode(',', array_keys(Lc::types())),
             'order_id' => 'nullable|exists:orders,id',
             'shipper' => 'nullable|string|max:255',
             'pi_date' => 'nullable|date',

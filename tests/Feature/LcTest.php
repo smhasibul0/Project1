@@ -32,7 +32,7 @@ test('an LC is created against an order with auto code and computed bank charges
         'released_date' => '2026-02-10',
     ]);
 
-    $response->assertRedirect(route('lc.index'));
+    $response->assertRedirect(route('lc.index', 'lc'));
 
     $lc = Lc::firstOrFail();
     expect($lc->lc_code)->toBe('LC0001');
@@ -59,7 +59,7 @@ test('an LC can be created standalone without an order', function () {
         'net_amount_received' => 4900,
     ]);
 
-    $response->assertRedirect(route('lc.index'));
+    $response->assertRedirect(route('lc.index', 'lc'));
 
     $lc = Lc::firstOrFail();
     expect($lc->order_id)->toBeNull();

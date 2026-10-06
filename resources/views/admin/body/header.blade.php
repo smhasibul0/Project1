@@ -137,10 +137,14 @@ window.__adminSearch = [
     { l: 'Packing Types', i: 'ri-archive-line', u: '{{ route('packing.types') }}', k: 'packing carton' },
     @endcan
     @can('lc.view')
-    { l: 'LC', i: 'ri-bank-card-line', u: '{{ route('lc.index') }}', k: 'letter of credit' },
+    { l: 'LC', i: 'ri-bank-card-line', u: '{{ route('lc.index', 'lc') }}', k: 'letter of credit lc management' },
+    { l: 'CAD', i: 'ri-bank-card-line', u: '{{ route('lc.index', 'cad') }}', k: 'cash against documents lc management' },
+    { l: 'TT', i: 'ri-bank-card-line', u: '{{ route('lc.index', 'tt') }}', k: 'telegraphic transfer lc management' },
     @endcan
     @can('lc.create')
-    { l: 'Add LC', i: 'ri-add-line', u: '{{ route('lc.create') }}', k: 'new lc' },
+    { l: 'Add LC', i: 'ri-add-line', u: '{{ route('lc.create', ['type' => 'lc']) }}', k: 'new lc' },
+    { l: 'Add CAD', i: 'ri-add-line', u: '{{ route('lc.create', ['type' => 'cad']) }}', k: 'new cad cash against documents' },
+    { l: 'Add TT', i: 'ri-add-line', u: '{{ route('lc.create', ['type' => 'tt']) }}', k: 'new tt telegraphic transfer' },
     @endcan
     @can('containers.view')
     { l: 'Containers', i: 'ri-ship-line', u: '{{ route('container.index') }}', k: 'shipment container' },

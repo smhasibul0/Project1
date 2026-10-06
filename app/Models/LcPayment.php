@@ -71,11 +71,11 @@ class LcPayment extends Model
     }
 
     /**
-     * "$10,000.00 @ 123.10 — LC LC0005".
+     * "$10,000.00 @ 123.1 — LC0005".
      */
     public function activityLabel(): string
     {
         return '$'.number_format((float) $this->usd_amount, 2).' @ '.rtrim(rtrim(number_format((float) $this->bank_rate, 4), '0'), '.')
-            .($this->lc ? ' — LC '.$this->lc->lc_code : '');
+            .($this->lc ? ' — '.$this->lc->lc_code : '');
     }
 }

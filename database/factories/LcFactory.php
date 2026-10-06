@@ -23,6 +23,7 @@ class LcFactory extends Factory
 
         return [
             'order_id' => Order::factory(),
+            'type' => 'lc',
             'pi_date' => now()->toDateString(),
             'pi_no' => 'RTCHW-'.fake()->unique()->numberBetween(1, 999).'/2026',
             'lc_number' => (string) fake()->numerify('93261#####'),
