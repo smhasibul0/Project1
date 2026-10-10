@@ -69,7 +69,8 @@
                                             @endcan
                                             <li><a class="dropdown-item" href="{{ route('order.show', $o->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
                                             @can('orders.invoice')
-                                            <li><a class="dropdown-item" href="{{ route('order.invoice', $o->id) }}" target="_blank"><i class="ri-file-text-line me-2"></i>Invoice</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('order.invoice', $o->id) }}" target="_blank"><i class="ri-printer-line me-2"></i>Print Invoice</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('order.invoice.pdf', $o->id) }}"><i class="ri-file-pdf-2-line me-2"></i>Download Invoice PDF</a></li>
                                             @endcan
                                             @can('orders.edit')
                                             <li><a class="dropdown-item" href="{{ route('order.edit', $o->id) }}"><i class="ri-edit-line me-2"></i>Edit</a></li>

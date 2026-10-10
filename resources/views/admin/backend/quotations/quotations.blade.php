@@ -53,7 +53,8 @@
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ route('quotation.show', $q->id) }}"><i class="ri-eye-line me-2"></i>View</a></li>
                                             @can('quotations.print')
-                                            <li><a class="dropdown-item" href="{{ route('quotation.print', $q->id) }}" target="_blank"><i class="ri-file-pdf-2-line me-2"></i>Export PDF</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('quotation.print', $q->id) }}" target="_blank"><i class="ri-printer-line me-2"></i>Print</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('quotation.pdf', $q->id) }}"><i class="ri-file-pdf-2-line me-2"></i>Download PDF</a></li>
                                             @endcan
                                             @can('quotations.edit')
                                             <li><a class="dropdown-item" href="{{ route('quotation.edit', $q->id) }}"><i class="ri-edit-line me-2"></i>{{ $q->status === 'requested' ? 'Respond' : 'Edit' }}</a></li>

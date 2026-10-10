@@ -18,7 +18,10 @@
             </div>
             <div class="text-end">
                 @can('orders.label')<a href="{{ route('order.label', $order->id) }}" target="_blank" class="btn btn-dark btn-sm"><i class="ri-qr-code-line me-1"></i> QR Labels</a>@endcan
-                @can('orders.invoice')<a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-file-text-line me-1"></i> Invoice</a>@endcan
+                @can('orders.invoice')
+                <a href="{{ route('order.invoice', $order->id) }}" target="_blank" class="btn btn-success btn-sm"><i class="ri-printer-line me-1"></i> Print Invoice</a>
+                <a href="{{ route('order.invoice.pdf', $order->id) }}" class="btn btn-outline-success btn-sm"><i class="ri-file-pdf-2-line me-1"></i> Invoice PDF</a>
+                @endcan
                 @can('orders.edit')<a href="{{ route('order.edit', $order->id) }}" class="btn btn-primary btn-sm"><i class="ri-edit-line me-1"></i> Edit</a>@endcan
                 <a href="{{ route('orders.index') }}" class="btn btn-secondary btn-sm">Back</a>
             </div>

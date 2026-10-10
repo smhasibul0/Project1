@@ -233,6 +233,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/quotations/parse-packing-list', [QuotationController::class, 'parsePackingList'])->middleware('can:quotations.create')->name('quotation.parse.packing');
     Route::get('/quotations/{id}', [QuotationController::class, 'show'])->middleware('can:quotations.view')->name('quotation.show');
     Route::get('/quotations/{id}/print', [QuotationController::class, 'print'])->middleware('can:quotations.print')->name('quotation.print');
+    Route::get('/quotations/{id}/pdf', [QuotationController::class, 'pdf'])->middleware('can:quotations.print')->name('quotation.pdf');
     Route::get('/quotations/{id}/edit', [QuotationController::class, 'edit'])->middleware('can:quotations.edit')->name('quotation.edit');
     Route::put('/quotations/{id}', [QuotationController::class, 'update'])->middleware('can:quotations.edit')->name('quotation.update');
     Route::post('/quotations/{id}/deny', [QuotationController::class, 'deny'])->middleware('can:quotations.deny')->name('quotation.deny');
@@ -263,6 +264,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->middleware('can:orders.delete')->name('order.delete');
     Route::post('/orders/{id}/payment', [OrderController::class, 'storePayment'])->middleware('can:orders.payments.create')->name('order.payment');
     Route::get('/orders/{id}/invoice', [OrderController::class, 'invoice'])->middleware('can:orders.invoice')->name('order.invoice');
+    Route::get('/orders/{id}/invoice/pdf', [OrderController::class, 'invoicePdf'])->middleware('can:orders.invoice')->name('order.invoice.pdf');
     Route::get('/orders/{id}/label', [OrderController::class, 'label'])->middleware('can:orders.label')->name('order.label');
     Route::post('/orders/{id}/status', [OrderController::class, 'updateStatus'])->middleware('can:orders.update-status')->name('order.status');
 });

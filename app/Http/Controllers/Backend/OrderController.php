@@ -19,10 +19,12 @@ use App\Models\Warehouse;
 use App\Support\DollarLedger;
 use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
+use App\Support\PdfDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class OrderController extends Controller
 {
@@ -186,12 +188,33 @@ class OrderController extends Controller
      */
     public function invoice($id)
     {
+        return view('admin.backend.orders.invoice', $this->invoiceData($id));
+    }
+
+    /**
+     * The invoice as a PDF file to download.
+     */
+    public function invoicePdf($id): Response
+    {
+        $data = $this->invoiceData($id);
+
+        return PdfDocument::download('admin.backend.orders.invoice', $data, 'Invoice '.$data['order']->order_no.'.pdf');
+    }
+
+    /**
+     * @return array{order: Order, company: CompanySetting, amountWords: string}
+     */
+    private function invoiceData($id): array
+    {
         $order = Order::with(['customer', 'items', 'containers'])->findOrFail($id);
         $company = CompanySetting::current();
         $currency = $company->currency ?: 'BDT';
-        $amountWords = NumberToWords::make((float) $order->total_amount, $currency === 'BDT' ? 'Taka' : $currency);
 
-        return view('admin.backend.orders.invoice', compact('order', 'company', 'amountWords'));
+        return [
+            'order' => $order,
+            'company' => $company,
+            'amountWords' => NumberToWords::make((float) $order->total_amount, $currency === 'BDT' ? 'Taka' : $currency),
+        ];
     }
 
     public function update(Request $request, $id)

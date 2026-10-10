@@ -14,10 +14,12 @@ use App\Models\TransportationMode;
 use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
 use App\Support\PackingListParser;
+use App\Support\PdfDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class QuotationController extends Controller
 {
@@ -103,16 +105,34 @@ class QuotationController extends Controller
      */
     public function print($id)
     {
+        return view('admin.backend.quotations.print', $this->printData($id));
+    }
+
+    /**
+     * The customer's copy as a PDF file to download.
+     */
+    public function pdf($id): Response
+    {
+        $data = $this->printData($id);
+
+        return PdfDocument::download('admin.backend.quotations.print', $data, 'Quotation '.$data['quotation']->quotation_no.'.pdf');
+    }
+
+    /**
+     * @return array{quotation: Quotation, company: CompanySetting, amountWords: string}
+     */
+    private function printData($id): array
+    {
         $quotation = Quotation::with(['customer', 'transportationMode', 'items.packingType'])
             ->findOrFail($id);
         $company = CompanySetting::current();
         $currency = $company->currency ?: 'BDT';
 
-        return view('admin.backend.quotations.print', [
+        return [
             'quotation' => $quotation,
             'company' => $company,
             'amountWords' => NumberToWords::make((float) $quotation->customer_charge, $currency === 'BDT' ? 'Taka' : $currency),
-        ]);
+        ];
     }
 
     public function edit($id)

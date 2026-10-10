@@ -42,7 +42,10 @@
                 @endif
                 @can('quotations.print')
                 <a href="{{ route('quotation.print', $quotation->id) }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                    <i class="ri-file-pdf-2-line me-1"></i> Export PDF
+                    <i class="ri-printer-line me-1"></i> Print
+                </a>
+                <a href="{{ route('quotation.pdf', $quotation->id) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="ri-file-pdf-2-line me-1"></i> Download PDF
                 </a>
                 @endcan
                 <a href="{{ route('quotations.index') }}" class="btn btn-secondary btn-sm">Back</a>

@@ -4,19 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quotation {{ $quotation->quotation_no }}</title>
-    @php $accent = $company->primary_color ?: '#1e40af'; $cur = $company->currency_symbol ?: '৳'; @endphp
+    @php $accent = $company->primary_color ?: '#1e40af'; $cur = $company->currency_symbol ?: '৳'; $pdf = $pdf ?? false; @endphp
     {{-- The customer's copy. Freight cost, duty, additional costs and profit are
          deliberately absent — this page must never show what the shipment costs us. --}}
     <style>
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; background: #eceff3; margin: 0; font-size: 13px; }
+        body { font-family: {!! $pdf ? "'DejaVu Sans', sans-serif" : 'Arial, Helvetica, sans-serif' !!}; color: #1a1a1a; background: #eceff3; margin: 0; font-size: {{ $pdf ? '11px' : '13px' }}; }
         .toolbar { max-width: 820px; margin: 1rem auto 0; display: flex; gap: .5rem; justify-content: flex-end; }
         .btn { border: 0; border-radius: 6px; padding: .5rem 1.1rem; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 13px; }
         .btn-print { background: {{ $accent }}; color: #fff; }
         .btn-back { background: #64748b; color: #fff; }
+        .btn-download { background: #fff; color: {{ $accent }}; border: 1px solid {{ $accent }}; }
         .sheet { max-width: 820px; margin: 1rem auto 3rem; background: #fff; padding: 40px 44px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-        .top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .brand { display: flex; gap: 14px; align-items: center; }
+        .top td { vertical-align: top; padding: 0; }
+        .top td.word { text-align: right; }
+        .brand td { vertical-align: middle; padding: 0 14px 0 0; }
         .brand img { max-height: 60px; max-width: 120px; }
         .company-name { font-size: 24px; font-weight: 800; color: {{ $accent }}; line-height: 1.1; }
         .doc-word { font-size: 30px; font-weight: 800; color: #9aa3af; letter-spacing: 1px; }
@@ -43,9 +45,23 @@
         .note { margin-top: 22px; font-size: 12px; color: #333; white-space: pre-line; line-height: 1.5; }
         .terms { margin-top: 18px; font-size: 12px; }
         .terms .label { font-weight: 700; margin-bottom: 4px; }
-        .sign { margin-top: 55px; display: flex; justify-content: space-between; font-size: 12px; }
-        .sign div { border-top: 1px solid #6b7280; padding-top: 5px; width: 210px; text-align: center; }
+        .sign { margin-top: 55px; font-size: 12px; }
+        .sign td { padding: 0; }
+        .sign td.right { text-align: right; }
+        .sign div { border-top: 1px solid #6b7280; padding-top: 5px; width: 210px; text-align: center; display: inline-block; }
         .footer { margin-top: 40px; text-align: center; color: #444; font-size: 12px; white-space: pre-line; line-height: 1.5; }
+        @if($pdf)
+        /* A4 holds the whole document when the spacing is a little tighter. */
+        .company-meta { margin-top: 6px; line-height: 1.35; }
+        .bill-to, .quote-to { margin-top: 14px; }
+        .items { margin-top: 12px; }
+        .items th, .items td { padding: 4px 6px; }
+        .rate-box { margin-top: 10px; }
+        .rate-box th, .rate-box td { padding: 5px 8px; }
+        .inword, .terms { margin-top: 10px; }
+        .sign { margin-top: 36px; }
+        .footer { margin-top: 22px; }
+        @endif
         @media print {
             body { background: #fff; }
             .toolbar { display: none; }
@@ -54,25 +70,30 @@
     </style>
 </head>
 <body>
+    @unless($pdf)
     <div class="toolbar">
         <a href="{{ route('quotation.show', $quotation->id) }}" class="btn btn-back">← Back</a>
-        <button class="btn btn-print" onclick="window.print()">🖨 Print / Save PDF</button>
+        <a href="{{ route('quotation.pdf', $quotation->id) }}" class="btn btn-download">⬇ Download PDF</a>
+        <button class="btn btn-print" onclick="window.print()">🖨 Print</button>
     </div>
+    @endunless
 
     <div class="sheet">
-        <div class="top">
-            <div class="brand">
-                @if($company->logo && file_exists(public_path('upload/company/'.$company->logo)))
-                    <img src="{{ asset('upload/company/'.$company->logo) }}" alt="logo">
-                @endif
-                <div class="company-name">{{ $company->company_name }}</div>
-            </div>
-            <div class="doc-word">QUOTATION</div>
-        </div>
+        <table class="top">
+            <tr>
+                <td>
+                    <table class="brand" style="width:auto"><tr>
+                        @if($company->logo && file_exists(public_path('upload/company/'.$company->logo)))
+                        <td><img src="{{ $pdf ? public_path('upload/company/'.$company->logo) : asset('upload/company/'.$company->logo) }}" alt="logo"></td>
+                        @endif
+                        <td><div class="company-name">{{ $company->company_name }}</div></td>
+                    </tr></table>
+                </td>
+                <td class="word"><div class="doc-word">QUOTATION</div></td>
+            </tr>
+        </table>
 
-        <div class="company-meta">{{ $company->address }}@if($company->phone)
-Mobil: {{ $company->phone }}@endif @if($company->email)
-Email: {{ $company->email }}@endif</div>
+        <div class="company-meta">{{ $company->address }}@if($company->phone){{ "\n" }}Mobil: {{ $company->phone }}@endif @if($company->email){{ "\n" }}Email: {{ $company->email }}@endif</div>
 
         <table class="meta-table">
             <tr><th>QUOTATION #</th><th>DATE</th></tr>
@@ -94,7 +115,7 @@ Email: {{ $company->email }}@endif</div>
 
         <div class="quote-to">
             <div class="label">QUOTATION FOR</div>
-            <div class="line"><b>Name:</b> {{ $quotation->customer->business_name ?: $quotation->customer->name ?? '' }}</div>
+            <div class="line"><b>Name:</b> {{ $quotation->customer?->business_name ?: ($quotation->customer?->name ?? '') }}</div>
             <div class="line"><b>Address:</b> {{ collect([$quotation->customer->address_line_1 ?? null, $quotation->customer->city ?? null, $quotation->customer->country ?? null])->filter()->implode(', ') }}</div>
             <div class="line"><b>Mobile:</b> {{ $quotation->customer->mobile ?? '' }}</div>
             <div class="line"><b>Email:</b> {{ $quotation->customer->email ?? '' }}</div>
@@ -164,10 +185,12 @@ Email: {{ $company->email }}@endif</div>
         <div class="note"><b>Remarks:</b> {{ $quotation->remarks }}</div>
         @endif
 
-        <div class="sign">
-            <div>Customer's Signature</div>
-            <div>For {{ $company->company_name }}</div>
-        </div>
+        <table class="sign">
+            <tr>
+                <td><div>Customer's Signature</div></td>
+                <td class="right"><div>For {{ $company->company_name }}</div></td>
+            </tr>
+        </table>
 
         @if($company->footer_note)
         <div class="footer">{{ $company->footer_note }}</div>
