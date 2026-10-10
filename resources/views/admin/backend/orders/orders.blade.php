@@ -163,6 +163,7 @@
                                 <x-account-options :accounts="$accounts" />
                             </select>
                         </div>
+                        <x-currency-choice direction="in" />
                         <div class="col-md-6">
                             <label class="form-label">Attach Document</label>
                             <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">

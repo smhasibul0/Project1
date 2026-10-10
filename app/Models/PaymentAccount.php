@@ -14,7 +14,7 @@ class PaymentAccount extends Model
     use RecordsActivity;
 
     /** Worked out by the app, so a recalculation is never logged as somebody's edit. */
-    protected array $activityIgnore = ['balance'];
+    protected array $activityIgnore = ['balance', 'usd_balance', 'usd_cost'];
 
     protected $guarded = [];
 
@@ -25,6 +25,8 @@ class PaymentAccount extends Model
     {
         return [
             'balance' => 'decimal:2',
+            'usd_balance' => 'decimal:2',
+            'usd_cost' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -45,11 +47,18 @@ class PaymentAccount extends Model
     }
 
     /**
-     * Dollars sent through this account — LC payments and dollar charges. The taka
-     * balance already went down by their value; this keeps count of the dollars.
+     * The dollars coming into and going out of the account's dollar balance.
      */
-    public function usdSent(): float
+    public function dollarTransactions(): HasMany
     {
-        return round((float) $this->transactions()->where('type', 'debit')->sum('usd_amount'), 2);
+        return $this->hasMany(DollarTransaction::class, 'payment_account_id');
+    }
+
+    /**
+     * What the dollars the account holds cost, per dollar — what spending them is costed at.
+     */
+    public function averageUsdRate(): ?float
+    {
+        return (float) $this->usd_balance > 0 ? round((float) $this->usd_cost / (float) $this->usd_balance, 4) : null;
     }
 }

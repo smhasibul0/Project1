@@ -188,7 +188,7 @@
                                 <td>{{ $c->cost_date?->format('d M Y') ?: '—' }}</td>
                                 <td>{{ $c->paymentAccount->name ?? '—' }}</td>
                                 <td>@if($c->attachment)<a href="{{ asset('upload/containers/'.$c->attachment) }}" target="_blank"><i class="ri-attachment-line"></i></a>@else—@endif</td>
-                                <td class="text-end">৳ {{ number_format($c->amount, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($c->amount, 2) }}@if($c->dollarNote())<small class="d-block text-muted">{{ $c->dollarNote() }}</small>@endif</td>
                                 <td class="text-end">
                                     @can('containers.costs.delete')
                                     <form action="{{ route('container.cost.delete', [$container->id, $c->id]) }}" method="POST" class="m-0">
@@ -387,6 +387,7 @@
                             <x-account-options :accounts="$accounts" />
                         </select>
                     </div>
+                    <x-currency-choice direction="out" />
                     <div class="col-md-6">
                         <label class="form-label">Attach Document</label>
                         <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasDollarEntries;
 use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderPayment extends Model
 {
+    use HasDollarEntries;
     use RecordsActivity;
 
     /** Its history shows on the record it belongs to. */

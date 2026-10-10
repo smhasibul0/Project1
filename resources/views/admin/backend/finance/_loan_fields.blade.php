@@ -63,6 +63,10 @@
         <small class="text-muted">{{ $accountHint }}</small>
         @endif
     </div>
+    @unless($loan)
+    {{-- Borrowed dollars come into the account; lent ones go out of its dollars. --}}
+    <x-currency-choice :direction="$isBorrowed ? 'in' : 'out'" amount-field="principal" />
+    @endunless
     <div class="col-md-6">
         <label class="form-label">Attachment</label>
         <input type="file" class="form-control" name="attachment">

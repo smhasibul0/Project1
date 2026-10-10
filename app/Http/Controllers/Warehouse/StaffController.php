@@ -8,6 +8,7 @@ use App\Models\StaffSalaryPayment;
 use App\Models\Transaction;
 use App\Models\WarehouseStaff;
 use App\Support\CurrentWarehouse;
+use App\Support\DollarLedger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -188,24 +189,31 @@ class StaffController extends Controller
     {
         $staff = $this->findStaff($id);
 
-        $data = $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'salary_month' => 'required|date_format:Y-m',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => DollarLedger::amountRule(),
             'payment_date' => 'required|date',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,jpeg,jpg,png,doc,docx|max:4096',
-        ]);
-
-        // Staff with a set salary can't be overpaid for a month; ad-hoc staff
-        // (no monthly salary) can receive any amount.
-        if ((float) $staff->monthly_salary > 0 && (float) $data['amount'] > $staff->dueForMonth($data['salary_month']) + 0.005) {
-            throw ValidationException::withMessages([
-                'amount' => 'Payment exceeds the remaining due of '.number_format($staff->dueForMonth($data['salary_month']), 2).' for '.$data['salary_month'].'.',
-            ]);
-        }
+        ]));
 
         DB::transaction(function () use ($staff, $data, $request) {
+            // Staff with a set salary can't be overpaid for a month; ad-hoc staff
+            // (no monthly salary) can receive any amount. Paid in dollars, the
+            // salary is what those dollars cost the account.
+            $hasSalary = (float) $staff->monthly_salary > 0;
+            $inDollars = DollarLedger::inDollars($data);
+            if ($inDollars) {
+                $data['amount'] = $hasSalary
+                    ? DollarLedger::costUpTo((int) $data['payment_account_id'], (float) $data['usd_amount'], $staff->dueForMonth($data['salary_month']))
+                    : DollarLedger::costOf((int) $data['payment_account_id'], (float) $data['usd_amount']);
+            } elseif ($hasSalary && (float) $data['amount'] > $staff->dueForMonth($data['salary_month']) + 0.005) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Payment exceeds the remaining due of '.number_format($staff->dueForMonth($data['salary_month']), 2).' for '.$data['salary_month'].'.',
+                ]);
+            }
+
             $attachment = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -228,7 +236,14 @@ class StaffController extends Controller
                 'added_by' => Auth::id(),
             ]);
 
-            if (! empty($data['payment_account_id'])) {
+            if ($inDollars) {
+                DollarLedger::spend((int) $data['payment_account_id'], (float) $data['usd_amount'], 'staff_salary', [
+                    'entry_date' => $payment->payment_date,
+                    'description' => 'Salary '.$data['salary_month'].' — '.$staff->name,
+                    'reference' => $staff->name,
+                    'note' => $data['note'] ?? null,
+                ], $payment);
+            } elseif (! empty($data['payment_account_id'])) {
                 $account = PaymentAccount::findOrFail($data['payment_account_id']);
                 $account->decrement('balance', (float) $data['amount']);
                 $account->transactions()->create([
@@ -258,7 +273,8 @@ class StaffController extends Controller
         $payment = $staff->salaryPayments()->findOrFail($paymentId);
 
         DB::transaction(function () use ($payment) {
-            if ($payment->payment_account_id) {
+            // Paid in dollars, they go back to the account; otherwise its taka does.
+            if ($payment->payment_account_id && ! DollarLedger::reverseFor($payment)) {
                 $account = PaymentAccount::find($payment->payment_account_id);
                 if ($account) {
                     $account->increment('balance', (float) $payment->amount);

@@ -115,7 +115,6 @@ test('a dollar CAD is paid like an LC and named as a CAD', function () {
         'paid_on' => '2026-10-01',
         'payment_account_id' => $account->id,
         'usd_amount' => 5000,
-        'day_rate' => 122,
         'bank_rate' => 122.5,
     ])->assertSessionHas('success');
 

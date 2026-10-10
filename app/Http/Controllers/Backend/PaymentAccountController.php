@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountType;
+use App\Models\DollarTransaction;
+use App\Models\ExchangeRate;
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
+use App\Support\DollarLedger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +20,7 @@ class PaymentAccountController extends Controller
 {
     public function index()
     {
-        $accounts = PaymentAccount::with(['accountType', 'addedBy'])
-            ->withSum(['transactions as usd_sent' => fn ($query) => $query->where('type', 'debit')], 'usd_amount')
-            ->latest()
-            ->get();
+        $accounts = PaymentAccount::with(['accountType', 'addedBy'])->latest()->get();
         $accountTypes = AccountType::all();
 
         return view('admin.backend.payment_accounts.payment_accounts', compact('accounts', 'accountTypes'));
@@ -105,18 +105,45 @@ class PaymentAccountController extends Controller
         // Accounts available as transfer source/destination in the edit modal.
         $accounts = PaymentAccount::where('is_active', 1)->orderBy('name')->get();
 
-        return view('admin.backend.payment_accounts.account_book', compact('account', 'transactions', 'accounts'));
+        // The account's dollars, oldest first with the balance after each, shown newest first.
+        $usdBalance = 0.0;
+        $dollarEntries = $account->dollarTransactions()->with('addedBy')->orderBy('entry_date')->orderBy('id')->get()
+            ->each(function (DollarTransaction $entry) use (&$usdBalance) {
+                $usdBalance = round($usdBalance + ($entry->isIn() ? 1 : -1) * (float) $entry->usd_amount, 2);
+                $entry->balance_after = $usdBalance;
+            })
+            ->reverse()
+            ->values();
+
+        return view('admin.backend.payment_accounts.account_book', [
+            'account' => $account,
+            'transactions' => $transactions,
+            'accounts' => $accounts,
+            'dollarEntries' => $dollarEntries,
+            'dayRate' => ExchangeRate::forDate(),
+        ]);
     }
 
     public function deposit(Request $request)
     {
-        $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'account_id' => 'required|exists:payment_accounts,id',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => DollarLedger::amountRule(),
             'deposit_date' => 'required|date',
-        ]);
+        ], 'account_id', withRate: true));
 
         $account = PaymentAccount::findOrFail($request->account_id);
+
+        // Dollars paid in are kept as dollars, costing the rate given.
+        if (DollarLedger::inDollars($data)) {
+            DB::transaction(fn () => DollarLedger::receive($account, (float) $data['usd_amount'], (float) $data['usd_rate'], 'deposit', [
+                'entry_date' => $data['deposit_date'],
+                'description' => 'Dollars deposited',
+                'note' => $request->note,
+            ]));
+
+            return back()->with('success', '$'.number_format((float) $data['usd_amount'], 2).' deposited into '.$account->name.'.');
+        }
         $account->increment('balance', $request->amount);
 
         // Log transaction
@@ -139,13 +166,23 @@ class PaymentAccountController extends Controller
 
     public function fundTransfer(Request $request)
     {
-        $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'from_account_id' => 'required|exists:payment_accounts,id',
             'to_account_id' => 'required|exists:payment_accounts,id|different:from_account_id',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => DollarLedger::amountRule(),
             'transfer_date' => 'required|date',
             'document' => 'nullable|file|max:5120|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png',
-        ]);
+        ], 'from_account_id'));
+
+        // Dollars move as dollars, keeping what they cost.
+        if (DollarLedger::inDollars($data)) {
+            DB::transaction(fn () => DollarLedger::transfer((int) $data['from_account_id'], (int) $data['to_account_id'], (float) $data['usd_amount'], [
+                'entry_date' => $data['transfer_date'],
+                'note' => $request->note,
+            ]));
+
+            return back()->with('success', '$'.number_format((float) $data['usd_amount'], 2).' transferred.');
+        }
 
         DB::transaction(function () use ($request) {
             $from = PaymentAccount::lockForUpdate()->findOrFail($request->from_account_id);

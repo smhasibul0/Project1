@@ -180,6 +180,7 @@
                             </select>
                             <small class="text-muted">Choosing an account deducts the paid amount from its balance.</small>
                         </div>
+                        <x-currency-choice direction="out" amount-field="payment_amount" />
                         <div class="col-md-6">
                             <label class="form-label">Payment note</label>
                             <textarea class="form-control" name="payment_note" rows="1"></textarea>
@@ -245,7 +246,7 @@
                                 <td>{{ $p->paid_on?->format('d M Y') }}</td>
                                 <td>{{ $p->method ?: '—' }}</td>
                                 <td>{{ $p->paymentAccount->name ?? '—' }}</td>
-                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}@if($p->dollarNote())<small class="d-block text-muted">{{ $p->dollarNote() }}</small>@endif</td>
                                 <td>{{ $p->note ?: '—' }}</td>
                             </tr>
                             @endforeach
@@ -361,6 +362,7 @@
                                 <x-account-options :accounts="$accounts" />
                             </select>
                         </div>
+                        <x-currency-choice direction="out" />
                         <div class="col-md-6">
                             <label class="form-label">Payment note</label>
                             <textarea class="form-control" name="note" rows="1"></textarea>
@@ -404,7 +406,7 @@
                                 <td>{{ $p->paid_on?->format('d M Y') }}</td>
                                 <td>{{ $p->method ?: '—' }}</td>
                                 <td>{{ $p->paymentAccount->name ?? '—' }}</td>
-                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}@if($p->dollarNote())<small class="d-block text-muted">{{ $p->dollarNote() }}</small>@endif</td>
                                 <td>{{ $p->note ?: '—' }}</td>
                                 <td class="text-end">
                                     @can('warehouse.expenses.payments.delete')

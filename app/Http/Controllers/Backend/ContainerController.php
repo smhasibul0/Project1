@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
 use App\Models\TransportationMode;
+use App\Support\DollarLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class ContainerController extends Controller
     {
         $container = Container::with([
             'orders.customer', 'orders.items', 'orders.lcs',
-            'costs.category', 'costs.paymentAccount', 'documents',
+            'costs.category', 'costs.paymentAccount', 'costs.dollarEntries', 'documents',
         ])->findOrFail($id);
 
         return view('admin.backend.containers.show', [
@@ -164,17 +165,23 @@ class ContainerController extends Controller
     {
         $container = Container::findOrFail($id);
 
-        $data = $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'cost_category_id' => 'nullable|exists:cost_categories,id',
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => DollarLedger::amountRule(),
             'cost_date' => 'nullable|date',
             'note' => 'nullable|string|max:255',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
-        ]);
+        ]));
 
-        DB::transaction(function () use ($container, $data, $request) {
+        $data = DB::transaction(function () use ($container, $data, $request) {
+            // Paid in dollars, the cost is what those dollars cost the account.
+            $inDollars = DollarLedger::inDollars($data);
+            if ($inDollars) {
+                $data['amount'] = DollarLedger::costOf((int) $data['payment_account_id'], (float) $data['usd_amount']);
+            }
+
             $attachment = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -197,7 +204,14 @@ class ContainerController extends Controller
                 'added_by' => Auth::id(),
             ]);
 
-            if (! empty($data['payment_account_id'])) {
+            if ($inDollars) {
+                DollarLedger::spend((int) $data['payment_account_id'], (float) $data['usd_amount'], 'container_cost', [
+                    'entry_date' => $cost->cost_date,
+                    'description' => $data['title'].' for container '.$container->container_code,
+                    'reference' => $container->container_number ?: $container->container_code,
+                    'note' => $data['note'] ?? null,
+                ], $cost);
+            } elseif (! empty($data['payment_account_id'])) {
                 $account = PaymentAccount::findOrFail($data['payment_account_id']);
                 $account->decrement('balance', (float) $data['amount']);
                 $account->transactions()->create([
@@ -218,6 +232,8 @@ class ContainerController extends Controller
             }
 
             $this->recomputeMembers($container);
+
+            return $data;
         });
 
         return redirect()->back()->with('success', 'Container cost of '.number_format((float) $data['amount'], 2).' recorded.');
@@ -229,7 +245,8 @@ class ContainerController extends Controller
         $cost = $container->costs()->findOrFail($costId);
 
         DB::transaction(function () use ($container, $cost) {
-            if ($cost->payment_account_id) {
+            // Paid in dollars, they go back to the account; otherwise its taka does.
+            if ($cost->payment_account_id && ! DollarLedger::reverseFor($cost)) {
                 $account = PaymentAccount::find($cost->payment_account_id);
                 if ($account) {
                     $account->increment('balance', (float) $cost->amount);

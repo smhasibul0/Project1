@@ -127,7 +127,7 @@
                             <tr>
                                 <td>{{ $p->payment_date?->format('d M Y') }}</td>
                                 <td>{{ $p->paymentAccount->name ?? '—' }}</td>
-                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format($p->amount, 2) }}@if($p->dollarNote())<small class="d-block text-muted">{{ $p->dollarNote() }}</small>@endif</td>
                                 <td>{{ $p->note ?: '—' }}</td>
                                 <td class="text-end">
                                     @if($p->attachment)<a href="{{ asset('upload/salaries/'.$p->attachment) }}" target="_blank" class="me-1"><i class="ri-attachment-2"></i></a>@endif
@@ -167,6 +167,7 @@
                                 <x-account-options :accounts="$accounts" />
                             </select>
                         </div>
+                        <x-currency-choice direction="out" />
                         <div class="col-md-6">
                             <label class="form-label">Attachment</label>
                             <input type="file" class="form-control" name="attachment">

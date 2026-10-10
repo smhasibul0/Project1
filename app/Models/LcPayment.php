@@ -9,10 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Dollars paid against an LC from a bank account. The taka that left the account
- * is the dollars at the bank's rate; set against the day's rate, the difference is
- * the exchange gain (bank charged less) or loss (bank charged more). The payment
- * itself is never counted as a cost.
+ * Dollars bought against an LC with a bank account's taka, at the bank's rate. The
+ * dollars never leave: they are kept in the same account's dollar balance, to pay
+ * costs abroad or be sold back for taka. The payment itself is never counted as a cost.
  */
 class LcPayment extends Model
 {
@@ -34,25 +33,17 @@ class LcPayment extends Model
         return [
             'paid_on' => 'date',
             'usd_amount' => 'decimal:2',
-            'day_rate' => 'decimal:4',
             'bank_rate' => 'decimal:4',
             'bdt_amount' => 'decimal:2',
-            'exchange_gain_loss' => 'decimal:2',
         ];
     }
 
     /**
-     * Taka that leaves the account, and the exchange gain (+) or loss (−), for a
-     * dollar amount paid at the bank's rate on a day with the given rate.
-     *
-     * @return array{bdt_amount: float, exchange_gain_loss: float}
+     * The taka that buys the dollars: dollars × the bank's rate.
      */
-    public static function convert(float $usdAmount, float $dayRate, float $bankRate): array
+    public static function takaFor(float $usdAmount, float $bankRate): float
     {
-        return [
-            'bdt_amount' => round($usdAmount * $bankRate, 2),
-            'exchange_gain_loss' => round($usdAmount * ($dayRate - $bankRate), 2),
-        ];
+        return round($usdAmount * $bankRate, 2);
     }
 
     public function lc(): BelongsTo

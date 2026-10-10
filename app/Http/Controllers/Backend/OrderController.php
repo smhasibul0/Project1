@@ -16,6 +16,7 @@ use App\Models\Quotation;
 use App\Models\Transaction;
 use App\Models\TransportationMode;
 use App\Models\Warehouse;
+use App\Support\DollarLedger;
 use App\Support\DutyCalculator;
 use App\Support\NumberToWords;
 use Carbon\Carbon;
@@ -147,7 +148,7 @@ class OrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.hsCodeRecord', 'costs.category', 'costs.paymentAccount', 'payments.paymentAccount', 'tracking.changedBy', 'lcs.payments', 'containers'])
+        $order = Order::with(['customer', 'quotation', 'transportationMode', 'packingType', 'items.hsCodeRecord', 'costs.category', 'costs.paymentAccount', 'costs.dollarEntries', 'payments.paymentAccount', 'payments.dollarEntries', 'tracking.changedBy', 'lcs.payments', 'containers'])
             ->findOrFail($id);
         $costCategories = CostCategory::where('is_active', true)->orderBy('name')->get();
         $accounts = PaymentAccount::where('is_active', true)->orderBy('name')->get();
@@ -288,16 +289,22 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+        $data = $request->validate(DollarLedger::withRules([
+            'amount' => DollarLedger::amountRule(),
             'payment_date' => 'required|date',
             'method' => 'nullable|string|max:50',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:255',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
-        ]);
+        ], 'payment_account_id', withRate: true));
 
-        DB::transaction(function () use ($order, $data, $request) {
+        // Paid in dollars: it settles their taka at the rate given, and the account keeps them.
+        $inDollars = DollarLedger::inDollars($data);
+        if ($inDollars) {
+            $data['amount'] = round((float) $data['usd_amount'] * (float) $data['usd_rate'], 2);
+        }
+
+        DB::transaction(function () use ($order, $data, $request, $inDollars) {
             $attachment = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -319,8 +326,15 @@ class OrderController extends Controller
                 'added_by' => Auth::id(),
             ]);
 
-            // Deposit into the selected account's ledger.
-            if (! empty($data['payment_account_id'])) {
+            // Deposit into the selected account's ledger — its dollars, or its taka.
+            if ($inDollars) {
+                DollarLedger::receive((int) $data['payment_account_id'], (float) $data['usd_amount'], (float) $data['usd_rate'], 'order_payment', [
+                    'entry_date' => $data['payment_date'],
+                    'description' => 'Payment for order '.$order->order_no,
+                    'reference' => $order->order_no,
+                    'note' => $data['note'] ?? null,
+                ], $payment, (float) $data['amount']);
+            } elseif (! empty($data['payment_account_id'])) {
                 $account = PaymentAccount::findOrFail($data['payment_account_id']);
                 $account->increment('balance', (float) $data['amount']);
                 $account->transactions()->create([
@@ -428,17 +442,23 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        $data = $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'cost_category_id' => 'nullable|exists:cost_categories,id',
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => DollarLedger::amountRule(),
             'cost_date' => 'nullable|date',
             'note' => 'nullable|string|max:255',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
-        ]);
+        ]));
 
-        DB::transaction(function () use ($order, $data, $request) {
+        $data = DB::transaction(function () use ($order, $data, $request) {
+            // Paid in dollars, the cost is what those dollars cost the account.
+            $inDollars = DollarLedger::inDollars($data);
+            if ($inDollars) {
+                $data['amount'] = DollarLedger::costOf((int) $data['payment_account_id'], (float) $data['usd_amount']);
+            }
+
             $attachment = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -462,7 +482,14 @@ class OrderController extends Controller
             ]);
 
             // Pay out of the selected account's ledger (money leaving the business).
-            if (! empty($data['payment_account_id'])) {
+            if ($inDollars) {
+                DollarLedger::spend((int) $data['payment_account_id'], (float) $data['usd_amount'], 'order_cost', [
+                    'entry_date' => $cost->cost_date,
+                    'description' => $data['title'].' for order '.$order->order_no,
+                    'reference' => $order->order_no,
+                    'note' => $data['note'] ?? null,
+                ], $cost);
+            } elseif (! empty($data['payment_account_id'])) {
                 $account = PaymentAccount::findOrFail($data['payment_account_id']);
                 $account->decrement('balance', (float) $data['amount']);
                 $account->transactions()->create([
@@ -483,6 +510,8 @@ class OrderController extends Controller
             }
 
             $this->recompute($order);
+
+            return $data;
         });
 
         return redirect()->back()->with('success', 'Cost of '.number_format((float) $data['amount'], 2).' recorded.');
@@ -498,7 +527,8 @@ class OrderController extends Controller
         $cost = $order->costs()->findOrFail($costId);
 
         DB::transaction(function () use ($order, $cost) {
-            if ($cost->payment_account_id) {
+            // Paid in dollars, they go back to the account; otherwise its taka does.
+            if ($cost->payment_account_id && ! DollarLedger::reverseFor($cost)) {
                 $account = PaymentAccount::find($cost->payment_account_id);
                 if ($account) {
                     $account->increment('balance', (float) $cost->amount);

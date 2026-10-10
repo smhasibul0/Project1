@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasDollarEntries;
 use App\Models\Concerns\RecordsActivity;
 use Database\Factories\LcCostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LcCost extends Model
 {
+    use HasDollarEntries;
+
     /** @use HasFactory<LcCostFactory> */
     use HasFactory;
 

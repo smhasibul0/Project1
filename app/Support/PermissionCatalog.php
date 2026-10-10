@@ -159,6 +159,7 @@ class PermissionCatalog
                 'accounts.toggle' => ['Activate / deactivate accounts', 'Switch an account off without deleting it.'],
                 'accounts.deposit' => ['Record deposits', 'Pay money into an account.'],
                 'accounts.fund-transfer' => ['Transfer between accounts', 'Move money from one account to another.'],
+                'accounts.sell-dollars' => ['Sell dollars', 'Convert dollars an account holds into taka.'],
                 'accounts.transactions.edit' => ['Edit ledger entries', 'Correct a deposit or fund transfer after the fact.'],
                 'accounts.transactions.delete' => ['Delete ledger entries', 'Reverse a deposit or fund transfer.'],
             ],

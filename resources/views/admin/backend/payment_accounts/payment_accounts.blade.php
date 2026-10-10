@@ -70,7 +70,7 @@
                                         <th>Account Number</th>
                                         <th>Note</th>
                                         <th class="text-end">Balance</th>
-                                        <th class="text-end">Dollars Sent</th>
+                                        <th class="text-end">Dollars</th>
                                         <th data-filter="Status">Status</th>
                                         <th>Account Details</th>
                                         <th>Added By</th>
@@ -85,7 +85,13 @@
                                         <td>{{ $account->account_number ?? '-' }}</td>
                                         <td>{{ $account->note ?? '-' }}</td>
                                         <td class="text-end">৳ {{ number_format($account->balance, 2) }}</td>
-                                        <td class="text-end">{{ $account->usd_sent > 0 ? '$'.number_format($account->usd_sent, 2) : '—' }}</td>
+                                        <td class="text-end">
+                                            @if((float) $account->usd_balance > 0)
+                                                ${{ number_format($account->usd_balance, 2) }}<small class="d-block text-muted">@ {{ \App\Models\DollarTransaction::rate($account->averageUsdRate()) }}</small>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td><span class="badge bg-{{ $account->is_active ? 'success' : 'secondary' }}">{{ $account->is_active ? 'Active' : 'Closed' }}</span></td>
                                         <td>{{ $account->account_details ?? '-' }}</td>
                                         <td>{{ $account->addedBy->name ?? '-' }}</td>
@@ -389,7 +395,7 @@
                         <select class="form-control" name="from_account_id" id="ftFromAccountId">
                             <option value="">-- Select Account --</option>
                             @foreach($accounts as $account)
-                                <option value="{{ $account->id }}">{{ $account->name }}</option>
+                                <option value="{{ $account->id }}" @if($account->averageUsdRate()) data-usd-rate="{{ $account->averageUsdRate() }}" data-usd-balance="{{ (float) $account->usd_balance }}" @endif>{{ $account->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -410,6 +416,7 @@
                         <label class="form-label fw-semibold">Amount: <span class="text-danger">*</span></label>
                         <input type="number" step="0.01" class="form-control" name="amount" value="0" min="0.01">
                     </div>
+                    <x-currency-choice direction="out" account-field="from_account_id" />
 
                     {{-- Date --}}
                     <div class="form-group col-12">
@@ -467,6 +474,7 @@
                             @endforeach
                         </select>
                     </div>
+                    <x-currency-choice direction="in" account-field="account_id" />
 
                     {{-- Amount --}}
                     <div class="form-group col-12">

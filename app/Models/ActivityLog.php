@@ -74,6 +74,7 @@ class ActivityLog extends Model
             'payment_account' => ['class' => PaymentAccount::class, 'label' => 'Payment Account', 'route' => 'payment.account.book'],
             'account_type' => ['class' => AccountType::class, 'label' => 'Account Type', 'route' => null],
             'transaction' => ['class' => Transaction::class, 'label' => 'Account Entry', 'route' => null],
+            'dollar_transaction' => ['class' => DollarTransaction::class, 'label' => 'Dollar Entry', 'route' => null],
             'office_cost_type' => ['class' => OfficeCostType::class, 'label' => 'Office Cost Type', 'route' => null],
             'office_expense' => ['class' => OfficeExpense::class, 'label' => 'Office Expense', 'route' => null],
             'office_expense_payment' => ['class' => OfficeExpensePayment::class, 'label' => 'Office Expense Payment', 'route' => null],

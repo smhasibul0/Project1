@@ -12,6 +12,7 @@ use App\Http\Controllers\Backend\ContainerController;
 use App\Http\Controllers\Backend\CostCategoryController;
 use App\Http\Controllers\Backend\CustomerGroupController;
 use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\Backend\DollarController;
 use App\Http\Controllers\Backend\ExchangeRateController;
 use App\Http\Controllers\Backend\ExpenseCategoryController;
 use App\Http\Controllers\Backend\HsCodeController;
@@ -147,6 +148,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('/payment-accounts/{id}/toggle-active', [PaymentAccountController::class, 'toggleActive'])->middleware('can:accounts.toggle')->name('payment.account.toggle');
     Route::post('/payment-accounts/deposit', [PaymentAccountController::class, 'deposit'])->middleware('can:accounts.deposit')->name('payment.account.deposit');
     Route::post('/payment-accounts/fund-transfer', [PaymentAccountController::class, 'fundTransfer'])->middleware('can:accounts.fund-transfer')->name('payment.account.fund.transfer');
+
+    // Dollars an account holds: paid in, sold for taka, moved to another account
+    Route::post('/payment-accounts/{id}/dollars/deposit', [DollarController::class, 'deposit'])->middleware('can:accounts.deposit')->name('dollars.deposit');
+    Route::post('/payment-accounts/{id}/dollars/sell', [DollarController::class, 'sell'])->middleware('can:accounts.sell-dollars')->name('dollars.sell');
+    Route::post('/payment-accounts/{id}/dollars/transfer', [DollarController::class, 'transfer'])->middleware('can:accounts.fund-transfer')->name('dollars.transfer');
+    Route::delete('/dollar-transactions/{id}', [DollarController::class, 'destroy'])->middleware('can:accounts.transactions.delete')->name('dollars.delete');
 
     // Account-book transactions (deposits & fund transfers only)
     Route::put('/transactions/{id}', [PaymentAccountController::class, 'transactionUpdate'])->middleware('can:accounts.transactions.edit')->name('transaction.update');

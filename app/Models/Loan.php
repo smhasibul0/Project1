@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasDollarEntries;
 use App\Models\Concerns\RecordsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Loan extends Model
 {
+    use HasDollarEntries;
     use RecordsActivity;
 
     /**

@@ -236,17 +236,9 @@ class Lc extends Model
     }
 
     /**
-     * The exchange gain (+) or loss (−) across the LC's payments.
-     */
-    public function exchangeGainLoss(): float
-    {
-        return round((float) $this->payments->sum('exchange_gain_loss'), 2);
-    }
-
-    /**
      * The LC's total cost to the order, in taka: bank charges plus any booked LC
      * charge lines. Neither the goods value nor the LC payments count here — the
-     * payments only move money, and their exchange result is reported on its own.
+     * payments only turn taka into dollars the account keeps.
      */
     public function lcCost(): float
     {

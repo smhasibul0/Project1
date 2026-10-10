@@ -26,9 +26,8 @@ class LcPaymentFactory extends Factory
             'payment_account_id' => PaymentAccount::factory(),
             'paid_on' => now()->toDateString(),
             'usd_amount' => $usd,
-            'day_rate' => 122.5,
             'bank_rate' => 123.1,
-            ...LcPayment::convert($usd, 122.5, 123.1),
+            'bdt_amount' => LcPayment::takaFor($usd, 123.1),
         ];
     }
 }

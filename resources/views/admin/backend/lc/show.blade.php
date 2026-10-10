@@ -124,12 +124,11 @@
             </div>
         </div>
 
-        {{-- Dollar payments: they only move money; their exchange result reaches the P&L --}}
+        {{-- Dollar payments: taka buys dollars that the account keeps — no cost, no gain or loss --}}
         @if($lc->isDollar())
-        @php $gainLoss = $lc->exchangeGainLoss(); @endphp
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h6 class="mb-0">{{ $lc->typeLabel() }} Payments ({{ $lc->payments->count() }}) <small class="text-muted">— dollars sent; only the exchange gain/loss reaches the P&amp;L</small></h6>
+                <h6 class="mb-0">{{ $lc->typeLabel() }} Payments ({{ $lc->payments->count() }}) <small class="text-muted">— taka buys the dollars, which stay in the account</small></h6>
                 @can('lc.payments.create')
                 @if($lc->usdDue() > 0)
                 <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payLcModal"><i class="ri-money-dollar-circle-line me-1"></i> Pay {{ $lc->typeLabel() }}</button>
@@ -141,25 +140,21 @@
                 <div class="col-6 col-md"><small class="text-muted d-block">Paid</small><strong class="text-success">${{ number_format($lc->usdPaid(), 2) }}</strong></div>
                 <div class="col-6 col-md"><small class="text-muted d-block">Due</small><strong class="{{ $lc->usdDue() > 0 ? 'text-danger' : '' }}">${{ number_format($lc->usdDue(), 2) }}</strong></div>
                 <div class="col-6 col-md"><small class="text-muted d-block">Taka Paid</small><strong>৳ {{ number_format($lc->payments->sum('bdt_amount'), 2) }}</strong>@if($lc->averageBankRate())<small class="d-block text-muted">avg @ {{ $rate($lc->averageBankRate()) }}</small>@endif</div>
-                <div class="col-12 col-md"><small class="text-muted d-block">Exchange Gain / (Loss)</small><strong class="{{ $gainLoss > 0 ? 'text-success' : ($gainLoss < 0 ? 'text-danger' : '') }}">{{ $gainLoss < 0 ? '(৳ '.number_format(abs($gainLoss), 2).')' : '৳ '.number_format($gainLoss, 2) }}</strong></div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-sm mb-0 align-middle">
                         <thead>
-                            <tr><th>Date</th><th>Account</th><th class="text-end">Dollars</th><th class="text-end">Day's Rate</th><th class="text-end">Bank Rate</th><th class="text-end">Taka Paid</th><th class="text-end">Gain / (Loss)</th><th>Reference</th><th></th></tr>
+                            <tr><th>Date</th><th>Dollars kept in</th><th class="text-end">Dollars</th><th class="text-end">Bank Rate</th><th class="text-end">Taka Paid</th><th>Reference</th><th></th></tr>
                         </thead>
                         <tbody>
                             @forelse($lc->payments as $p)
-                            @php $pResult = (float) $p->exchange_gain_loss; @endphp
                             <tr>
                                 <td>{{ $p->paid_on->format('d M Y') }}</td>
                                 <td>{{ $p->paymentAccount->name ?? '—' }}</td>
                                 <td class="text-end">${{ number_format($p->usd_amount, 2) }}</td>
-                                <td class="text-end">{{ $rate($p->day_rate) }}</td>
                                 <td class="text-end">{{ $rate($p->bank_rate) }}</td>
                                 <td class="text-end">৳ {{ number_format($p->bdt_amount, 2) }}</td>
-                                <td class="text-end {{ $pResult > 0 ? 'text-success' : ($pResult < 0 ? 'text-danger' : '') }}">{{ $pResult < 0 ? '('.number_format(abs($pResult), 2).')' : number_format($pResult, 2) }}</td>
                                 <td>{{ $p->reference ?: '—' }}@if($p->note)<small class="d-block text-muted">{{ $p->note }}</small>@endif</td>
                                 <td class="text-end">
                                     @can('lc.payments.delete')
@@ -171,7 +166,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="9" class="text-center text-muted py-3">No payments yet.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-3">No payments yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -256,30 +251,12 @@
                         <input type="text" class="form-control" name="title" required placeholder="e.g. {{ $lc->typeLabel() }} opening charge, Amendment fee">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Paid In</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="currency" id="costCurrencyBdt" value="BDT" checked>
-                            <label class="btn btn-outline-primary" for="costCurrencyBdt">৳ Taka</label>
-                            <input type="radio" class="btn-check" name="currency" id="costCurrencyUsd" value="USD">
-                            <label class="btn btn-outline-primary" for="costCurrencyUsd">$ Dollars</label>
-                        </div>
+                        <label class="form-label">Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0.01" class="form-control" name="amount" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Cost Date</label>
-                        <input type="date" class="form-control" name="cost_date" id="costDate" value="{{ now()->toDateString() }}">
-                    </div>
-                    <div class="col-md-4 cost-usd d-none">
-                        <label class="form-label">Dollars <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="0.01" class="form-control" name="usd_amount" id="costUsd">
-                    </div>
-                    <div class="col-md-4 cost-usd d-none">
-                        <label class="form-label">Rate (৳ per $) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.0001" min="0.0001" class="form-control" name="usd_rate" id="costRate">
-                        <small class="text-muted" id="costRateNote"></small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Amount (৳) <span class="text-danger cost-bdt">*</span></label>
-                        <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="costAmount" required>
+                        <input type="date" class="form-control" name="cost_date" value="{{ now()->toDateString() }}">
                     </div>
                     <div class="col-md-8">
                         <label class="form-label">Pay from Account <small class="text-muted">(debits the account ledger)</small></label>
@@ -288,6 +265,7 @@
                             <x-account-options :accounts="$accounts" />
                         </select>
                     </div>
+                    <x-currency-choice direction="out" />
                     <div class="col-md-6">
                         <label class="form-label">Attach Document</label>
                         <input type="file" class="form-control" name="attachment" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
@@ -331,20 +309,15 @@
                             <x-account-options :accounts="$accounts" :selected="old('payment_account_id')" />
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Dollars <span class="text-danger">*</span></label>
                         <input type="number" step="0.01" min="0.01" max="{{ $lc->usdDue() }}" class="form-control" name="usd_amount" id="payUsd" value="{{ old('usd_amount', $lc->usdDue()) }}" required>
                         <small class="text-muted">Pay all or part of what is due.</small>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Day's Rate <span class="text-danger">*</span></label>
-                        <input type="number" step="0.0001" min="0.0001" class="form-control" name="day_rate" id="payDayRate" value="{{ old('day_rate') }}" required>
-                        <small class="text-muted" id="payDayRateNote"></small>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label">Bank's Rate <span class="text-danger">*</span></label>
                         <input type="number" step="0.0001" min="0.0001" class="form-control" name="bank_rate" id="payBankRate" value="{{ old('bank_rate') }}" required>
-                        <small class="text-muted">What the bank charged per dollar.</small>
+                        <small class="text-muted" id="payBankRateNote">What the bank charged per dollar.</small>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Reference</label>
@@ -357,7 +330,7 @@
                     <div class="col-12">
                         <div class="row g-2 text-center bg-light rounded p-2 m-0">
                             <div class="col-6"><small class="text-muted d-block">Taka leaving the account</small><strong id="payBdtPreview">—</strong></div>
-                            <div class="col-6"><small class="text-muted d-block">Exchange gain / (loss)</small><strong id="payResultPreview">—</strong></div>
+                            <div class="col-6"><small class="text-muted d-block">Dollars kept in the account</small><strong id="payUsdPreview">—</strong></div>
                         </div>
                     </div>
                 </div>
@@ -382,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.confirm-reverse').forEach(btn => btn.addEventListener('click', function () {
         const form = btn.closest('form');
-        Swal.fire({ title: 'Reverse this payment?', text: 'Its taka goes back to the account.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, reverse', confirmButtonColor: '#ef4444' })
+        Swal.fire({ title: 'Reverse this payment?', text: 'Its dollars leave the account and the taka goes back.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, reverse', confirmButtonColor: '#ef4444' })
             .then(r => { if (r.isConfirmed) form.submit(); });
     }));
 
@@ -407,61 +380,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const payDate = document.getElementById('payDate');
     if (payDate) {
         const usd = document.getElementById('payUsd');
-        const day = document.getElementById('payDayRate');
         const bank = document.getElementById('payBankRate');
         const bdtOut = document.getElementById('payBdtPreview');
-        const resultOut = document.getElementById('payResultPreview');
+        const usdOut = document.getElementById('payUsdPreview');
 
         const preview = function () {
             const dollars = parseFloat(usd.value) || 0;
-            const dayValue = parseFloat(day.value) || 0;
             const bankValue = parseFloat(bank.value) || 0;
             bdtOut.textContent = dollars && bankValue ? taka(dollars * bankValue) : '—';
-            if (!dollars || !dayValue || !bankValue) { resultOut.textContent = '—'; resultOut.className = ''; return; }
-            const result = Math.round(dollars * (dayValue - bankValue) * 100) / 100;
-            resultOut.textContent = result < 0 ? '(' + taka(result) + ') loss' : (result > 0 ? taka(result) + ' gain' : taka(0));
-            resultOut.className = result > 0 ? 'text-success' : (result < 0 ? 'text-danger' : '');
+            usdOut.textContent = dollars ? '$' + dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
         };
 
-        [usd, day, bank].forEach(el => el.addEventListener('input', preview));
-        payDate.addEventListener('change', () => dayRate(payDate.value, day, document.getElementById('payDayRateNote')));
-        if (!day.value) { dayRate(payDate.value, day, document.getElementById('payDayRateNote')); }
+        [usd, bank].forEach(el => el.addEventListener('input', preview));
+        // The day's rate as a starting point for the bank's; type over it with the bank's own.
+        payDate.addEventListener('change', () => { if (!bank.dataset.touched) { dayRate(payDate.value, bank, document.getElementById('payBankRateNote')); } });
+        bank.addEventListener('input', e => { if (e.isTrusted) { bank.dataset.touched = '1'; } });
+        if (!bank.value) { dayRate(payDate.value, bank, document.getElementById('payBankRateNote')); }
         preview();
 
-        @if(old('day_rate'))
+        @if(old('bank_rate'))
         bootstrap.Modal.getOrCreateInstance(document.getElementById('payLcModal')).show();
         @endif
-    }
-
-    const costAmount = document.getElementById('costAmount');
-    if (costAmount) {
-        const costUsd = document.getElementById('costUsd');
-        const costRate = document.getElementById('costRate');
-        const costDate = document.getElementById('costDate');
-        const isDollar = () => document.getElementById('costCurrencyUsd').checked;
-
-        const convert = function () {
-            if (!isDollar()) { return; }
-            const dollars = parseFloat(costUsd.value) || 0;
-            const rateValue = parseFloat(costRate.value) || 0;
-            costAmount.value = dollars && rateValue ? (Math.round(dollars * rateValue * 100) / 100).toFixed(2) : '';
-        };
-
-        const toggle = function () {
-            const dollar = isDollar();
-            document.querySelectorAll('.cost-usd').forEach(el => el.classList.toggle('d-none', !dollar));
-            document.querySelectorAll('.cost-bdt').forEach(el => el.classList.toggle('d-none', dollar));
-            costUsd.required = costRate.required = dollar;
-            costAmount.required = !dollar;
-            costAmount.readOnly = dollar;
-            if (dollar && !costRate.value) { dayRate(costDate.value, costRate, document.getElementById('costRateNote')); }
-            convert();
-        };
-
-        document.querySelectorAll('input[name="currency"]').forEach(el => el.addEventListener('change', toggle));
-        [costUsd, costRate].forEach(el => el.addEventListener('input', convert));
-        costDate.addEventListener('change', () => { if (isDollar()) { dayRate(costDate.value, costRate, document.getElementById('costRateNote')); } });
-        toggle();
     }
 });
 </script>

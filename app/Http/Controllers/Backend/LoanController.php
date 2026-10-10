@@ -7,7 +7,9 @@ use App\Models\Loan;
 use App\Models\LoanPayment;
 use App\Models\PaymentAccount;
 use App\Models\Transaction;
+use App\Support\DollarLedger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -27,7 +29,7 @@ class LoanController extends Controller
     {
         abort_unless(array_key_exists($direction, Loan::DIRECTIONS), 404);
 
-        $loans = Loan::with(['payments', 'account'])
+        $loans = Loan::with(['payments.dollarEntries', 'payments.paymentAccount', 'account', 'dollarEntries'])
             ->where('direction', $direction)
             ->orderByDesc('start_date')->orderByDesc('id')
             ->get();
@@ -59,8 +61,16 @@ class LoanController extends Controller
         abort_unless(array_key_exists($direction, Loan::DIRECTIONS), 404);
 
         $data = $this->validated($request);
+        // Borrowed dollars come in at the rate given; lent ones go out at what they cost.
+        $dollars = $request->validate(DollarLedger::withRules([], 'payment_account_id', withRate: $direction === 'borrowed'));
 
-        DB::transaction(function () use ($data, $direction, $request) {
+        DB::transaction(function () use ($data, $direction, $request, $dollars) {
+            if (DollarLedger::inDollars($dollars)) {
+                $data['principal'] = $direction === 'borrowed'
+                    ? round((float) $dollars['usd_amount'] * (float) $dollars['usd_rate'], 2)
+                    : DollarLedger::costOf((int) $data['payment_account_id'], (float) $dollars['usd_amount']);
+            }
+
             $loan = Loan::create($data + [
                 'loan_code' => Loan::nextCode($direction),
                 'direction' => $direction,
@@ -69,7 +79,7 @@ class LoanController extends Controller
             ]);
 
             if ($loan->payment_account_id) {
-                $this->movePrincipal($loan);
+                $this->movePrincipal($loan, $dollars);
             }
         });
 
@@ -111,31 +121,42 @@ class LoanController extends Controller
     {
         $loan = Loan::with('payments')->findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+        // A repayment of a borrowing goes out in dollars at what they cost; a receipt on
+        // a lending comes in at the rate given.
+        $data = $request->validate(DollarLedger::withRules([
+            'amount' => DollarLedger::amountRule(),
             'paid_on' => 'required|date',
             'method' => 'nullable|string|max:50',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:255',
-        ]);
+        ], 'payment_account_id', withRate: ! $loan->isBorrowed()));
+        $inDollars = DollarLedger::inDollars($data);
 
-        if ((float) $data['amount'] > $loan->outstanding() + 0.005) {
-            throw ValidationException::withMessages([
-                'amount' => 'That is more than the outstanding '.number_format($loan->outstanding(), 2).'.',
-            ]);
-        }
+        $data = DB::transaction(function () use ($loan, $data, $inDollars) {
+            if ($inDollars) {
+                $data['amount'] = $loan->isBorrowed()
+                    ? DollarLedger::costOf((int) $data['payment_account_id'], (float) $data['usd_amount'])
+                    : round((float) $data['usd_amount'] * (float) $data['usd_rate'], 2);
+            }
 
-        DB::transaction(function () use ($loan, $data) {
-            $payment = $loan->payments()->create($data + ['added_by' => Auth::id()]);
+            if ((float) $data['amount'] > $loan->outstanding() + 0.005) {
+                throw ValidationException::withMessages([
+                    $inDollars ? 'usd_amount' : 'amount' => 'That is more than the outstanding '.number_format($loan->outstanding(), 2).'.',
+                ]);
+            }
+
+            $payment = $loan->payments()->create(Arr::only($data, ['amount', 'paid_on', 'method', 'payment_account_id', 'note']) + ['added_by' => Auth::id()]);
 
             if (! empty($data['payment_account_id'])) {
-                $this->moveInstalment($loan, $payment);
+                $this->moveInstalment($loan, $payment, $inDollars ? $data : null);
             }
 
             // A loan paid off in full closes itself rather than waiting to be tidied.
             if ($loan->fresh('payments')->outstanding() <= 0.005) {
                 $loan->update(['status' => 'settled']);
             }
+
+            return $data;
         });
 
         return redirect()->back()->with('success', 'Payment of '.number_format((float) $data['amount'], 2).' recorded.');
@@ -202,8 +223,15 @@ class LoanController extends Controller
      * The principal changing hands: borrowing puts money into the account,
      * lending takes it out.
      */
-    private function movePrincipal(Loan $loan): void
+    private function movePrincipal(Loan $loan, ?array $dollars = null): void
     {
+        if ($dollars && DollarLedger::inDollars($dollars)) {
+            $this->moveDollars($loan, $loan, ! $loan->isBorrowed(), (float) $dollars['usd_amount'], (float) ($dollars['usd_rate'] ?? 0), (float) $loan->principal,
+                ($loan->isBorrowed() ? 'Borrowed from ' : 'Lent to ').$loan->counterparty, $loan->start_date?->toDateString(), $loan->note);
+
+            return;
+        }
+
         $this->post(
             $loan,
             $loan->payment_account_id,
@@ -220,8 +248,15 @@ class LoanController extends Controller
      * An instalment moves the opposite way to the principal: a borrowing is
      * repaid out of the account, a lending is received back into it.
      */
-    private function moveInstalment(Loan $loan, LoanPayment $payment): void
+    private function moveInstalment(Loan $loan, LoanPayment $payment, ?array $dollars = null): void
     {
+        if ($dollars) {
+            $this->moveDollars($loan, $payment, $loan->isBorrowed(), (float) $dollars['usd_amount'], (float) ($dollars['usd_rate'] ?? 0), (float) $payment->amount,
+                ($loan->isBorrowed() ? 'Repaid to ' : 'Received from ').$loan->counterparty, $payment->paid_on?->toDateString(), $payment->note);
+
+            return;
+        }
+
         $this->post(
             $loan,
             $payment->payment_account_id,
@@ -234,6 +269,18 @@ class LoanController extends Controller
             $payment->method,
             $payment->note,
         );
+    }
+
+    /**
+     * Move dollars on the record's account: out at what they cost, or in at the rate given.
+     */
+    private function moveDollars(Loan $loan, Loan|LoanPayment $record, bool $out, float $usd, float $rate, float $taka, string $description, ?string $date, ?string $note): void
+    {
+        $details = ['entry_date' => $date, 'description' => $description, 'reference' => $loan->loan_code, 'note' => $note];
+
+        $out
+            ? DollarLedger::spend((int) $record->payment_account_id, $usd, 'loan', $details, $record)
+            : DollarLedger::receive((int) $record->payment_account_id, $usd, $rate, 'loan', $details, $record, $taka);
     }
 
     /**
@@ -297,7 +344,8 @@ class LoanController extends Controller
      */
     private function unpost($transactionable, ?int $accountId, float $amount, string $originalType): void
     {
-        if (! $accountId) {
+        // Moved in dollars, they are undone on the account's dollars instead.
+        if (! $accountId || DollarLedger::reverseFor($transactionable)) {
             return;
         }
 

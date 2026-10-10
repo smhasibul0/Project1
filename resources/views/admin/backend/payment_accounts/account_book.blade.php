@@ -38,13 +38,12 @@
                                 <td class="fw-semibold ps-0">Balance:</td>
                                 <td>৳ {{ number_format($account->balance, 2) }}</td>
                             </tr>
-                            @php $usdSent = $account->usdSent(); @endphp
-                            @if($usdSent > 0)
                             <tr>
-                                <td class="fw-semibold ps-0">Dollars Sent:</td>
-                                <td>${{ number_format($usdSent, 2) }} <small class="text-muted">(LC payments and dollar charges)</small></td>
+                                <td class="fw-semibold ps-0">Dollars:</td>
+                                <td>${{ number_format($account->usd_balance, 2) }}
+                                    @if($account->averageUsdRate())<small class="text-muted">@ {{ \App\Models\DollarTransaction::rate($account->averageUsdRate()) }} — ৳ {{ number_format($account->usd_cost, 2) }} at cost</small>@endif
+                                </td>
                             </tr>
-                            @endif
                         </table>
                     </div>
                 </div>
@@ -88,6 +87,8 @@
                 </div>
             </div>
         </div>
+
+        @include('admin.backend.payment_accounts._dollars')
 
         {{-- Datatable Card --}}
         <div class="row">

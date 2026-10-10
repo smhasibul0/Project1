@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\WarehouseExpense;
 use App\Models\WarehouseExpensePayment;
 use App\Support\CurrentWarehouse;
+use App\Support\DollarLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ class ExpenseController extends Controller
 
     public function index()
     {
-        $expenses = WarehouseExpense::with(['category.parent', 'payments.paymentAccount'])
+        $expenses = WarehouseExpense::with(['category.parent', 'payments.paymentAccount', 'payments.dollarEntries'])
             ->where('warehouse_id', CurrentWarehouse::id())
             ->latest('expense_date')->latest('id')->get();
 
@@ -42,22 +43,27 @@ class ExpenseController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $data = $request->validate(DollarLedger::withRules([
             'expense_category_id' => 'nullable|exists:expense_categories,id',
             'amount' => 'required|numeric|min:0.01',
             'expense_date' => 'required|date',
             'note' => 'nullable|string|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,csv,zip,doc,docx,jpeg,jpg,png|max:4096',
-            'payment_amount' => 'nullable|required_with:payment_account_id|numeric|min:0.01|lte:amount',
+            // Paid in dollars, the payment's taka is worked out from them.
+            'payment_amount' => 'exclude_if:currency,USD|nullable|required_with:payment_account_id|numeric|min:0.01|lte:amount',
             'paid_on' => 'nullable|date',
             'payment_method' => 'nullable|string|max:50',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'payment_note' => 'nullable|string|max:255',
-        ]);
+        ]));
 
         $warehouse = CurrentWarehouse::get();
 
         DB::transaction(function () use ($data, $request, $warehouse) {
+            if (DollarLedger::inDollars($data)) {
+                $data['payment_amount'] = DollarLedger::costUpTo((int) $data['payment_account_id'], (float) $data['usd_amount'], (float) $data['amount']);
+            }
+
             $attachment = null;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
@@ -86,6 +92,8 @@ class ExpenseController extends Controller
                     'method' => $data['payment_method'] ?? null,
                     'payment_account_id' => $data['payment_account_id'] ?? null,
                     'note' => $data['payment_note'] ?? null,
+                    'currency' => $data['currency'] ?? 'BDT',
+                    'usd_amount' => $data['usd_amount'] ?? null,
                 ]);
             }
         });
@@ -142,22 +150,26 @@ class ExpenseController extends Controller
             ->where('warehouse_id', CurrentWarehouse::id())
             ->findOrFail($id);
 
-        $data = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+        $data = $request->validate(DollarLedger::withRules([
+            'amount' => DollarLedger::amountRule(),
             'paid_on' => 'required|date',
             'method' => 'nullable|string|max:50',
             'payment_account_id' => 'nullable|exists:payment_accounts,id',
             'note' => 'nullable|string|max:255',
-        ]);
+        ]));
 
-        if ((float) $data['amount'] > $expense->dueTotal() + 0.005) {
-            throw ValidationException::withMessages([
-                'amount' => 'Payment exceeds the outstanding due of '.number_format($expense->dueTotal(), 2).'.',
-            ]);
-        }
+        $data = DB::transaction(function () use ($expense, $data) {
+            if (DollarLedger::inDollars($data)) {
+                $data['amount'] = DollarLedger::costUpTo((int) $data['payment_account_id'], (float) $data['usd_amount'], $expense->dueTotal());
+            } elseif ((float) $data['amount'] > $expense->dueTotal() + 0.005) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Payment exceeds the outstanding due of '.number_format($expense->dueTotal(), 2).'.',
+                ]);
+            }
 
-        DB::transaction(function () use ($expense, $data) {
             $this->recordPayment($expense, $data);
+
+            return $data;
         });
 
         return redirect()->back()->with('success', 'Payment of '.number_format((float) $data['amount'], 2).' recorded.');
@@ -217,7 +229,14 @@ class ExpenseController extends Controller
             'added_by' => Auth::id(),
         ]);
 
-        if (! empty($data['payment_account_id'])) {
+        if (DollarLedger::inDollars($data)) {
+            DollarLedger::spend((int) $data['payment_account_id'], (float) $data['usd_amount'], 'warehouse_expense', [
+                'entry_date' => $data['paid_on'],
+                'description' => ($expense->category->name ?? 'Expense').' — '.$expense->warehouse->name,
+                'reference' => $expense->warehouse->name,
+                'note' => $data['note'] ?? null,
+            ], $payment);
+        } elseif (! empty($data['payment_account_id'])) {
             $account = PaymentAccount::findOrFail($data['payment_account_id']);
             $account->decrement('balance', (float) $data['amount']);
             $account->transactions()->create([
@@ -244,7 +263,8 @@ class ExpenseController extends Controller
      */
     private function reversePayment(WarehouseExpensePayment $payment): void
     {
-        if (! $payment->payment_account_id) {
+        // Paid in dollars, they go back to the account; otherwise its taka does.
+        if (! $payment->payment_account_id || DollarLedger::reverseFor($payment)) {
             return;
         }
 

@@ -51,7 +51,7 @@
             <div class="col-sm-6 col-lg"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Total Revenue</small><h4 class="mb-0">৳ {{ number_format($totals['revenue'], 2) }}</h4></div></div></div>
             <div class="col-sm-6 col-lg"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Gross Profit (orders)</small><h4 class="mb-0 {{ $totals['profit'] < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($totals['profit'], 2) }}</h4></div></div></div>
             <div class="col-sm-6 col-lg"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Operating Expenses</small><h4 class="mb-0 text-danger">৳ {{ number_format($operating['total'], 2) }}</h4></div></div></div>
-            <div class="col-sm-6 col-lg"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Exchange Gain / (Loss)</small><h4 class="mb-0 {{ $exchangeGainLoss < 0 ? 'text-danger' : ($exchangeGainLoss > 0 ? 'text-success' : '') }}">{{ $exchangeText }}</h4><small class="text-muted">on dollar LC payments</small></div></div></div>
+            <div class="col-sm-6 col-lg"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Exchange Gain / (Loss)</small><h4 class="mb-0 {{ $exchangeGainLoss < 0 ? 'text-danger' : ($exchangeGainLoss > 0 ? 'text-success' : '') }}">{{ $exchangeText }}</h4><small class="text-muted">on dollars sold</small></div></div></div>
             <div class="col-sm-12 col-lg"><div class="card h-100 border-primary"><div class="card-body"><small class="text-muted d-block">Net Profit</small><h4 class="mb-0 {{ $netProfit < 0 ? 'text-danger' : 'text-success' }}">৳ {{ number_format($netProfit, 2) }}</h4><small class="text-muted">{{ number_format($netMargin, 2) }}% margin</small></div></div></div>
         </div>
 
@@ -125,7 +125,7 @@
                                 <tr><td class="ps-3 text-muted">Less: Office expenses</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['office_expenses'], 2) }})</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Staff salaries</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['salaries'], 2) }})</td></tr>
                                 <tr><td class="ps-3 text-muted">Less: Standalone LC charges</td><td class="text-end pe-3 text-danger">(৳ {{ number_format($operating['standalone_lc'], 2) }})</td></tr>
-                                <tr><td class="ps-3 text-muted">Add: Exchange gain / (loss) on LC payments</td><td class="text-end pe-3 {{ $exchangeGainLoss < 0 ? 'text-danger' : ($exchangeGainLoss > 0 ? 'text-success' : '') }}">{{ $exchangeText }}</td></tr>
+                                <tr><td class="ps-3 text-muted">Add: Exchange gain / (loss) on dollars sold</td><td class="text-end pe-3 {{ $exchangeGainLoss < 0 ? 'text-danger' : ($exchangeGainLoss > 0 ? 'text-success' : '') }}">{{ $exchangeText }}</td></tr>
                             </tbody>
                             <tfoot>
                                 <tr class="table-light fw-semibold">
@@ -136,7 +136,7 @@
                         </table>
                     </div>
                 </div>
-                <small class="text-muted d-block mb-4">Operating expenses are warehouse overheads, office running costs &amp; salaries in the selected date range, across all warehouses. The exchange gain / (loss) is on dollar LC payments made in the range; the payments themselves are not costs.</small>
+                <small class="text-muted d-block mb-4">Operating expenses are warehouse overheads, office running costs &amp; salaries in the selected date range, across all warehouses. The exchange gain / (loss) is on dollars sold in the range — the taka they fetched against what they cost; LC payments only turn taka into dollars and are never costs.</small>
             </div>
         </div>
     </div>

@@ -214,7 +214,7 @@
                     <div class="col-md-4"><small class="text-muted d-block">{{ $partyLabel }}</small><strong>{{ $loan->counterparty }} <span class="text-muted fw-normal">· {{ $loan->counterpartyTypeLabel() }}</span></strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Started</small><strong>{{ $loan->start_date?->format('d M Y') }}</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Due</small><strong class="@if($loan->isOverdue()) text-danger @endif">{{ $loan->due_date?->format('d M Y') ?: 'Open-ended' }}</strong></div>
-                    <div class="col-md-4"><small class="text-muted d-block">Principal</small><strong>৳ {{ number_format($loan->principal, 2) }}</strong></div>
+                    <div class="col-md-4"><small class="text-muted d-block">Principal</small><strong>৳ {{ number_format($loan->principal, 2) }}</strong>@if($loan->dollarNote())<small class="d-block text-muted">{{ $loan->dollarNote() }}</small>@endif</div>
                     <div class="col-md-4"><small class="text-muted d-block">Interest basis</small><strong>{{ $loan->interestLabel() }}</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Interest to date</small><strong class="text-warning">৳ {{ number_format($loan->interestToDate(), 2) }}</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Total payable</small><strong>৳ {{ number_format($loan->totalPayable(), 2) }}</strong></div>
@@ -236,7 +236,7 @@
                             @forelse($loan->payments->sortByDesc('paid_on') as $payment)
                             <tr>
                                 <td>{{ $payment->paid_on?->format('d M Y') }}</td>
-                                <td class="text-end fw-semibold">৳ {{ number_format($payment->amount, 2) }}</td>
+                                <td class="text-end fw-semibold">৳ {{ number_format($payment->amount, 2) }}@if($payment->dollarNote())<small class="d-block text-muted fw-normal">{{ $payment->dollarNote() }}</small>@endif</td>
                                 <td>{{ $payment->method ?: '—' }}</td>
                                 <td>{{ $payment->paymentAccount->name ?? '—' }}</td>
                                 <td>{{ $payment->note ?: '—' }}</td>
@@ -324,6 +324,7 @@
                     <small class="text-muted">
                         {{ $isBorrowed ? 'The amount comes off this account.' : 'The amount goes onto this account.' }}
                     </small>
+                    <x-currency-choice :direction="$isBorrowed ? 'out' : 'in'" class="mt-3 px-0" />
 
                     <label class="form-label mt-3">Note</label>
                     <textarea class="form-control" name="note" rows="1"></textarea>

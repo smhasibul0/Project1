@@ -17,7 +17,7 @@
         </div>
 
         <div class="row g-3 mb-1">
-            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Cash &amp; Bank</small><h4 class="mb-0">৳ {{ number_format($cashBank, 2) }}</h4></div></div></div>
+            <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Cash &amp; Bank</small><h4 class="mb-0">৳ {{ number_format($cashBank, 2) }}</h4>@if($dollarsHeld > 0)<small class="text-muted">incl. ${{ number_format($dollarsHeld, 2) }} held, at cost</small>@endif</div></div></div>
             <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Receivables (order dues)</small><h4 class="mb-0">৳ {{ number_format($receivables, 2) }}</h4></div></div></div>
             <div class="col-md-3"><div class="card h-100"><div class="card-body"><small class="text-muted d-block">Money Lent Out</small><h4 class="mb-0">৳ {{ number_format($loansReceivable, 2) }}</h4></div></div></div>
             <div class="col-md-3"><div class="card h-100 bg-light"><div class="card-body"><small class="text-muted d-block">Total Assets</small><h4 class="mb-0 text-success">৳ {{ number_format($total, 2) }}</h4></div></div></div>
@@ -35,12 +35,14 @@
                     <thead><tr><th>Account</th><th>Type</th><th class="text-end">Balance</th></tr></thead>
                     <tbody>
                         @forelse($grouped as $type => $accounts)
-                            <tr class="table-light"><td colspan="2" class="fw-semibold">{{ $type }}</td><td class="text-end fw-semibold">৳ {{ number_format($accounts->sum(fn ($a) => (float) $a->balance), 2) }}</td></tr>
+                            <tr class="table-light"><td colspan="2" class="fw-semibold">{{ $type }}</td><td class="text-end fw-semibold">৳ {{ number_format($accounts->sum(fn ($a) => (float) $a->balance + (float) $a->usd_cost), 2) }}</td></tr>
                             @foreach($accounts as $a)
                             <tr>
                                 <td class="ps-4">{{ $a->name }}</td>
                                 <td>{{ $a->accountType->name ?? '—' }}</td>
-                                <td class="text-end">৳ {{ number_format($a->balance, 2) }}</td>
+                                <td class="text-end">৳ {{ number_format((float) $a->balance + (float) $a->usd_cost, 2) }}
+                                    @if((float) $a->usd_balance > 0)<small class="d-block text-muted">৳ {{ number_format($a->balance, 2) }} + ${{ number_format($a->usd_balance, 2) }} at cost ৳ {{ number_format($a->usd_cost, 2) }}</small>@endif
+                                </td>
                             </tr>
                             @endforeach
                         @empty

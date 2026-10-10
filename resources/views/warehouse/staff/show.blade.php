@@ -144,7 +144,7 @@
                                 @forelse($staff->salaryPayments as $p)
                                 <tr>
                                     <td class="ps-3">{{ $p->salary_month }}</td>
-                                    <td class="text-end fw-semibold">৳ {{ number_format($p->amount, 2) }}</td>
+                                    <td class="text-end fw-semibold">৳ {{ number_format($p->amount, 2) }}@if($p->dollarNote())<small class="d-block text-muted fw-normal">{{ $p->dollarNote() }}</small>@endif</td>
                                     <td>{{ $p->payment_date?->format('d M Y') }}</td>
                                     <td>{{ $p->paymentAccount->name ?? '—' }}</td>
                                     <td class="text-end pe-3">
@@ -221,6 +221,7 @@
                             <x-account-options :accounts="$accounts" />
                         </select>
                     </div>
+                    <x-currency-choice direction="out" />
                     <div class="col-md-6">
                         <label class="form-label">Attachment</label>
                         <input type="file" class="form-control" name="attachment">

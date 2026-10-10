@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Models\DollarTransaction;
 use App\Models\Lc;
 use App\Models\LcCost;
-use App\Models\LcPayment;
 use App\Models\Loan;
 use App\Models\OfficeExpense;
 use App\Models\Order;
@@ -112,13 +112,14 @@ class ReportController extends Controller
             'total' => round($warehouseExpenses + $officeExpenses + $salaries + $standaloneLcCharges, 2),
         ];
 
-        // A dollar LC payment only moves money; what reaches the P&L is its exchange
-        // gain or loss, counted on the day it was paid.
-        $exchangeGainLoss = round((float) LcPayment::query()
-            ->when($from, fn ($q) => $q->whereDate('paid_on', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('paid_on', '<=', $to))
-            ->when($customerId, fn ($q) => $q->whereHas('lc.order', fn ($order) => $order->where('customer_id', $customerId)))
-            ->sum('exchange_gain_loss'), 2);
+        // Dollars the accounts hold make a gain or loss only when they are sold: the
+        // taka they fetched against what they cost. Like the operating expenses, it is
+        // the company's, whatever the customer filter.
+        $exchangeGainLoss = round((float) DollarTransaction::query()
+            ->where('source', 'sale')
+            ->when($from, fn ($q) => $q->whereDate('entry_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('entry_date', '<=', $to))
+            ->sum('gain_loss'), 2);
 
         $netProfit = round($totalProfit - $operating['total'] + $exchangeGainLoss, 2);
 
@@ -179,7 +180,10 @@ class ReportController extends Controller
         $accounts = PaymentAccount::with('accountType')->where('is_active', true)->orderBy('name')->get();
         $grouped = $accounts->groupBy(fn ($a) => $a->accountType->name ?? 'Unclassified');
 
-        $cashBank = round($accounts->sum(fn ($a) => (float) $a->balance), 2);
+        // Dollars an account holds count at what they cost, until they are sold.
+        $dollarsHeld = round($accounts->sum(fn ($a) => (float) $a->usd_balance), 2);
+        $dollarsAtCost = round($accounts->sum(fn ($a) => (float) $a->usd_cost), 2);
+        $cashBank = round($accounts->sum(fn ($a) => (float) $a->balance) + $dollarsAtCost, 2);
         $receivables = round((float) Order::sum('due_amount'), 2);
 
         // Only loans still running carry a balance: a settled one is square and
@@ -195,6 +199,8 @@ class ReportController extends Controller
         return view('admin.backend.reports.balance_sheet', [
             'grouped' => $grouped,
             'cashBank' => $cashBank,
+            'dollarsHeld' => $dollarsHeld,
+            'dollarsAtCost' => $dollarsAtCost,
             'receivables' => $receivables,
             'loansReceivable' => $loansReceivable,
             'loansPayable' => $loansPayable,
@@ -282,7 +288,8 @@ class ReportController extends Controller
             'fund_transfer' => 'Fund transfers',
             'order_cost' => 'Order costs paid',
             'lc_cost' => 'LC charges paid',
-            'lc_payment' => 'LC payments (dollars sent)',
+            'lc_payment' => 'LC payments (taka into dollars)',
+            'dollar_sale' => 'Dollars sold',
             'container_cost' => 'Container costs paid',
             'warehouse_expense' => 'Warehouse expenses paid',
             'office_expense' => 'Office expenses paid',
