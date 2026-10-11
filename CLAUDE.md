@@ -166,3 +166,38 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Do NOT delete tests without approval.
 
 </laravel-boost-guidelines>
+
+# Live site (Hostinger): give the update steps after every change
+
+The app runs on Hostinger shared hosting at https://rtc-bd.org, and the owner updates it themselves over SSH. **Every reply that finishes a change pushed to `main` must end with the full steps to put that change live**, written for someone who is not a developer: how to connect, each command to run one at a time, what they should see, what to do if a step fails, and anything to do in the app afterwards. When a change needs nothing on the live site, say so plainly. If earlier changes may not be deployed yet, give the steps that cover them all.
+
+## Connecting
+- SSH details are in hPanel → Websites → Manage (rtc-bd.org) → Advanced → SSH Access: IP, port 65002, a username starting with `u`, and **Change** to set the password. They are kept out of this file because the repository is public.
+- From Windows: open PowerShell, run `ssh -p 65002 <username>@<IP>`, type `yes` the first time, then the password (nothing shows while typing). "Permission denied" means a wrong password: reset it under SSH Access.
+
+## The server
+- App folder: `~/domains/rtc-bd.org/laravel`. `public_html` is a symlink to its `public/` folder.
+- `proc_open`, `exec` and `symlink()` are disabled. Composer must run with `--no-scripts`, followed by `php artisan package:discover`. `php artisan storage:link` fails; the link was made with `ln -s ../storage/app/public public/storage`.
+- There is no Node. When frontend assets change (`resources/css`, `resources/js`, Vite or Tailwind config, `package.json`), build with `npm run build` elsewhere, zip `public/build` as `build.zip`, have it uploaded through hPanel's File Manager into `public/` and extracted, and check it did not land in `public/build/build`.
+- The database is MySQL. Before deploying migrations that change or move existing data, have the owner back it up: hPanel → Files → Backups → Database backups → Generate.
+
+## Update commands (keep only the lines a change needs)
+```
+cd ~/domains/rtc-bd.org/laravel
+php artisan down
+git pull origin main
+composer install --no-dev --optimize-autoloader --no-scripts   # when composer.lock changed
+php artisan package:discover                                    # after composer install
+php artisan migrate --force                                     # when there are new migrations
+php artisan optimize
+php artisan up
+```
+- PHP or Blade only: `cd ~/domains/rtc-bd.org/laravel`, `git pull origin main`, `php artisan optimize`.
+
+## When a step fails
+- `git pull` says "Your local changes would be overwritten": `git stash`, then pull again.
+- Composer runs out of memory: `php -d memory_limit=-1 $(which composer) install --no-dev --optimize-autoloader --no-scripts`.
+- Anything else: ask for a screenshot. `php artisan up` brings the site back while it is fixed; the database backup protects the data.
+
+## Working on this repository
+- Composer commands run `boost:update`, which rewrites the Boost block above and turns `.claude/skills/deploying-laravel-cloud` into a symlink. Undo it before committing: remove that symlink, then `git checkout -- CLAUDE.md .claude/skills`. This section sits outside the Boost block, so Boost leaves it alone.
