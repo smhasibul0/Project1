@@ -17,12 +17,20 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // A first run on MySQL stopped part-way (an index name over its 64-character
+        // limit), leaving the two account columns and an empty dollar_transactions table
+        // behind. Each step picks up from there; the table can only hold that empty run.
         Schema::table('payment_accounts', function (Blueprint $table) {
-            $table->decimal('usd_balance', 15, 2)->default(0)->after('balance');
+            if (! Schema::hasColumn('payment_accounts', 'usd_balance')) {
+                $table->decimal('usd_balance', 15, 2)->default(0)->after('balance');
+            }
             // What the dollars held cost in taka; ÷ usd_balance is their average rate.
-            $table->decimal('usd_cost', 15, 2)->default(0)->after('usd_balance');
+            if (! Schema::hasColumn('payment_accounts', 'usd_cost')) {
+                $table->decimal('usd_cost', 15, 2)->default(0)->after('usd_balance');
+            }
         });
 
+        Schema::dropIfExists('dollar_transactions');
         Schema::create('dollar_transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('payment_account_id')->constrained('payment_accounts')->cascadeOnDelete();
@@ -40,7 +48,8 @@ return new class extends Migration
             $table->string('reference')->nullable();
             $table->string('note')->nullable();
             $table->string('transfer_group', 36)->nullable()->index();
-            $table->nullableMorphs('transactionable');
+            // Named by hand: the default name runs past MySQL's 64 characters.
+            $table->nullableMorphs('transactionable', 'dollar_transactions_transactionable_index');
             $table->foreignId('added_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
