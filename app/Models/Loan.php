@@ -66,10 +66,55 @@ class Loan extends Model
         return [
             'start_date' => 'date',
             'due_date' => 'date',
+            'closed_on' => 'date',
             'principal' => 'decimal:2',
             'interest_rate' => 'decimal:2',
             'interest_amount' => 'decimal:2',
         ];
+    }
+
+    /**
+     * A loan settled or written off keeps the day it closed — given, or today — so an
+     * earlier balance sheet still counts it; reopened, it has none.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Loan $loan) {
+            if (! $loan->isDirty('status')) {
+                return;
+            }
+
+            if ($loan->status === 'active') {
+                $loan->closed_on = null;
+            } elseif (! $loan->isDirty('closed_on') || ! $loan->closed_on) {
+                $loan->closed_on = now(config('app.display_timezone'))->toDateString();
+            }
+        });
+    }
+
+    /**
+     * Whether the loan was open — started, and not yet closed — at the end of a day.
+     */
+    public function wasOpenOn(string $day): bool
+    {
+        return $this->start_date && $this->start_date->toDateString() <= $day
+            && (! $this->closed_on || $this->closed_on->toDateString() > $day);
+    }
+
+    /**
+     * What was paid against the loan by the end of a day.
+     */
+    public function paidBy(string $day): float
+    {
+        return round((float) $this->payments->filter(fn (LoanPayment $p) => $p->paid_on && $p->paid_on->toDateString() <= $day)->sum('amount'), 2);
+    }
+
+    /**
+     * What was still to change hands at the end of a day.
+     */
+    public function outstandingOn(string $day): float
+    {
+        return round(max(0, $this->totalPayable(Carbon::parse($day)) - $this->paidBy($day)), 2);
     }
 
     public function payments(): HasMany

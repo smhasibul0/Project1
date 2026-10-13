@@ -169,6 +169,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/customers', [ContactController::class, 'customers'])->middleware('can:customers.view')->name('customers.index');
     Route::get('/customers/shipping-mark', [ContactController::class, 'shippingMarkSuggestion'])->middleware('can:customers.view')->name('customer.shipping.mark');
+    Route::get('/customers/{id}/shipments', [ContactController::class, 'shipments'])->whereNumber('id')->middleware('can:orders.view')->name('customer.shipments');
     Route::post('/contacts', [ContactController::class, 'store'])->middleware('can:customers.create')->name('contact.store');
     Route::put('/contacts/{id}', [ContactController::class, 'update'])->middleware('can:customers.edit')->name('contact.update');
     Route::patch('/contacts/{id}/toggle-active', [ContactController::class, 'toggleActive'])->middleware('can:customers.toggle')->name('contact.toggle');
@@ -395,6 +396,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/reports/profit-loss', [ReportController::class, 'profitLoss'])->middleware('can:reports.profit-loss')->name('reports.profit-loss');
     Route::get('/reports/receivables', [ReportController::class, 'receivables'])->middleware('can:reports.receivables')->name('reports.receivables');
     Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->middleware('can:reports.balance-sheet')->name('reports.balance-sheet');
+    Route::get('/reports/balance-sheet/pdf', [ReportController::class, 'balanceSheetPdf'])->middleware('can:reports.balance-sheet')->name('reports.balance-sheet.pdf');
     Route::get('/reports/cash-flow', [ReportController::class, 'cashFlow'])->middleware('can:reports.cash-flow')->name('reports.cash-flow');
     Route::get('/reports/warehouse-summary', [ReportController::class, 'warehouseSummary'])->middleware('can:reports.warehouse-summary')->name('reports.warehouse-summary');
 });

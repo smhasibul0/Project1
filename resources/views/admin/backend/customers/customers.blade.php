@@ -117,11 +117,13 @@
                                                     <i class="ri-book-2-line me-2"></i>Ledger
                                                 </a>
                                             </li>
+                                            @can('orders.view')
                                             <li>
-                                                <a class="dropdown-item coming-soon" href="#" data-feature="Shipments">
+                                                <a class="dropdown-item" href="{{ route('customer.shipments', $contact->id) }}">
                                                     <i class="ri-ship-line me-2"></i>Shipments
                                                 </a>
                                             </li>
+                                            @endcan
                                             <li>
                                                 <a class="dropdown-item coming-soon" href="#" data-feature="Documents &amp; Note">
                                                     <i class="ri-attachment-line me-2"></i>Documents &amp; Note

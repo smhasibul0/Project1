@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\CustomerGroup;
+use App\Models\Order;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class ContactController extends Controller
 {
@@ -25,6 +27,34 @@ class ContactController extends Controller
         return view('admin.backend.customers.customers', [
             'contacts' => $contacts,
             'customerGroups' => CustomerGroup::orderBy('name')->get(),
+        ]);
+    }
+
+    /**
+     * A customer's shipments — their orders, newest first, with where each one is on
+     * its way and what is still owed on it.
+     */
+    public function shipments($id): View
+    {
+        $customer = Contact::with('customerGroup')->findOrFail($id);
+        $orders = Order::with(['items', 'containers'])
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('order_date')->orderByDesc('id')
+            ->get();
+
+        $finished = ['delivered', 'completed'];
+
+        return view('admin.backend.customers.shipments', [
+            'customer' => $customer,
+            'orders' => $orders,
+            'summary' => [
+                'shipments' => $orders->count(),
+                'on_the_way' => $orders->whereNotIn('goods_status', [...$finished, 'cancelled'])->count(),
+                'delivered' => $orders->whereIn('goods_status', $finished)->count(),
+                'cbm' => round((float) $orders->where('goods_status', '!=', 'cancelled')->sum('total_cbm'), 4),
+                'billed' => round((float) $orders->sum('total_amount'), 2),
+                'due' => round((float) $orders->sum('due_amount'), 2),
+            ],
         ]);
     }
 

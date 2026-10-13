@@ -6,14 +6,22 @@
         <div class="py-3 d-flex align-items-sm-center flex-sm-row flex-column">
             <div class="flex-grow-1">
                 <h4 class="fs-18 fw-semibold m-0">Balance Sheet</h4>
-                <small class="text-muted">Cash &amp; bank, receivables and borrowings (snapshot)</small>
+                <small class="text-muted">
+                    Cash &amp; bank, receivables and borrowings at the end of
+                    <strong>{{ $date->format('d M Y') }}</strong>{{ $isToday ? ' (today, so far)' : '' }}
+                </small>
             </div>
-            <div class="text-end">
-                <ol class="breadcrumb m-0 py-0">
-                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                    <li class="breadcrumb-item active">Balance Sheet</li>
-                </ol>
-            </div>
+            <form method="GET" action="{{ route('reports.balance-sheet') }}" class="d-flex flex-wrap align-items-center gap-2 mt-2 mt-sm-0">
+                <label class="small text-muted mb-0" for="balanceSheetDate">As of</label>
+                <input type="date" class="form-control form-control-sm" style="width:auto" id="balanceSheetDate" name="date"
+                       value="{{ $date->toDateString() }}" max="{{ now(config('app.display_timezone'))->toDateString() }}" onchange="this.form.submit()">
+                @unless($isToday)
+                <a href="{{ route('reports.balance-sheet') }}" class="btn btn-sm btn-outline-secondary">Today</a>
+                @endunless
+                <a href="{{ route('reports.balance-sheet.pdf', ['date' => $date->toDateString()]) }}" class="btn btn-sm btn-primary">
+                    <i class="ri-file-pdf-2-line me-1"></i> Download PDF
+                </a>
+            </form>
         </div>
 
         <div class="row g-3 mb-1">
@@ -35,18 +43,18 @@
                     <thead><tr><th>Account</th><th>Type</th><th class="text-end">Balance</th></tr></thead>
                     <tbody>
                         @forelse($grouped as $type => $accounts)
-                            <tr class="table-light"><td colspan="2" class="fw-semibold">{{ $type }}</td><td class="text-end fw-semibold">৳ {{ number_format($accounts->sum(fn ($a) => (float) $a->balance + (float) $a->usd_cost), 2) }}</td></tr>
+                            <tr class="table-light"><td colspan="2" class="fw-semibold">{{ $type }}</td><td class="text-end fw-semibold">৳ {{ number_format($accounts->sum(fn ($a) => $a->balance_as_of + $a->usd_cost_as_of), 2) }}</td></tr>
                             @foreach($accounts as $a)
                             <tr>
                                 <td class="ps-4">{{ $a->name }}</td>
                                 <td>{{ $a->accountType->name ?? '—' }}</td>
-                                <td class="text-end">৳ {{ number_format((float) $a->balance + (float) $a->usd_cost, 2) }}
-                                    @if((float) $a->usd_balance > 0)<small class="d-block text-muted">৳ {{ number_format($a->balance, 2) }} + ${{ number_format($a->usd_balance, 2) }} at cost ৳ {{ number_format($a->usd_cost, 2) }}</small>@endif
+                                <td class="text-end">৳ {{ number_format($a->balance_as_of + $a->usd_cost_as_of, 2) }}
+                                    @if($a->usd_as_of > 0)<small class="d-block text-muted">৳ {{ number_format($a->balance_as_of, 2) }} + ${{ number_format($a->usd_as_of, 2) }} at cost ৳ {{ number_format($a->usd_cost_as_of, 2) }}</small>@endif
                                 </td>
                             </tr>
                             @endforeach
                         @empty
-                            <tr><td colspan="3" class="text-center text-muted py-4">No active accounts.</td></tr>
+                            <tr><td colspan="3" class="text-center text-muted py-4">No accounts open on this day.</td></tr>
                         @endforelse
                     </tbody>
                     <tfoot>
@@ -71,9 +79,9 @@
                                     </td>
                                     <td>
                                         {{ $loan->due_date?->format('d M Y') ?? '—' }}
-                                        @if($loan->isOverdue())<span class="badge bg-danger-subtle text-danger">Overdue</span>@endif
+                                        @if($loan->due_date && $loan->due_date->lt($date) && $loan->outstanding_as_of > 0)<span class="badge bg-danger-subtle text-danger">Overdue</span>@endif
                                     </td>
-                                    <td class="text-end">৳ {{ number_format($loan->outstanding(), 2) }}</td>
+                                    <td class="text-end">৳ {{ number_format($loan->outstanding_as_of, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="3" class="text-center text-muted py-4">Nothing borrowed.</td></tr>
@@ -102,9 +110,9 @@
                                     </td>
                                     <td>
                                         {{ $loan->due_date?->format('d M Y') ?? '—' }}
-                                        @if($loan->isOverdue())<span class="badge bg-danger-subtle text-danger">Overdue</span>@endif
+                                        @if($loan->due_date && $loan->due_date->lt($date) && $loan->outstanding_as_of > 0)<span class="badge bg-danger-subtle text-danger">Overdue</span>@endif
                                     </td>
-                                    <td class="text-end">৳ {{ number_format($loan->outstanding(), 2) }}</td>
+                                    <td class="text-end">৳ {{ number_format($loan->outstanding_as_of, 2) }}</td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="3" class="text-center text-muted py-4">Nothing lent out.</td></tr>

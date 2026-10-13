@@ -64,7 +64,8 @@ test('balance sheet sums account balances and receivables', function () {
     $type = AccountType::create(['name' => 'Bank']);
     PaymentAccount::create(['name' => 'Bank A', 'account_type_id' => $type->id, 'balance' => 1000, 'is_active' => true]);
     PaymentAccount::create(['name' => 'Bank B', 'account_type_id' => $type->id, 'balance' => 500, 'is_active' => true]);
-    Order::factory()->create(['due_amount' => 300]);
+    // What is due is worked out from the order's total and its payments.
+    Order::factory()->create(['total_amount' => 300, 'due_amount' => 300]);
 
     $response = $this->actingAs($this->user)->get(route('reports.balance-sheet'));
 

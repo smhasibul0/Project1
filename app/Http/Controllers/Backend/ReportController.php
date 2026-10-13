@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanySetting;
 use App\Models\Contact;
 use App\Models\DollarTransaction;
 use App\Models\Lc;
 use App\Models\LcCost;
-use App\Models\Loan;
 use App\Models\OfficeExpense;
 use App\Models\Order;
 use App\Models\PaymentAccount;
@@ -16,8 +16,11 @@ use App\Models\Transaction;
 use App\Models\Warehouse;
 use App\Models\WarehouseExpense;
 use App\Models\WarehouseStock;
+use App\Support\BalanceSheet;
+use App\Support\PdfDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
 {
@@ -175,40 +178,37 @@ class ReportController extends Controller
     /**
      * Position snapshot: payment-account balances (cash & bank) plus receivables.
      */
-    public function balanceSheet()
+    public function balanceSheet(Request $request)
     {
-        $accounts = PaymentAccount::with('accountType')->where('is_active', true)->orderBy('name')->get();
-        $grouped = $accounts->groupBy(fn ($a) => $a->accountType->name ?? 'Unclassified');
+        return view('admin.backend.reports.balance_sheet', BalanceSheet::asOf($this->balanceSheetDate($request)));
+    }
 
-        // Dollars an account holds count at what they cost, until they are sold.
-        $dollarsHeld = round($accounts->sum(fn ($a) => (float) $a->usd_balance), 2);
-        $dollarsAtCost = round($accounts->sum(fn ($a) => (float) $a->usd_cost), 2);
-        $cashBank = round($accounts->sum(fn ($a) => (float) $a->balance) + $dollarsAtCost, 2);
-        $receivables = round((float) Order::sum('due_amount'), 2);
+    /**
+     * The balance sheet for the chosen day, as a PDF file to download.
+     */
+    public function balanceSheetPdf(Request $request): Response
+    {
+        $sheet = BalanceSheet::asOf($this->balanceSheetDate($request));
 
-        // Only loans still running carry a balance: a settled one is square and
-        // a written-off one is no longer expected to change hands.
-        $loans = Loan::with('payments')->where('status', 'active')->get();
-        $lendings = $loans->where('direction', 'lent')->sortByDesc('start_date');
-        $borrowings = $loans->where('direction', 'borrowed')->sortByDesc('start_date');
+        return PdfDocument::download('admin.backend.reports.balance_sheet_pdf', $sheet + ['company' => CompanySetting::current()],
+            'Balance Sheet '.$sheet['date']->format('Y-m-d').'.pdf');
+    }
 
-        $loansReceivable = round($lendings->sum(fn (Loan $loan) => $loan->outstanding()), 2);
-        $loansPayable = round($borrowings->sum(fn (Loan $loan) => $loan->outstanding()), 2);
-        $totalAssets = round($cashBank + $receivables + $loansReceivable, 2);
+    /**
+     * The day asked for, or today — never a day still to come.
+     */
+    private function balanceSheetDate(Request $request): Carbon
+    {
+        $zone = config('app.display_timezone');
+        $today = now($zone)->startOfDay();
 
-        return view('admin.backend.reports.balance_sheet', [
-            'grouped' => $grouped,
-            'cashBank' => $cashBank,
-            'dollarsHeld' => $dollarsHeld,
-            'dollarsAtCost' => $dollarsAtCost,
-            'receivables' => $receivables,
-            'loansReceivable' => $loansReceivable,
-            'loansPayable' => $loansPayable,
-            'lendings' => $lendings,
-            'borrowings' => $borrowings,
-            'total' => $totalAssets,
-            'netWorth' => round($totalAssets - $loansPayable, 2),
-        ]);
+        try {
+            $date = $request->filled('date') ? Carbon::createFromFormat('Y-m-d', $request->input('date'), $zone)->startOfDay() : $today;
+        } catch (\Throwable) {
+            $date = $today;
+        }
+
+        return $date->gt($today) ? $today : $date;
     }
 
     /**

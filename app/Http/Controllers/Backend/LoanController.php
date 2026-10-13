@@ -153,7 +153,7 @@ class LoanController extends Controller
 
             // A loan paid off in full closes itself rather than waiting to be tidied.
             if ($loan->fresh('payments')->outstanding() <= 0.005) {
-                $loan->update(['status' => 'settled']);
+                $loan->update(['status' => 'settled', 'closed_on' => $data['paid_on']]);
             }
 
             return $data;
