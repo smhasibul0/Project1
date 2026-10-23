@@ -201,3 +201,80 @@ php artisan up
 
 ## Working on this repository
 - Composer commands run `boost:update`, which rewrites the Boost block above and turns `.claude/skills/deploying-laravel-cloud` into a symlink. Undo it before committing: remove that symlink, then `git checkout -- CLAUDE.md .claude/skills`. This section sits outside the Boost block, so Boost leaves it alone.
+
+# The ERP: how it is built (follow this structure for every new feature)
+
+RTC (Redwan Trading Corporation) is a freight forwarder and importer: customers in Bangladesh buy goods abroad, and RTC collects them in its overseas warehouses, ships them, clears customs, and delivers. One Laravel app with three logins and a public tracking page.
+
+## Business flow
+- **Quotation → Order → Container → delivered.**
+  - Quotations price goods from HS codes and duty (`DutyCalculator`), Customs valuation rates (highest, lowest and most common, read from valuation-report PDFs) and the day's dollar rate (`ExchangeRate`).
+  - An order is made from a quotation (`order.from.quotation`). It carries items, cartons, CBM, the customer's shipping mark and a `track_token`.
+  - Orders are shipped in containers (many-to-many) and carry their own costs (Order Costs, Cost Categories).
+- **Money in:** order payments (`OrderPayment`). What remains is the order's due and makes up receivables.
+- **LC Management (LC / CAD / TT):**
+  - Paying an LC buys dollars that stay in the bank account (the dollar wallet). Nothing is sent abroad.
+  - Those dollars pay freight and warehouse charges, or are sold for taka.
+- **Expenses:** Monthly (fixed) and Regular (variable), both under Cost Types. Warehouses have their own expenses, staff, payroll and stock.
+- **Finance:**
+  - Payment accounts, plus money borrowed and lent (loans).
+  - Reports: Balance Sheet (any date, with PDF), Cash Flow, Profit & Loss, Receivables.
+  - Asset register with depreciation.
+- Every change is recorded in the Activity Log.
+
+## Three areas
+- **Admin panel:**
+  - Routes sit in `Route::middleware(['auth', 'admin'])` groups in `routes/web.php`.
+  - Controllers go in `app/Http/Controllers/Backend`.
+  - Views go in `resources/views/admin/backend/<module>/`, each starting with `@extends('admin.admin_master')` and `@section('admin')`.
+  - The menu is `resources/views/admin/body/sidebar.blade.php`; wrap each entry in `@can`.
+- **Customer portal:** `/portal`, middleware `customer`, `PortalController`, `resources/views/portal`.
+- **Warehouse portal:** `/warehouse`, middleware `warehouse`, `app/Http/Controllers/Warehouse`. Each warehouse login sees only its own warehouse (`App\Support\CurrentWarehouse`).
+- **Public:** `/track/{token}` for order tracking, and `/scan` for carton scanning (permission `orders.scan`).
+
+## Permissions
+- `App\Support\PermissionCatalog` is the only list of permissions. Every new action gets a key there.
+- Protect the route with `->middleware('can:<key>')` and the button or menu item with `@can('<key>')`.
+- The admin role passes every check (`Gate::before`). Other roles get only what their role grants.
+- A new key also needs a migration that inserts it into `permissions` and grants it to roles that already held the related permission (see `create_dollar_wallets` or `rename_office_expense_permissions`). `PermissionCatalogTest` fails if the catalog and the database differ.
+
+## Money: how it is recorded
+- Amounts are in taka (৳). Display them as `'৳ '.number_format($value, 2)`.
+- **Taka:**
+  - `PaymentAccount.balance` is the account's taka.
+  - Every movement changes that balance and adds a `Transaction` with `debit` or `credit`, `running_balance`, `source`, and `transactionable_type` / `transactionable_id` pointing to the record that caused it.
+  - Set the Transaction's `created_at` to the payment's own date; the balance sheet for past days depends on it.
+  - Deleting or editing a payment reverses its Transaction and gives the balance back.
+  - Do all of this inside `DB::transaction`.
+- **Dollars:**
+  - Each account also holds `usd_balance` and its taka cost `usd_cost`. These change only through `App\Support\DollarLedger` (receive, spend, sell, transfer, reverseFor), which writes `dollar_transactions`.
+  - Spent dollars are costed at the average rate they were bought at, so spending them makes no gain or loss; only selling does.
+  - Every payment form offers Taka or Dollar through `<x-currency-choice>`, and `<x-account-options>` lists the accounts. Records that can be paid in dollars use the `HasDollarEntries` trait.
+- **Dates and times:** stored in UTC, shown in `config('app.display_timezone')` (Asia/Dhaka). Compare date columns with `whereDate`, never a plain string comparison.
+
+## Building a feature: conventions to reuse
+- **Validation** is written in the controller with `$request->validate([...])`. There are no Form Request classes.
+- **Messages:** redirect back with `->with('success', '...')` or `->with('error', '...')`, which show as toastr pop-ups.
+- **Lists:**
+  - Use `<x-data-table>`, which provides search, export, print and column visibility.
+  - Row actions go in an "Actions" dropdown.
+  - Add `<x-history-link>` and `<x-activity-history>` to show a record's history.
+- **Activity Log:** models use the `RecordsActivity` trait (`$activityParent`, `$activityIgnore`, `$activityStatusFields`). Use it on every new model.
+- **Status and type lists** live on the model as static methods (`Order::goodsStatuses()`, `Lc::types()`, `Quotation::statuses()`) or constants (`Loan::STATUSES`).
+- **PDFs:**
+  - Use `App\Support\PdfDocument::download($view, $data, $filename)`. It uses dompdf; build the page with tables, not flexbox.
+  - Each ৳ is drawn with `resources/fonts/FreeSans-Taka.ttf`. Avoid putting text right before ৳ in a PDF; dompdf draws the sign over it.
+- **Reports worked out from records** (for example `App\Support\BalanceSheet::asOf($date)`) are calculated from the ledgers rather than stored as snapshots, so every past date works.
+- **Frontend:**
+  - The admin panel uses Bootstrap 5, jQuery, DataTables, SweetAlert and toastr, all loaded by `admin_master`. Write page scripts in the view and run them after jQuery has loaded (`DOMContentLoaded`).
+  - The portals have their own Bootstrap layouts: `portal/layouts/master` and `warehouse/layouts/master`.
+  - Tailwind and Vite (the files in `public/build`) are used only by the Breeze pages built on `x-app-layout` or `x-guest-layout`: profile, confirm password and verify email.
+- **Database:**
+  - Live is MySQL; tests use SQLite.
+  - Index and foreign key names must be 64 characters or fewer; give long morph indexes a short name (`MigrationNamesTest` checks).
+  - Write migrations so they can safely be run again after failing partway (`hasColumn` / `hasTable` guards).
+- **Tests:** a Pest feature test for every change (`tests/Feature/<Feature>Test.php`), using `adminUser()` or `userWithPermissions([...])` from `tests/Pest.php` and model factories.
+- **Finishing a change:**
+  - Run Pint and the full test suite.
+  - Check the page in a browser.
+  - Push to `main`, then give the live-site update steps above.
